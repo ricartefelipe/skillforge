@@ -58,6 +58,7 @@ export function SkillforgeHome({ session }: { session: Session | null }) {
             <h2>Acesso</h2>
             <p className="who">{session.name}</p>
             <p className="role">{session.label}</p>
+            <a href="/catalogo">Catálogo</a>
             <a href="/logout">Sair</a>
           </article>
         ) : (

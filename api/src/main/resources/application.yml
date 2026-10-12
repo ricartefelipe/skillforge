@@ -10,10 +10,18 @@ spring:
       initialization-fail-timeout: -1
       connection-timeout: 3000
       validation-timeout: 2000
+  servlet:
+    multipart:
+      max-file-size: 64MB
+      max-request-size: 64MB
 
 skillforge:
   issuer: ${KEYCLOAK_ISSUER:http://localhost:8180/realms/skillforge}
   identity-timeout: 2s
+  catalog:
+    markdown-max: 100000
+    pdf-max: 8MB
+    video-max: 64MB
 
 management:
   endpoints:
