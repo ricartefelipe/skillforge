@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>skillforge</groupId>
 	<artifactId>skillforge</artifactId>
-	<version>0.1.0</version>
+	<version>0.2.0</version>
 	<name>skillforge</name>
 	<description>Construção de competências pela prática</description>
 	<properties>
@@ -36,6 +36,10 @@
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-security-oauth2-resource-server</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-actuator-test</artifactId>
 			<scope>test</scope>
 		</dependency>
@@ -47,6 +51,11 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-webmvc-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-security-test</artifactId>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
@@ -70,7 +79,7 @@
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
 				<configuration>
-					<!-- Testcontainers loads Byte Buddy as an agent. The JDK warns until this flag is set. -->
+					<!-- Testcontainers loads Byte Buddy at runtime. The JDK warns until this flag is set. -->
 					<argLine>-XX:+EnableDynamicAgentLoading -Xshare:off</argLine>
 				</configuration>
 			</plugin>
