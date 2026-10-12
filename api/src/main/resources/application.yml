@@ -1,0 +1,30 @@
+spring:
+  application:
+    name: skillforge
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/skillforge}
+    username: ${SPRING_DATASOURCE_USERNAME:skillforge}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
+    hikari:
+      # The pool must open even when Postgres is down, so liveness can still answer.
+      initialization-fail-timeout: -1
+      connection-timeout: 3000
+      validation-timeout: 2000
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      # Probes stay on the public port and do not require a session.
+      probes:
+        enabled: true
+      show-details: never
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          # Postgres is required to serve the institution, so a down database refuses traffic.
+          include: readinessState,db
