@@ -29,6 +29,17 @@ O acesso entra pelo Keycloak, em `http://localhost:8180`. Há três contas: `alu
 
 A interface mostra Entrar, ou o nome e o papel com Sair.
 
+## Incremento 2
+
+O catálogo tem cursos, módulos e aulas. Uma aula é markdown, um PDF ou um vídeo, e só uma dessas coisas.
+
+- Sem sessão, `GET /courses` responde `401`.
+- Aluno e docente leem. Só a administração cria.
+- Nome em branco, curso repetido, arquivo que não é o tipo declarado, ou conteúdo acima do limite, são recusados.
+- Com o Postgres fechado, o catálogo responde `503` e a vida continua `200`.
+
+A interface lista o catálogo para quem entrou e só mostra os formulários para a administração.
+
 ## Arranque
 
 É preciso Java 21, Node.js 22, Docker e curl.

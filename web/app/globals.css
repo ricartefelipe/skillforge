@@ -138,6 +138,7 @@ h1 {
 .access a {
   display: inline-block;
   margin-top: 0.9rem;
+  margin-right: 0.6rem;
   border: 1px solid var(--brass-deep);
   color: var(--soot);
   font-weight: 700;
@@ -203,6 +204,104 @@ button:focus-visible {
   .plate {
     animation-delay: 120ms;
   }
+}
+
+.floor.catalog {
+  align-content: start;
+  gap: 1rem;
+}
+
+.catalog .back {
+  color: var(--brass);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+}
+
+.catalog .sheet,
+.catalog .tree,
+.lesson-body {
+  display: grid;
+  gap: 0.8rem;
+  width: min(40rem, 100%);
+  background: var(--paper);
+  color: var(--soot);
+  border-radius: 2px 36px 2px 36px;
+  padding: 1.25rem 1.4rem 1.4rem;
+}
+
+.catalog h2,
+.catalog h3,
+.lesson-body h1,
+.lesson-body h2,
+.lesson-body h3 {
+  max-width: none;
+  margin: 0;
+  font-size: 1.6rem;
+  letter-spacing: 0;
+}
+
+.catalog label {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.catalog input,
+.catalog textarea,
+.catalog select {
+  width: 100%;
+  margin-top: 0.15rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid rgba(35, 39, 28, 0.3);
+  background: #fffaf3;
+  color: var(--soot);
+  font-family: var(--font-literata), serif;
+  font-size: 1rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.catalog textarea {
+  min-height: 8rem;
+}
+
+.catalog button {
+  margin-top: 0.2rem;
+  border: 1px solid var(--brass-deep);
+  background: transparent;
+  color: var(--soot);
+}
+
+.catalog .tree a {
+  color: var(--soot);
+  font-family: var(--font-literata), serif;
+  font-size: 1.2rem;
+}
+
+.catalog .kind {
+  margin-left: 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.catalog ul {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.lesson-body video,
+.lesson-body iframe {
+  width: 100%;
+  min-height: 20rem;
+  border: 0;
+  background: #fffaf3;
 }
 
 @keyframes rise {
