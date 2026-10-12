@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import type { Session } from "../lib/access";
 import { gaugeLabel, headline, readingFromProbe, type ProbeReading } from "../lib/probes";
 
 async function consult(path: string): Promise<ProbeReading> {
@@ -14,7 +15,7 @@ async function consult(path: string): Promise<ProbeReading> {
   }
 }
 
-export function SkillforgeHome() {
+export function SkillforgeHome({ session }: { session: Session | null }) {
   const [liveness, setLiveness] = useState<ProbeReading>("pending");
   const [readiness, setReadiness] = useState<ProbeReading>("pending");
   const request = useRef(0);
@@ -51,6 +52,22 @@ export function SkillforgeHome() {
       <p className="mark">Skillforge</p>
       <h1 aria-live="polite">{headline(liveness, readiness)}</h1>
       <p className="lede">Construção de competências pela prática.</p>
+      <section className="plate access" aria-label="Acesso">
+        {session ? (
+          <article>
+            <h2>Acesso</h2>
+            <p className="who">{session.name}</p>
+            <p className="role">{session.label}</p>
+            <a href="/logout">Sair</a>
+          </article>
+        ) : (
+          <article>
+            <h2>Acesso</h2>
+            <p className="prompt">Entre com a sua conta.</p>
+            <a href="/login">Entrar</a>
+          </article>
+        )}
+      </section>
       <section className="plate" aria-label="Estado do ambiente">
         <article aria-label="Vida" data-reading={liveness}>
           <h2>Vida</h2>
