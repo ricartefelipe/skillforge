@@ -11,6 +11,10 @@ spring:
       connection-timeout: 3000
       validation-timeout: 2000
 
+skillforge:
+  issuer: ${KEYCLOAK_ISSUER:http://localhost:8180/realms/skillforge}
+  identity-timeout: 2s
+
 management:
   endpoints:
     web:
@@ -26,5 +30,5 @@ management:
         liveness:
           include: livenessState
         readiness:
-          # Postgres is required to serve the institution, so a down database refuses traffic.
-          include: readinessState,db
+          # Postgres and the identity provider are required before the institution is served.
+          include: readinessState,db,identityProvider

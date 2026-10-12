@@ -14,8 +14,10 @@ import org.springframework.test.web.servlet.MockMvc;
         "spring.datasource.hikari.initialization-fail-timeout=-1",
         "spring.datasource.hikari.connection-timeout=1000",
         "spring.datasource.hikari.validation-timeout=500",
-        "spring.datasource.hikari.minimum-idle=0",
-        "spring.datasource.hikari.maximum-pool-size=1"
+                "spring.datasource.hikari.minimum-idle=0",
+                "spring.datasource.hikari.maximum-pool-size=1",
+                "skillforge.issuer=http://127.0.0.1:1/realms/skillforge",
+                "skillforge.identity-timeout=500ms"
 })
 @AutoConfigureMockMvc
 class LivenessWhenDatabaseIsDownTest {

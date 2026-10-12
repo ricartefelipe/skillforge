@@ -121,6 +121,40 @@ h1 {
   color: #8d3418;
 }
 
+.access {
+  grid-template-columns: 1fr;
+  margin-bottom: 1rem;
+}
+
+.access .prompt,
+.access .role {
+  font-family: var(--font-grotesk), sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.access a {
+  display: inline-block;
+  margin-top: 0.9rem;
+  border: 1px solid var(--brass-deep);
+  color: var(--soot);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 0.55rem 0.9rem;
+  text-decoration: none;
+}
+
+.access a:hover {
+  background: rgba(140, 98, 48, 0.12);
+}
+
+.access a:focus-visible {
+  outline: 2px solid var(--brass-deep);
+  outline-offset: 3px;
+}
+
 button {
   justify-self: start;
   margin-top: 1.6rem;
