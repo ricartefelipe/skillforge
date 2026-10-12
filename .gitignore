@@ -1,0 +1,7 @@
+.env
+.playwright-mcp/
+api/target/
+web/node_modules/
+web/.next/
+web/tsconfig.tsbuildinfo
+*.log
