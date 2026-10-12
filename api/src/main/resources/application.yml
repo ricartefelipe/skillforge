@@ -12,9 +12,9 @@ spring:
       validation-timeout: 2000
   servlet:
     multipart:
-      # A lesson video may reach 64MB. The catalog rejects a larger file before it is stored.
-      max-file-size: 64MB # NOSONAR
-      max-request-size: 64MB # NOSONAR
+      # The ceiling matches the largest lesson. A bigger body is refused before it is stored.
+      max-file-size: 8MB
+      max-request-size: 8MB
 
 skillforge:
   issuer: ${KEYCLOAK_ISSUER:http://localhost:8180/realms/skillforge}
@@ -22,7 +22,7 @@ skillforge:
   catalog:
     markdown-max: 100000
     pdf-max: 8MB
-    video-max: 64MB
+    video-max: 8MB
 
 management:
   endpoints:
