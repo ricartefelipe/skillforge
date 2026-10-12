@@ -7,19 +7,19 @@ import { ACCESS_COOKIE } from "../../lib/cookies";
 import { apiUrl } from "../../lib/openid";
 
 export async function createCourse(formData: FormData) {
-  await sendJson("/courses", { name: String(formData.get("name") ?? "") });
+  await sendJson("/courses", { name: field(formData, "name") });
 }
 
 export async function createModule(formData: FormData) {
-  const courseId = String(formData.get("courseId") ?? "");
-  await sendJson(`/courses/${courseId}/modules`, { name: String(formData.get("name") ?? "") });
+  const courseId = field(formData, "courseId");
+  await sendJson(`/courses/${courseId}/modules`, { name: field(formData, "name") });
 }
 
 export async function createLesson(formData: FormData) {
-  const moduleId = String(formData.get("moduleId") ?? "");
+  const moduleId = field(formData, "moduleId");
   const body = new FormData();
-  body.set("title", String(formData.get("title") ?? ""));
-  body.set("kind", String(formData.get("kind") ?? ""));
+  body.set("title", field(formData, "title"));
+  body.set("kind", field(formData, "kind"));
   const markdown = formData.get("markdown");
   if (typeof markdown === "string" && markdown.length > 0) {
     body.set("markdown", markdown);
@@ -29,6 +29,11 @@ export async function createLesson(formData: FormData) {
     body.set("file", file);
   }
   await send(`/modules/${moduleId}/lessons`, body);
+}
+
+function field(formData: FormData, name: string): string {
+  const value = formData.get(name);
+  return typeof value === "string" ? value : "";
 }
 
 async function sendJson(path: string, payload: { name: string }) {

@@ -27,7 +27,9 @@ CREATE TABLE IF NOT EXISTS lesson (
     CONSTRAINT lesson_kind CHECK (kind IN ('markdown', 'pdf', 'video')),
     -- A lesson carries markdown, or a file, and never both.
     CONSTRAINT lesson_one_content CHECK (
-        (kind = 'markdown' AND markdown IS NOT NULL AND length(btrim(markdown)) > 0 AND media IS NULL)
-        OR (kind <> 'markdown' AND markdown IS NULL AND media IS NOT NULL AND media_type IS NOT NULL)
+        (markdown IS NOT NULL) = (kind = 'markdown')
+        AND (media IS NULL) = (markdown IS NOT NULL)
+        AND (media_type IS NULL) = (media IS NULL)
+        AND (markdown IS NULL OR length(btrim(markdown)) > 0)
     )
 );
