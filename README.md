@@ -40,6 +40,18 @@ O catálogo tem cursos, módulos e aulas. Uma aula é markdown, um PDF ou um ví
 
 A interface lista o catálogo para quem entrou e só mostra os formulários para a administração.
 
+## Incremento 3
+
+A administração abre uma turma para um curso, indica a conta do docente e matricula alunos pela conta.
+
+- Sem sessão, `GET /cohorts` responde `401`.
+- O aluno vê somente as turmas em que está. O docente vê somente as que ministra. A administração vê todas.
+- A aula do curso aparece para quem está na turma. Não há conclusão.
+- Nome em branco, docente em branco, aluno em branco, turma repetida no mesmo curso ou matrícula repetida são recusados.
+- Com o Postgres fechado, a turma responde `503` e a vida continua `200`.
+
+A interface lista as turmas de quem entrou. Só a administração abre turma e matricula.
+
 ## Arranque
 
 É preciso Java 21, Node.js 22, Docker e curl.

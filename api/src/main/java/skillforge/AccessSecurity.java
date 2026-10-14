@@ -22,6 +22,7 @@ class AccessSecurity {
                 .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                 .requestMatchers("/me").authenticated()
                 .requestMatchers("/courses", "/courses/**", "/modules/**", "/lessons/**").authenticated()
+                .requestMatchers("/cohorts", "/cohorts/**").authenticated()
                 .anyRequest().denyAll());
         http.oauth2ResourceServer(oauth -> oauth.jwt(Customizer.withDefaults()));
         return http.build();

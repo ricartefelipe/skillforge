@@ -1,7 +1,5 @@
 package skillforge;
 
-import java.sql.Connection;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -9,31 +7,26 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.datasource.init.ScriptUtils;
 import org.springframework.stereotype.Component;
 
 @Component
 class CatalogStore {
 
-    private final javax.sql.DataSource dataSource;
+    private final Schema schema;
 
     private final JdbcTemplate jdbc;
 
-    // The script is idempotent. Skip it after the first success so a later outage is a failed call.
-    private volatile boolean schemaReady;
-
-    CatalogStore(javax.sql.DataSource dataSource, JdbcTemplate jdbc) {
-        this.dataSource = dataSource;
+    CatalogStore(Schema schema, JdbcTemplate jdbc) {
+        this.schema = schema;
         this.jdbc = jdbc;
     }
 
     UUID createCourse(String name) {
-        ensureSchema();
+        schema.ensure();
         UUID id = UUID.randomUUID();
         try {
             jdbc.update("INSERT INTO course (id, name) VALUES (?, ?)", id, name);
@@ -48,7 +41,7 @@ class CatalogStore {
     }
 
     UUID createModule(UUID courseId, String name) {
-        ensureSchema();
+        schema.ensure();
         if (!courseExists(courseId)) {
             throw new CatalogRejection("not-found", HttpStatus.NOT_FOUND);
         }
@@ -66,7 +59,7 @@ class CatalogStore {
     }
 
     UUID createLesson(UUID moduleId, String title, LessonContent.Accepted content) {
-        ensureSchema();
+        schema.ensure();
         if (!moduleExists(moduleId)) {
             throw new CatalogRejection("not-found", HttpStatus.NOT_FOUND);
         }
@@ -85,7 +78,7 @@ class CatalogStore {
     }
 
     List<CourseView> courses() {
-        ensureSchema();
+        schema.ensure();
         try {
             List<CourseView> courses = jdbc.query(
                     "SELECT id, name FROM course ORDER BY name",
@@ -132,7 +125,7 @@ class CatalogStore {
     }
 
     Optional<LessonView> lesson(UUID id) {
-        ensureSchema();
+        schema.ensure();
         try {
             List<LessonView> rows = jdbc.query(
                     "SELECT id, title, kind, markdown FROM lesson WHERE id = ?",
@@ -153,7 +146,7 @@ class CatalogStore {
     }
 
     Optional<Media> media(UUID id) {
-        ensureSchema();
+        schema.ensure();
         try {
             List<Media> rows = jdbc.query(
                     "SELECT kind, media, media_type FROM lesson WHERE id = ?",
@@ -189,23 +182,13 @@ class CatalogStore {
         }
     }
 
-    private void ensureSchema() {
-        if (schemaReady) {
-            return;
-        }
-        synchronized (this) {
-            if (schemaReady) {
-                return;
-            }
-            // Tables are created on use. A closed database must not stop liveness.
-            try (Connection connection = dataSource.getConnection()) {
-                ScriptUtils.executeSqlScript(connection, new ClassPathResource("catalog.sql"));
-                schemaReady = true;
-            }
-            catch (SQLException ex) {
-                throw new CatalogUnavailable(ex);
+    Optional<CourseView> course(UUID id) {
+        for (CourseView course : courses()) {
+            if (course.id().equals(id)) {
+                return Optional.of(course);
             }
         }
+        return Optional.empty();
     }
 
     record CourseView(UUID id, String name, List<ModuleView> modules) {
