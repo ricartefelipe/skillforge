@@ -22,6 +22,7 @@ const cohort: CohortDetail = {
   students: null,
   completed: 0,
   total: 1,
+  practices: [],
 };
 
 const noop = () => undefined;
@@ -30,7 +31,18 @@ afterEach(cleanup);
 
 describe("CohortDetailView", () => {
   it("lets the enrolled student finish a lesson and shows the count", () => {
-    render(<CohortDetailView cohort={cohort} role="aluno" notice={null} enrollStudent={noop} completeLesson={noop} />);
+    render(
+      <CohortDetailView
+        cohort={cohort}
+        role="aluno"
+        notice={null}
+        enrollStudent={noop}
+        completeLesson={noop}
+        openPractice={noop}
+        submitPractice={noop}
+        returnPractice={noop}
+      />,
+    );
 
     expect(screen.getByRole("link", { name: "O que é" })).toHaveAttribute("href", "/catalogo/aulas/l1");
     expect(screen.getByRole("button", { name: "Concluir" })).toBeInTheDocument();
@@ -47,6 +59,9 @@ describe("CohortDetailView", () => {
         notice="Esse aluno já está na turma."
         enrollStudent={noop}
         completeLesson={noop}
+        openPractice={noop}
+        submitPractice={noop}
+        returnPractice={noop}
       />,
     );
 

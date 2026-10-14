@@ -8,6 +8,10 @@ public enum Failure {
     BLANK_COHORT("blank-cohort", Kind.BAD_REQUEST),
     BLANK_TEACHER("blank-teacher", Kind.BAD_REQUEST),
     BLANK_STUDENT("blank-student", Kind.BAD_REQUEST),
+    BLANK_PRACTICE("blank-practice", Kind.BAD_REQUEST),
+    BLANK_PROMPT("blank-prompt", Kind.BAD_REQUEST),
+    BLANK_SUBMISSION("blank-submission", Kind.BAD_REQUEST),
+    BLANK_FEEDBACK("blank-feedback", Kind.BAD_REQUEST),
     TOO_LARGE("too-large", Kind.BAD_REQUEST),
     UNKNOWN_KIND("unknown-kind", Kind.BAD_REQUEST),
     MARKDOWN_ONLY("markdown-only", Kind.BAD_REQUEST),
@@ -17,6 +21,8 @@ public enum Failure {
     DUPLICATE_COURSE("duplicate-course", Kind.CONFLICT),
     DUPLICATE_COHORT("duplicate-cohort", Kind.CONFLICT),
     ALREADY_ENROLLED("already-enrolled", Kind.CONFLICT),
+    DUPLICATE_PRACTICE("duplicate-practice", Kind.CONFLICT),
+    ALREADY_RETURNED("already-returned", Kind.CONFLICT),
     NOT_FOUND("not-found", Kind.NOT_FOUND),
     FORBIDDEN("forbidden", Kind.FORBIDDEN);
 

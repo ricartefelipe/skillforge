@@ -55,7 +55,7 @@ class CohortAccessTest {
     @BeforeEach
     void emptyCohorts() throws Exception {
         mvc.perform(get("/cohorts").with(as("administracao", "administracao"))).andExpect(status().isOk());
-        jdbc.update("TRUNCATE completion, enrollment, cohort, lesson, module, course");
+        jdbc.update("TRUNCATE submission, practice, completion, enrollment, cohort, lesson, module, course");
     }
 
     @Test
@@ -244,6 +244,79 @@ class CohortAccessTest {
                         .content("{\"student\":\"colega\"}")
                         .with(as("administracao", "administracao")))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void aPracticeGoesFromTheTeacherToTheStudentAndBack() throws Exception {
+        String courseId = createCourse("Forja");
+        String morning = openCohort("Manhã", courseId, "docente");
+        enroll(morning, "aluno");
+
+        mvc.perform(post("/cohorts/" + morning + "/practices")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\" \",\"prompt\":\"Faça\"}")
+                        .with(as("docente", "docente")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("blank-practice"));
+
+        mvc.perform(post("/cohorts/" + morning + "/practices")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"Oficina\",\"prompt\":\"Mostre a peça.\"}")
+                        .with(as("aluno", "aluno")))
+                .andExpect(status().isForbidden());
+
+        String practice = openPractice(morning);
+
+        mvc.perform(post("/cohorts/" + morning + "/practices")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"Oficina\",\"prompt\":\"Outra.\"}")
+                        .with(as("docente", "docente")))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("duplicate-practice"));
+
+        mvc.perform(post("/cohorts/" + morning + "/practices/" + practice + "/submission")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"text\":\"A peça está no torno.\"}")
+                        .with(as("aluno", "aluno")))
+                .andExpect(status().isCreated());
+
+        mvc.perform(get("/cohorts/" + morning).with(as("aluno", "colega")))
+                .andExpect(status().isNotFound());
+
+        mvc.perform(get("/cohorts/" + morning).with(as("aluno", "aluno")))
+                .andExpect(jsonPath("$.practices[0].title").value("Oficina"))
+                .andExpect(jsonPath("$.practices[0].deliveries[0].text").value("A peça está no torno."))
+                .andExpect(jsonPath("$.practices[0].deliveries[0].feedback").doesNotExist());
+
+        mvc.perform(post("/cohorts/" + morning + "/practices/" + practice + "/feedback")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"student\":\"aluno\",\"text\":\"Falta o acabamento.\"}")
+                        .with(as("docente", "docente")))
+                .andExpect(status().isNoContent());
+
+        mvc.perform(post("/cohorts/" + morning + "/practices/" + practice + "/submission")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"text\":\"Agora com acabamento.\"}")
+                        .with(as("aluno", "aluno")))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("already-returned"));
+
+        mvc.perform(get("/cohorts/" + morning).with(as("docente", "docente")))
+                .andExpect(jsonPath("$.practices[0].deliveries[0].feedback").value("Falta o acabamento."));
+
+        mvc.perform(get("/cohorts/" + morning).with(as("aluno", "aluno")))
+                .andExpect(jsonPath("$.practices[0].deliveries.length()").value(1))
+                .andExpect(jsonPath("$.practices[0].deliveries[0].feedback").value("Falta o acabamento."));
+    }
+
+    private String openPractice(String cohortId) throws Exception {
+        MvcResult result = mvc.perform(post("/cohorts/" + cohortId + "/practices")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"Oficina\",\"prompt\":\"Mostre a peça.\"}")
+                        .with(as("docente", "docente")))
+                .andExpect(status().isCreated())
+                .andReturn();
+        return JsonPath.read(result.getResponse().getContentAsString(), "$.id");
     }
 
     private String createCourse(String name) throws Exception {

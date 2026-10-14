@@ -15,4 +15,12 @@ public final class CohortAccess {
         };
     }
 
+    public static boolean canLead(Role role, String teacher, String actor) {
+        return switch (role) {
+            case ADMINISTRACAO -> true;
+            case DOCENTE -> teacher.equals(actor);
+            case ALUNO -> false;
+        };
+    }
+
 }
