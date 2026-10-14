@@ -33,3 +33,23 @@ CREATE TABLE IF NOT EXISTS lesson (
         AND (markdown IS NULL OR length(btrim(markdown)) > 0)
     )
 );
+
+CREATE TABLE IF NOT EXISTS cohort (
+    id uuid PRIMARY KEY,
+    course_id uuid NOT NULL REFERENCES course (id),
+    name text NOT NULL,
+    teacher text NOT NULL,
+    CONSTRAINT cohort_name_not_blank CHECK (length(btrim(name)) > 0),
+    CONSTRAINT cohort_teacher_not_blank CHECK (length(btrim(teacher)) > 0)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS cohort_course_name_unique ON cohort (course_id, lower(name));
+
+CREATE TABLE IF NOT EXISTS enrollment (
+    cohort_id uuid NOT NULL REFERENCES cohort (id),
+    student text NOT NULL,
+    CONSTRAINT enrollment_student_not_blank CHECK (length(btrim(student)) > 0),
+    PRIMARY KEY (cohort_id, student)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS enrollment_student_ci ON enrollment (cohort_id, lower(student));

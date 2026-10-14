@@ -48,6 +48,21 @@ class CatalogWhenDatabaseIsDownTest {
         mvc.perform(get("/courses").with(jwt().jwt(token -> token
                         .claim("realm_access", Map.of("roles", List.of("administracao"))))))
                 .andExpect(status().isServiceUnavailable());
+
+        mvc.perform(post("/cohorts")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Manhã","courseId":"00000000-0000-0000-0000-000000000000","teacher":"docente"}
+                                """)
+                        .with(jwt().jwt(token -> token
+                                .claim("preferred_username", "aluno")
+                                .claim("realm_access", Map.of("roles", List.of("aluno"))))))
+                .andExpect(status().isForbidden());
+
+        mvc.perform(get("/cohorts").with(jwt().jwt(token -> token
+                        .claim("preferred_username", "administracao")
+                        .claim("realm_access", Map.of("roles", List.of("administracao"))))))
+                .andExpect(status().isServiceUnavailable());
     }
 
 }
