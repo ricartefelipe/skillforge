@@ -23,6 +23,7 @@ const cohort: CohortDetail = {
   completed: 0,
   total: 1,
   practices: [],
+  exams: [],
 };
 
 const noop = () => undefined;
@@ -41,6 +42,8 @@ describe("CohortDetailView", () => {
         openPractice={noop}
         submitPractice={noop}
         returnPractice={noop}
+        openExam={noop}
+        takeExam={noop}
       />,
     );
 
@@ -62,6 +65,8 @@ describe("CohortDetailView", () => {
         openPractice={noop}
         submitPractice={noop}
         returnPractice={noop}
+        openExam={noop}
+        takeExam={noop}
       />,
     );
 

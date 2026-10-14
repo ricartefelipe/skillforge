@@ -31,4 +31,8 @@ public interface CohortRepository {
 
     List<Report> report(Actor actor);
 
+    UUID openExam(UUID cohortId, Actor actor, ExamDraft draft);
+
+    void takeExam(UUID cohortId, UUID examId, Actor actor, java.util.Map<UUID, UUID> answers);
+
 }

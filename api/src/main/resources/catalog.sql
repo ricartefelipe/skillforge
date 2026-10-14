@@ -89,6 +89,49 @@ CREATE TABLE IF NOT EXISTS doubt (
     CONSTRAINT doubt_body_not_blank CHECK (length(btrim(body)) > 0)
 );
 
+CREATE TABLE IF NOT EXISTS exam (
+    id uuid PRIMARY KEY,
+    cohort_id uuid NOT NULL REFERENCES cohort (id),
+    title text NOT NULL,
+    CONSTRAINT exam_title_not_blank CHECK (length(btrim(title)) > 0)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS exam_cohort_title_unique ON exam (cohort_id, lower(title));
+
+CREATE TABLE IF NOT EXISTS question (
+    id uuid PRIMARY KEY,
+    exam_id uuid NOT NULL REFERENCES exam (id),
+    position integer NOT NULL,
+    prompt text NOT NULL,
+    CONSTRAINT question_prompt_not_blank CHECK (length(btrim(prompt)) > 0)
+);
+
+CREATE TABLE IF NOT EXISTS choice (
+    id uuid PRIMARY KEY,
+    question_id uuid NOT NULL REFERENCES question (id),
+    label text NOT NULL,
+    correct boolean NOT NULL,
+    CONSTRAINT choice_label_not_blank CHECK (length(btrim(label)) > 0)
+);
+
+CREATE TABLE IF NOT EXISTS attempt (
+    exam_id uuid NOT NULL REFERENCES exam (id),
+    student text NOT NULL,
+    grade smallint NOT NULL,
+    PRIMARY KEY (exam_id, student),
+    CONSTRAINT attempt_grade_range CHECK (grade BETWEEN 0 AND 10),
+    CONSTRAINT attempt_student_not_blank CHECK (length(btrim(student)) > 0)
+);
+
+CREATE TABLE IF NOT EXISTS attempt_answer (
+    exam_id uuid NOT NULL,
+    student text NOT NULL,
+    question_id uuid NOT NULL REFERENCES question (id),
+    choice_id uuid NOT NULL REFERENCES choice (id),
+    PRIMARY KEY (exam_id, student, question_id),
+    FOREIGN KEY (exam_id, student) REFERENCES attempt (exam_id, student)
+);
+
 CREATE TABLE IF NOT EXISTS reply (
     id uuid PRIMARY KEY,
     doubt_id uuid NOT NULL REFERENCES doubt (id),

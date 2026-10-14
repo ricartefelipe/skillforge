@@ -36,11 +36,14 @@ export default async function Page() {
         {reports === null ? <p className="empty">O boletim não responde.</p> : null}
         {reports !== null && reports.length === 0 ? <p className="empty">Nenhuma turma no boletim.</p> : null}
         {reports?.map((report) => {
-          const grades = report.practices.flatMap((practice) =>
-            practice.deliveries
-              .filter((delivery) => delivery.grade !== null)
-              .map((delivery) => delivery.grade as number),
-          );
+          const grades = [
+            ...report.practices.flatMap((practice) =>
+              practice.deliveries
+                .filter((delivery) => delivery.grade !== null)
+                .map((delivery) => delivery.grade as number),
+            ),
+            ...report.exams.flatMap((exam) => exam.scores.map((score) => score.grade)),
+          ];
           const average = grades.length === 0 ? null : grades.reduce((sum, grade) => sum + grade, 0) / grades.length;
           return (
             <section className="tree" key={report.cohortId} aria-label={report.cohortName}>
@@ -50,6 +53,16 @@ export default async function Page() {
               <p className="course-name">{report.courseName}</p>
               {average === null ? <p className="empty">Sem nota ainda.</p> : <p className="tally">Média {average.toFixed(1)}</p>}
               <ul>
+                {report.exams.map((exam) => (
+                  <li className="person" key={exam.id}>
+                    <span>{exam.title}</span>
+                    <span className="tally">
+                      {exam.scores.length === 0
+                        ? "Sem prova feita"
+                        : exam.scores.map((score) => `${score.student} ${score.grade}`).join(", ")}
+                    </span>
+                  </li>
+                ))}
                 {report.practices.map((practice) => (
                   <li className="person" key={practice.id}>
                     <span>{practice.title}</span>

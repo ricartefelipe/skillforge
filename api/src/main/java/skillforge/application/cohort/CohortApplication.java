@@ -1,11 +1,14 @@
 package skillforge.application.cohort;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import skillforge.domain.cohort.CohortDetail;
 import skillforge.domain.cohort.CohortListing;
 import skillforge.domain.cohort.CohortRepository;
+import skillforge.domain.cohort.ExamDraft;
 import skillforge.domain.identity.Actor;
 import skillforge.domain.identity.Role;
 import skillforge.domain.cohort.Report;
@@ -87,6 +90,49 @@ public class CohortApplication {
 
     public List<Report> report(Actor actor) {
         return cohorts.report(actor);
+    }
+
+    public Opened openExam(Actor actor, UUID cohortId, String rawTitle, List<ExamDraft.QuestionDraft> questions) {
+        if (actor.role() == Role.ALUNO) {
+            throw new Rejection(Failure.FORBIDDEN);
+        }
+        String title = Names.require(rawTitle, Failure.BLANK_EXAM);
+        if (questions == null || questions.isEmpty()) {
+            throw new Rejection(Failure.INVALID_EXAM);
+        }
+        List<ExamDraft.QuestionDraft> clean = new ArrayList<>();
+        for (ExamDraft.QuestionDraft question : questions) {
+            if (question == null || question.choices() == null || question.choices().size() < 2) {
+                throw new Rejection(Failure.INVALID_EXAM);
+            }
+            String prompt = Texts.require(question.prompt(), Failure.BLANK_QUESTION);
+            int correct = 0;
+            List<ExamDraft.ChoiceDraft> choices = new ArrayList<>();
+            for (ExamDraft.ChoiceDraft choice : question.choices()) {
+                if (choice == null) {
+                    throw new Rejection(Failure.INVALID_EXAM);
+                }
+                if (choice.correct()) {
+                    correct++;
+                }
+                choices.add(new ExamDraft.ChoiceDraft(
+                        Names.require(choice.label(), Failure.BLANK_CHOICE),
+                        choice.correct()));
+            }
+            if (correct != 1) {
+                throw new Rejection(Failure.INVALID_EXAM);
+            }
+            clean.add(new ExamDraft.QuestionDraft(prompt, choices));
+        }
+        return new Opened(cohorts.openExam(cohortId, actor, new ExamDraft(title, clean)), title);
+    }
+
+    public void takeExam(Actor actor, UUID cohortId, UUID examId, Map<UUID, UUID> answers) {
+        actor.requireStudent();
+        if (answers == null) {
+            throw new Rejection(Failure.INVALID_EXAM);
+        }
+        cohorts.takeExam(cohortId, examId, actor, answers);
     }
 
     public record Opened(UUID id, String name) {

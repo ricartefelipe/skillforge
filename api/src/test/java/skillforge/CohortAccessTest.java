@@ -56,7 +56,8 @@ class CohortAccessTest {
     void emptyCohorts() throws Exception {
         mvc.perform(get("/cohorts").with(as("administracao", "administracao"))).andExpect(status().isOk());
         jdbc.update("""
-                TRUNCATE reply, doubt, submission, practice, completion, enrollment, cohort, lesson, module, course
+                TRUNCATE attempt_answer, attempt, choice, question, exam, reply, doubt, submission, practice,
+                completion, enrollment, cohort, lesson, module, course
                 """);
     }
 
@@ -362,6 +363,88 @@ class CohortAccessTest {
         mvc.perform(get("/grades").with(as("aluno", "aluno")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].cohortName").value("Manhã"));
+    }
+
+    @Test
+    void theTeacherPublishesAnExamAndTheGradeLandsOnTheReport() throws Exception {
+        String courseId = createCourse("Forja");
+        String morning = openCohort("Manhã", courseId, "docente");
+        enroll(morning, "aluno");
+
+        mvc.perform(post("/cohorts/" + morning + "/exams")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(examJson("Prova 1"))
+                        .with(as("aluno", "aluno")))
+                .andExpect(status().isForbidden());
+
+        String examId = openExam(morning);
+        String questionId = JsonPath.read(
+                mvc.perform(get("/cohorts/" + morning).with(as("docente", "docente")))
+                        .andExpect(jsonPath("$.exams[0].questions[0].choices[0].correct").value(true))
+                        .andReturn()
+                        .getResponse()
+                        .getContentAsString(),
+                "$.exams[0].questions[0].id");
+        Object right = JsonPath.read(
+                mvc.perform(get("/cohorts/" + morning).with(as("docente", "docente")))
+                        .andReturn()
+                        .getResponse()
+                        .getContentAsString(),
+                "$.exams[0].questions[0].choices[?(@.correct == true)].id");
+        Object wrong = JsonPath.read(
+                mvc.perform(get("/cohorts/" + morning).with(as("aluno", "aluno")))
+                        .andExpect(jsonPath("$.exams[0].questions[0].choices[0].correct").doesNotExist())
+                        .andReturn()
+                        .getResponse()
+                        .getContentAsString(),
+                "$.exams[0].questions[0].choices[?(@.label == 'Errada')].id");
+
+        mvc.perform(post("/cohorts/" + morning + "/exams/" + examId + "/attempt")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(attemptJson(questionId, first(wrong)))
+                        .with(as("aluno", "aluno")))
+                .andExpect(status().isCreated());
+
+        mvc.perform(post("/cohorts/" + morning + "/exams/" + examId + "/attempt")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(attemptJson(questionId, first(right)))
+                        .with(as("aluno", "aluno")))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("already-taken"));
+
+        mvc.perform(get("/grades").with(as("docente", "docente")))
+                .andExpect(jsonPath("$[0].exams[0].title").value("Prova 1"))
+                .andExpect(jsonPath("$[0].exams[0].scores[0].student").value("aluno"))
+                .andExpect(jsonPath("$[0].exams[0].scores[0].grade").value(0));
+
+        mvc.perform(get("/cohorts/" + morning).with(as("aluno", "colega")))
+                .andExpect(status().isNotFound());
+    }
+
+    private String openExam(String cohortId) throws Exception {
+        MvcResult result = mvc.perform(post("/cohorts/" + cohortId + "/exams")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(examJson("Prova 1"))
+                        .with(as("docente", "docente")))
+                .andExpect(status().isCreated())
+                .andReturn();
+        return JsonPath.read(result.getResponse().getContentAsString(), "$.id");
+    }
+
+    private static String examJson(String title) {
+        return "{\"title\":\"" + title + "\",\"questions\":[{\"prompt\":\"Qual?\","
+                + "\"choices\":[{\"label\":\"Certa\",\"correct\":true},{\"label\":\"Errada\",\"correct\":false}]}]}";
+    }
+
+    private static String attemptJson(String questionId, String choiceId) {
+        return "{\"answers\":[{\"questionId\":\"" + questionId + "\",\"choiceId\":\"" + choiceId + "\"}]}";
+    }
+
+    private static String first(Object value) {
+        if (value instanceof java.util.List<?> list && !list.isEmpty()) {
+            return String.valueOf(list.get(0));
+        }
+        return String.valueOf(value);
     }
 
     private String openPractice(String cohortId) throws Exception {

@@ -1,6 +1,8 @@
 package skillforge.interfaces.http;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -18,14 +20,19 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import skillforge.application.cohort.CohortApplication;
 import skillforge.domain.catalog.Course;
 import skillforge.domain.catalog.Module;
+import skillforge.domain.cohort.Choice;
 import skillforge.domain.cohort.CohortDetail;
 import skillforge.domain.cohort.CohortListing;
 import skillforge.domain.cohort.CohortSummary;
 import skillforge.domain.cohort.Delivery;
+import skillforge.domain.cohort.Exam;
+import skillforge.domain.cohort.ExamScore;
 import skillforge.domain.cohort.Practice;
 import skillforge.domain.cohort.Progress;
 import skillforge.domain.cohort.Report;
+import skillforge.domain.cohort.Question;
 import skillforge.domain.identity.Actor;
+import skillforge.domain.identity.Role;
 
 @RestController
 class CohortController {
@@ -49,7 +56,8 @@ class CohortController {
 
     @GetMapping("/cohorts/{id}")
     CohortBody cohort(Authentication authentication, @PathVariable UUID id) {
-        return detail(cohorts.page(RequestActor.from(authentication), id));
+        Actor actor = RequestActor.from(authentication);
+        return detail(cohorts.page(actor, id), actor.role() != Role.ALUNO);
     }
 
     @PostMapping("/cohorts/{id}/lessons/{lessonId}/completion")
@@ -78,12 +86,12 @@ class CohortController {
     private static CohortBody listing(CohortListing listing) {
         return switch (listing) {
             case CohortListing.Student student -> body(
-                    student.summary(), null, student.completed(), student.total(), null, null);
-            case CohortListing.Staff staff -> body(staff.summary(), staff.students(), null, null, null, null);
+                    student.summary(), null, student.completed(), student.total(), null, null, null);
+            case CohortListing.Staff staff -> body(staff.summary(), staff.students(), null, null, null, null, null);
         };
     }
 
-    private static CohortBody detail(CohortDetail page) {
+    private static CohortBody detail(CohortDetail page, boolean revealKey) {
         return switch (page) {
             case CohortDetail.Student student -> body(
                     student.summary(),
@@ -91,14 +99,16 @@ class CohortController {
                     student.completed(),
                     student.total(),
                     course(student.course(), student.finished()),
-                    practices(student.practices()));
+                    practices(student.practices()),
+                    exams(student.exams(), revealKey));
             case CohortDetail.Staff staff -> body(
                     staff.summary(),
                     staff.students(),
                     null,
                     null,
                     course(staff.course(), null),
-                    practices(staff.practices()));
+                    practices(staff.practices()),
+                    exams(staff.exams(), revealKey));
         };
     }
 
@@ -108,7 +118,8 @@ class CohortController {
             Integer completed,
             Integer total,
             CourseBody course,
-            List<PracticeBody> practices) {
+            List<PracticeBody> practices,
+            List<ExamBody> exams) {
         List<ProgressBody> roster = students == null
                 ? null
                 : students.stream().map(ProgressBody::from).toList();
@@ -122,7 +133,8 @@ class CohortController {
                 completed,
                 total,
                 course,
-                practices);
+                practices,
+                exams);
     }
 
     private static CourseBody course(Course course, Set<UUID> finished) {
@@ -184,6 +196,42 @@ class CohortController {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/cohorts/{id}/exams")
+    ResponseEntity<IdName> openExam(
+            Authentication authentication,
+            @PathVariable UUID id,
+            @RequestBody ExamRequest body) {
+        ExamRequest request = body == null ? new ExamRequest(null, null) : body;
+        CohortApplication.Opened opened = cohorts.openExam(
+                RequestActor.from(authentication),
+                id,
+                request.title(),
+                request.questions());
+        return ResponseEntity.status(HttpStatus.CREATED).body(new IdName(opened.id(), opened.name()));
+    }
+
+    @PostMapping("/cohorts/{id}/exams/{examId}/attempt")
+    ResponseEntity<Void> takeExam(
+            Authentication authentication,
+            @PathVariable UUID id,
+            @PathVariable UUID examId,
+            @RequestBody AttemptRequest body) {
+        Map<UUID, UUID> answers = new HashMap<>();
+        if (body != null && body.answers() != null) {
+            for (AnswerRequest answer : body.answers()) {
+                if (answer != null && answer.questionId() != null && answer.choiceId() != null) {
+                    answers.put(answer.questionId(), answer.choiceId());
+                }
+            }
+        }
+        cohorts.takeExam(RequestActor.from(authentication), id, examId, answers);
+        return ResponseEntity.status(HttpStatus.CREATED).build();
+    }
+
+    private static List<ExamBody> exams(List<Exam> exams, boolean revealKey) {
+        return exams.stream().map(exam -> ExamBody.from(exam, revealKey)).toList();
+    }
+
     private static List<PracticeBody> practices(List<Practice> practices) {
         return practices.stream().map(PracticeBody::from).toList();
     }
@@ -235,7 +283,8 @@ class CohortController {
             Integer completed,
             Integer total,
             CourseBody course,
-            List<PracticeBody> practices) {
+            List<PracticeBody> practices,
+            List<ExamBody> exams) {
     }
 
     record PracticeBody(UUID id, String title, String prompt, List<DeliveryBody> deliveries) {
@@ -259,14 +308,69 @@ class CohortController {
 
     }
 
-    record ReportBody(UUID cohortId, String cohortName, String courseName, List<PracticeBody> practices) {
+    record ReportBody(
+            UUID cohortId,
+            String cohortName,
+            String courseName,
+            List<PracticeBody> practices,
+            List<ExamBody> exams) {
 
         static ReportBody from(Report report) {
             return new ReportBody(
                     report.cohortId(),
                     report.cohortName(),
                     report.courseName(),
-                    report.practices().stream().map(PracticeBody::from).toList());
+                    report.practices().stream().map(PracticeBody::from).toList(),
+                    report.exams().stream().map(exam -> ExamBody.from(exam, true)).toList());
+        }
+
+    }
+
+    record ExamRequest(String title, List<skillforge.domain.cohort.ExamDraft.QuestionDraft> questions) {
+    }
+
+    record AttemptRequest(List<AnswerRequest> answers) {
+    }
+
+    record AnswerRequest(UUID questionId, UUID choiceId) {
+    }
+
+    record ExamBody(UUID id, String title, List<QuestionBody> questions, List<ScoreBody> scores) {
+
+        static ExamBody from(Exam exam, boolean revealKey) {
+            return new ExamBody(
+                    exam.id(),
+                    exam.title(),
+                    exam.questions().stream().map(question -> QuestionBody.from(question, revealKey)).toList(),
+                    exam.scores().stream().map(ScoreBody::from).toList());
+        }
+
+    }
+
+    record QuestionBody(UUID id, String prompt, List<ChoiceBody> choices) {
+
+        static QuestionBody from(Question question, boolean revealKey) {
+            return new QuestionBody(
+                    question.id(),
+                    question.prompt(),
+                    question.choices().stream().map(choice -> ChoiceBody.from(choice, revealKey)).toList());
+        }
+
+    }
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    record ChoiceBody(UUID id, String label, Boolean correct) {
+
+        static ChoiceBody from(Choice choice, boolean revealKey) {
+            return new ChoiceBody(choice.id(), choice.label(), revealKey ? choice.correct() : null);
+        }
+
+    }
+
+    record ScoreBody(String student, int grade) {
+
+        static ScoreBody from(ExamScore score) {
+            return new ScoreBody(score.student(), score.grade());
         }
 
     }
