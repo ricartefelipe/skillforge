@@ -2,6 +2,8 @@ package skillforge;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import skillforge.infrastructure.security.SkillforgeTokens;
+
 import java.time.Instant;
 import java.util.List;
 
