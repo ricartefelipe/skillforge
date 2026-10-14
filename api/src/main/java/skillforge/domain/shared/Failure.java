@@ -23,6 +23,7 @@ public enum Failure {
     ALREADY_ENROLLED("already-enrolled", Kind.CONFLICT),
     DUPLICATE_PRACTICE("duplicate-practice", Kind.CONFLICT),
     DUPLICATE_EXAM("duplicate-exam", Kind.CONFLICT),
+    DUPLICATE_DAY("duplicate-day", Kind.CONFLICT),
     ALREADY_TAKEN("already-taken", Kind.CONFLICT),
     ALREADY_RETURNED("already-returned", Kind.CONFLICT),
     INVALID_GRADE("invalid-grade", Kind.BAD_REQUEST),
@@ -30,6 +31,9 @@ public enum Failure {
     BLANK_QUESTION("blank-question", Kind.BAD_REQUEST),
     BLANK_CHOICE("blank-choice", Kind.BAD_REQUEST),
     INVALID_EXAM("invalid-exam", Kind.BAD_REQUEST),
+    RUBRIC("rubric", Kind.BAD_REQUEST),
+    PAST_DUE("past-due", Kind.FORBIDDEN),
+    NOT_CERTIFIED("not-certified", Kind.FORBIDDEN),
     NOT_FOUND("not-found", Kind.NOT_FOUND),
     FORBIDDEN("forbidden", Kind.FORBIDDEN);
 

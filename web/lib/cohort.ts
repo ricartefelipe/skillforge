@@ -28,6 +28,8 @@ export type Practice = {
   id: string;
   title: string;
   prompt: string;
+  dueAt: string | null;
+  criteria: { id: string; name: string; points: number }[];
   deliveries: Delivery[];
 };
 
@@ -48,9 +50,21 @@ export type ExamScore = {
   grade: number;
 };
 
+export type ClassNotice = {
+  id: string;
+  title: string;
+  body: string;
+};
+
+export type RollCall = {
+  heldOn: string;
+  marks: { student: string; present: boolean }[];
+};
+
 export type ClassExam = {
   id: string;
   title: string;
+  dueAt: string | null;
   questions: ExamQuestion[];
   scores: ExamScore[];
 };
@@ -119,6 +133,14 @@ export function cohortNotice(code: string | null): string | null {
       return "Já existe uma prova com esse título nesta turma.";
     case "already-taken":
       return "Esta prova já foi feita.";
+    case "past-due":
+      return "O prazo desta atividade já fechou.";
+    case "duplicate-day":
+      return "Já existe chamada neste dia.";
+    case "rubric":
+      return "A nota tem de seguir a rubrica.";
+    case "not-certified":
+      return "Ainda não há certificado: é preciso média 7 e, se houver chamada, 75% de presença.";
     case "too-large":
       return "Passa do limite.";
     case "not-found":
@@ -339,7 +361,9 @@ function examFrom(value: unknown): ClassExam | null {
     }
     scores.push(score);
   }
-  return { id, title, questions, scores };
+  const due = (value as Record<string, unknown>).dueAt;
+  const dueAt = typeof due === "string" ? due : null;
+  return { id, title, dueAt, questions, scores };
 }
 
 function questionFrom(value: unknown): ExamQuestion | null {
@@ -434,7 +458,23 @@ function practiceFrom(value: unknown): Practice | null {
   if (id === null || title === null || prompt === null) {
     return null;
   }
-  return { id, title, prompt, deliveries };
+  const due = (value as Record<string, unknown>).dueAt;
+  const dueAt = typeof due === "string" ? due : null;
+  const criteriaValue = (value as Record<string, unknown>).criteria;
+  const criteria: { id: string; name: string; points: number }[] = [];
+  if (Array.isArray(criteriaValue)) {
+    for (const item of criteriaValue) {
+      if (item === null || typeof item !== "object") {
+        return null;
+      }
+      const row = item as Record<string, unknown>;
+      if (typeof row.id !== "string" || typeof row.name !== "string" || typeof row.points !== "number") {
+        return null;
+      }
+      criteria.push({ id: row.id, name: row.name, points: row.points });
+    }
+  }
+  return { id, title, prompt, dueAt, criteria, deliveries };
 }
 
 function deliveryFrom(value: unknown): Delivery | null {

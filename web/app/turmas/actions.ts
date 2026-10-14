@@ -27,6 +27,27 @@ export async function completeLesson(formData: FormData) {
   redirect(page);
 }
 
+export async function announce(formData: FormData) {
+  const cohortId = field(formData, "cohortId");
+  const page = field(formData, "returnTo") || `/turmas/${cohortId}`;
+  await post(
+    `/cohorts/${cohortId}/announcements`,
+    { title: field(formData, "title"), body: field(formData, "body") },
+    page,
+  );
+  redirect(page);
+}
+
+export async function callRoll(formData: FormData) {
+  const cohortId = field(formData, "cohortId");
+  const page = field(formData, "returnTo") || `/turmas/${cohortId}`;
+  const present = formData.getAll("present").filter((value): value is string => typeof value === "string");
+  const roster = field(formData, "roster").split(",").filter((name) => name.length > 0);
+  const marks = roster.map((student) => ({ student, present: present.includes(student) }));
+  await post(`/cohorts/${cohortId}/attendance`, { heldOn: field(formData, "heldOn"), marks }, page);
+  redirect(page);
+}
+
 export async function openExam(formData: FormData) {
   const cohortId = field(formData, "cohortId");
   const page = field(formData, "returnTo") || `/turmas/${cohortId}`;
@@ -36,6 +57,10 @@ export async function openExam(formData: FormData) {
     payload = JSON.parse(spec);
   } catch {
     redirect(`${page}?erro=invalid-exam`);
+  }
+  if (payload !== null && typeof payload === "object") {
+    const dueAt = field(formData, "dueAt");
+    payload = { ...payload, dueAt: dueAt.length === 0 ? null : new Date(dueAt).toISOString() };
   }
   await post(`/cohorts/${cohortId}/exams`, payload, page);
   redirect(page);
@@ -59,9 +84,17 @@ export async function takeExam(formData: FormData) {
 export async function openPractice(formData: FormData) {
   const cohortId = field(formData, "cohortId");
   const page = `/turmas/${cohortId}`;
+  const criterion = field(formData, "criterion");
+  const points = Number(field(formData, "points"));
+  const dueAt = field(formData, "dueAt");
   await post(
     `/cohorts/${cohortId}/practices`,
-    { title: field(formData, "title"), prompt: field(formData, "prompt") },
+    {
+      title: field(formData, "title"),
+      prompt: field(formData, "prompt"),
+      dueAt: dueAt.length === 0 ? null : new Date(dueAt).toISOString(),
+      criteria: criterion.length === 0 ? [] : [{ name: criterion, points }],
+    },
     page,
   );
   redirect(page);
@@ -79,9 +112,18 @@ export async function returnPractice(formData: FormData) {
   const cohortId = field(formData, "cohortId");
   const practiceId = field(formData, "practiceId");
   const page = `/turmas/${cohortId}`;
+  const marks: { criterionId: string; points: number }[] = [];
+  for (const [key, value] of formData.entries()) {
+    if (key.startsWith("mark:") && typeof value === "string") {
+      marks.push({ criterionId: key.slice(5), points: Number(value) });
+    }
+  }
+  const grade = marks.length === 0
+    ? Number(field(formData, "grade"))
+    : marks.reduce((sum, mark) => sum + mark.points, 0);
   await post(
     `/cohorts/${cohortId}/practices/${practiceId}/feedback`,
-    { student: field(formData, "student"), text: field(formData, "text"), grade: Number(field(formData, "grade")) },
+    { student: field(formData, "student"), text: field(formData, "text"), grade, marks },
     page,
   );
   redirect(page);

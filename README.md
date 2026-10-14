@@ -63,7 +63,7 @@ O aluno marca a aula da turma como concluída. A marca permanece depois de sair 
 
 ## Incremento 5
 
-A turma tem práticas. O docente abre o enunciado, o aluno entrega um texto e o docente devolve um comentário. Não há nota.
+A turma tem práticas. O docente abre o enunciado, o aluno entrega um texto e o docente devolve um comentário. A nota dessa devolutiva entrou no incremento 6.
 
 - O aluno não abre prática. Quem não ministra a turma não a vê.
 - Título repetido na mesma turma, texto em branco ou acima do limite são recusados.
@@ -89,6 +89,16 @@ A área do docente publica a prova da turma. O gabarito não sai para o aluno. A
 - Cada questão tem ao menos duas alternativas e uma só correta.
 - O aluno de fora da turma não vê a prova.
 - A nota é 0 a 10, na proporção das questões certas.
+
+## Incremento 8
+
+Prazo, rubrica, chamada, aviso e certificado seguem a regra de uma turma a distância.
+
+- Prática e prova podem fechar numa data. Depois do prazo, o aluno não entrega.
+- A rubrica da prática soma os critérios e essa soma é a nota.
+- O docente registra a chamada do dia. Com chamada aberta, o certificado exige 75% de presença.
+- O aviso da turma aparece para quem está nela.
+- O certificado sai com média igual ou maior que 7.
 
 ## Arranque
 
