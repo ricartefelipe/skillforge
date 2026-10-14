@@ -12,7 +12,7 @@ export function LessonView({ lesson }: { lesson: LessonDetail }) {
       {lesson.kind === "markdown" ? <ReactMarkdown>{lesson.markdown ?? ""}</ReactMarkdown> : null}
       {lesson.kind === "pdf" ? (
         <>
-          <a href={media}>Abrir o PDF</a>
+          <a className="file-link" href={media}>Abrir o PDF</a>
           <iframe title="PDF da aula" src={media} />
         </>
       ) : null}

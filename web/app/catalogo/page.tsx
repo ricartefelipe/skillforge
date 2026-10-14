@@ -16,8 +16,11 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
     return (
       <Shell session={null}>
         <div className="page">
-          <h1>Catálogo</h1>
-          <p>Entre com a sua conta.</p>
+          <header className="intro">
+            <p className="kicker">Oficina</p>
+            <h1>Catálogo</h1>
+          </header>
+          <p className="empty">Entre com a sua conta.</p>
         </div>
       </Shell>
     );
