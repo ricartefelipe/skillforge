@@ -71,6 +71,7 @@ describe("cohort", () => {
       students: [{ student: "aluno", completed: 1, total: 3 }],
       completed: 1,
       total: 3,
+      practices: [],
     });
 
     expect(

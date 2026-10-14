@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { canManageCohorts, progressLabel, type CohortDetail } from "../../lib/cohort";
+import { canLeadPractices, canManageCohorts, progressLabel, type CohortDetail, type Practice } from "../../lib/cohort";
 import type { LessonSummary } from "../../lib/catalog";
 import { ProgressMeter } from "../meter";
 
@@ -25,12 +25,18 @@ export function CohortDetailView({
   notice,
   enrollStudent,
   completeLesson,
+  openPractice,
+  submitPractice,
+  returnPractice,
 }: {
   cohort: CohortDetail;
   role: string;
   notice: string | null;
   enrollStudent: (formData: FormData) => void;
   completeLesson: (formData: FormData) => void;
+  openPractice: (formData: FormData) => void;
+  submitPractice: (formData: FormData) => void;
+  returnPractice: (formData: FormData) => void;
 }) {
   return (
     <div className="page">
@@ -89,6 +95,32 @@ export function CohortDetailView({
             )}
           </>
         ) : null}
+        <h3>Práticas</h3>
+        {cohort.practices.length === 0 ? <p className="empty">Nenhuma prática ainda.</p> : null}
+        {cohort.practices.map((practice) => (
+          <PracticeCard
+            key={practice.id}
+            cohortId={cohort.id}
+            practice={practice}
+            role={role}
+            submitPractice={submitPractice}
+            returnPractice={returnPractice}
+          />
+        ))}
+        {canLeadPractices(role) ? (
+          <form className="compose" action={openPractice} aria-label="Nova prática">
+            <input type="hidden" name="cohortId" value={cohort.id} />
+            <label>
+              Título
+              <input name="title" required />
+            </label>
+            <label>
+              Enunciado
+              <textarea name="prompt" required />
+            </label>
+            <button type="submit">Abrir prática</button>
+          </form>
+        ) : null}
         {canManageCohorts(role) ? (
           <form className="compose" action={enrollStudent} aria-label="Matricular aluno">
             <input type="hidden" name="cohortId" value={cohort.id} />
@@ -101,5 +133,78 @@ export function CohortDetailView({
         ) : null}
       </section>
     </div>
+  );
+}
+
+function PracticeCard({
+  cohortId,
+  practice,
+  role,
+  submitPractice,
+  returnPractice,
+}: {
+  cohortId: string;
+  practice: Practice;
+  role: string;
+  submitPractice: (formData: FormData) => void;
+  returnPractice: (formData: FormData) => void;
+}) {
+  const own = role === "aluno" ? (practice.deliveries[0] ?? null) : null;
+  const waiting = own !== null && own.feedback === null;
+  return (
+    <section className="module" aria-label={practice.title}>
+      <h3>{practice.title}</h3>
+      <p>{practice.prompt}</p>
+      {role === "aluno" && own === null ? (
+        <form className="compose" action={submitPractice} aria-label="Entrega">
+          <input type="hidden" name="cohortId" value={cohortId} />
+          <input type="hidden" name="practiceId" value={practice.id} />
+          <label>
+            Texto
+            <textarea name="text" required />
+          </label>
+          <button type="submit">Entregar</button>
+        </form>
+      ) : null}
+      {role === "aluno" && own !== null ? (
+        <>
+          <p>{own.text}</p>
+          {own.feedback === null ? <p className="meta">Aguardando devolutiva.</p> : <p>{own.feedback}</p>}
+          {waiting ? (
+            <form className="compose" action={submitPractice} aria-label="Entrega">
+              <input type="hidden" name="cohortId" value={cohortId} />
+              <input type="hidden" name="practiceId" value={practice.id} />
+              <label>
+                Texto
+                <textarea name="text" required defaultValue={own.text} />
+              </label>
+              <button className="quiet" type="submit">Entregar de novo</button>
+            </form>
+          ) : null}
+        </>
+      ) : null}
+      {canLeadPractices(role)
+        ? practice.deliveries.map((delivery) => (
+            <section key={delivery.student} aria-label={delivery.student}>
+              <p className="meta">{delivery.student}</p>
+              <p>{delivery.text}</p>
+              {delivery.feedback === null ? (
+                <form className="compose" action={returnPractice} aria-label={`Devolutiva para ${delivery.student}`}>
+                  <input type="hidden" name="cohortId" value={cohortId} />
+                  <input type="hidden" name="practiceId" value={practice.id} />
+                  <input type="hidden" name="student" value={delivery.student} />
+                  <label>
+                    Devolutiva
+                    <textarea name="text" required />
+                  </label>
+                  <button type="submit">Devolver</button>
+                </form>
+              ) : (
+                <p>{delivery.feedback}</p>
+              )}
+            </section>
+          ))
+        : null}
+    </section>
   );
 }

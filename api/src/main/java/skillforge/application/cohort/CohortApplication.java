@@ -7,9 +7,11 @@ import skillforge.domain.cohort.CohortDetail;
 import skillforge.domain.cohort.CohortListing;
 import skillforge.domain.cohort.CohortRepository;
 import skillforge.domain.identity.Actor;
+import skillforge.domain.identity.Role;
 import skillforge.domain.shared.Failure;
 import skillforge.domain.shared.Names;
 import skillforge.domain.shared.Rejection;
+import skillforge.domain.shared.Texts;
 
 public class CohortApplication {
 
@@ -45,6 +47,28 @@ public class CohortApplication {
     public void complete(Actor actor, UUID cohortId, UUID lessonId) {
         actor.requireStudent();
         cohorts.complete(cohortId, lessonId, actor.username());
+    }
+
+    public Opened openPractice(Actor actor, UUID cohortId, String rawTitle, String rawPrompt) {
+        if (actor.role() == Role.ALUNO) {
+            throw new Rejection(Failure.FORBIDDEN);
+        }
+        String title = Names.require(rawTitle, Failure.BLANK_PRACTICE);
+        String prompt = Texts.require(rawPrompt, Failure.BLANK_PROMPT);
+        return new Opened(cohorts.openPractice(cohortId, actor, title, prompt), title);
+    }
+
+    public void submit(Actor actor, UUID cohortId, UUID practiceId, String rawText) {
+        actor.requireStudent();
+        cohorts.submit(cohortId, practiceId, actor, Texts.require(rawText, Failure.BLANK_SUBMISSION));
+    }
+
+    public void feedback(Actor actor, UUID cohortId, UUID practiceId, String rawStudent, String rawText) {
+        if (actor.role() == Role.ALUNO) {
+            throw new Rejection(Failure.FORBIDDEN);
+        }
+        String student = Names.require(rawStudent, Failure.BLANK_STUDENT);
+        cohorts.feedback(cohortId, practiceId, actor, student, Texts.require(rawText, Failure.BLANK_FEEDBACK));
     }
 
     public record Opened(UUID id, String name) {
