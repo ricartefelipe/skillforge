@@ -19,11 +19,24 @@ public interface CohortRepository {
 
     void complete(UUID cohortId, UUID lessonId, String student);
 
-    UUID openPractice(UUID cohortId, Actor actor, String title, String prompt);
+    UUID openPractice(
+            UUID cohortId,
+            Actor actor,
+            String title,
+            String prompt,
+            java.time.Instant dueAt,
+            java.util.List<CriterionDraft> criteria);
 
     void submit(UUID cohortId, UUID practiceId, Actor actor, String text);
 
-    void feedback(UUID cohortId, UUID practiceId, Actor actor, String student, String text, int grade);
+    void feedback(
+            UUID cohortId,
+            UUID practiceId,
+            Actor actor,
+            String student,
+            String text,
+            int grade,
+            java.util.List<CriterionMark> marks);
 
     boolean teaches(String teacher, UUID courseId);
 
@@ -34,5 +47,15 @@ public interface CohortRepository {
     UUID openExam(UUID cohortId, Actor actor, ExamDraft draft);
 
     void takeExam(UUID cohortId, UUID examId, Actor actor, java.util.Map<UUID, UUID> answers);
+
+    UUID announce(UUID cohortId, Actor actor, String title, String body);
+
+    UUID call(UUID cohortId, Actor actor, java.time.LocalDate heldOn, java.util.List<Presence> marks);
+
+    java.util.Optional<Certificate> certificate(UUID cohortId, Actor actor);
+
+    java.util.List<Announcement> announcements(UUID cohortId);
+
+    java.util.List<Roll> rolls(UUID cohortId, Actor actor);
 
 }

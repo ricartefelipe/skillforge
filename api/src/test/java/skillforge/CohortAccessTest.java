@@ -56,7 +56,8 @@ class CohortAccessTest {
     void emptyCohorts() throws Exception {
         mvc.perform(get("/cohorts").with(as("administracao", "administracao"))).andExpect(status().isOk());
         jdbc.update("""
-                TRUNCATE attempt_answer, attempt, choice, question, exam, reply, doubt, submission, practice,
+                TRUNCATE certificate, criterion_mark, criterion, presence, class_day, announcement,
+                attempt_answer, attempt, choice, question, exam, reply, doubt, submission, practice,
                 completion, enrollment, cohort, lesson, module, course
                 """);
     }
@@ -421,6 +422,100 @@ class CohortAccessTest {
                 .andExpect(status().isNotFound());
     }
 
+    @Test
+    void aClassKeepsDeadlineRubricRollNoticeAndCertificate() throws Exception {
+        String courseId = createCourse("Oficina");
+        String morning = openCohort("Noite", courseId, "docente");
+        enroll(morning, "aluno");
+
+        mvc.perform(post("/cohorts/" + morning + "/practices")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"Atrasada\",\"prompt\":\"Tarde.\",\"dueAt\":\"2020-01-01T00:00:00Z\"}")
+                        .with(as("docente", "docente")))
+                .andExpect(status().isCreated());
+
+        String late = JsonPath.read(mvc.perform(get("/cohorts/" + morning).with(as("docente", "docente")))
+                .andReturn().getResponse().getContentAsString(), "$.practices[0].id");
+
+        mvc.perform(post("/cohorts/" + morning + "/practices/" + late + "/submission")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"text\":\"Cheguei.\"}")
+                        .with(as("aluno", "aluno")))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error").value("past-due"));
+
+        mvc.perform(get("/cohorts/" + morning + "/certificate").with(as("aluno", "aluno")))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error").value("not-certified"));
+
+        mvc.perform(post("/cohorts/" + morning + "/practices")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"Rubrica\",\"prompt\":\"Mostre.\",\"criteria\":["
+                                + "{\"name\":\"Forma\",\"points\":6},{\"name\":\"Acabamento\",\"points\":4}]}")
+                        .with(as("docente", "docente")))
+                .andExpect(status().isCreated());
+
+        String body = mvc.perform(get("/cohorts/" + morning).with(as("docente", "docente")))
+                .andReturn().getResponse().getContentAsString();
+        String practice = only(JsonPath.read(body, "$.practices[?(@.title == 'Rubrica')].id"));
+        String forma = only(JsonPath.read(
+                body,
+                "$.practices[?(@.title == 'Rubrica')].criteria[?(@.name == 'Forma')].id"));
+        String acabamento = only(JsonPath.read(
+                body,
+                "$.practices[?(@.title == 'Rubrica')].criteria[?(@.name == 'Acabamento')].id"));
+
+        mvc.perform(post("/cohorts/" + morning + "/practices/" + practice + "/submission")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"text\":\"A peça.\"}")
+                        .with(as("aluno", "aluno")))
+                .andExpect(status().isCreated());
+
+        mvc.perform(post("/cohorts/" + morning + "/practices/" + practice + "/feedback")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"student\":\"aluno\",\"text\":\"Boa.\",\"grade\":8,\"marks\":["
+                                + "{\"criterionId\":\"" + forma + "\",\"points\":5},"
+                                + "{\"criterionId\":\"" + acabamento + "\",\"points\":3}]}")
+                        .with(as("docente", "docente")))
+                .andExpect(status().isNoContent());
+
+        mvc.perform(get("/cohorts/" + morning).with(as("aluno", "aluno")))
+                .andExpect(jsonPath("$.practices[?(@.title == 'Rubrica')].deliveries[0].grade").value(8));
+
+        mvc.perform(post("/cohorts/" + morning + "/announcements")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"Amanhã\",\"body\":\"Tragam a peça.\"}")
+                        .with(as("docente", "docente")))
+                .andExpect(status().isCreated());
+
+        mvc.perform(get("/cohorts/" + morning + "/announcements").with(as("aluno", "aluno")))
+                .andExpect(jsonPath("$[0].title").value("Amanhã"));
+
+        mvc.perform(get("/cohorts/" + morning + "/announcements").with(as("aluno", "colega")))
+                .andExpect(status().isNotFound());
+
+        mvc.perform(post("/cohorts/" + morning + "/attendance")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"heldOn\":\"2026-10-14\",\"marks\":[{\"student\":\"aluno\",\"present\":true}]}")
+                        .with(as("docente", "docente")))
+                .andExpect(status().isCreated());
+
+        mvc.perform(post("/cohorts/" + morning + "/attendance")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"heldOn\":\"2026-10-14\",\"marks\":[{\"student\":\"aluno\",\"present\":false}]}")
+                        .with(as("docente", "docente")))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("duplicate-day"));
+
+        mvc.perform(get("/cohorts/" + morning + "/certificate").with(as("docente", "docente")))
+                .andExpect(status().isForbidden());
+
+        mvc.perform(get("/cohorts/" + morning + "/certificate").with(as("aluno", "aluno")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.average").value("8.0"))
+                .andExpect(jsonPath("$.courseName").value("Oficina"));
+    }
+
     private String openExam(String cohortId) throws Exception {
         MvcResult result = mvc.perform(post("/cohorts/" + cohortId + "/exams")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -438,6 +533,17 @@ class CohortAccessTest {
 
     private static String attemptJson(String questionId, String choiceId) {
         return "{\"answers\":[{\"questionId\":\"" + questionId + "\",\"choiceId\":\"" + choiceId + "\"}]}";
+    }
+
+    private static String only(Object value) {
+        Object current = value;
+        while (current instanceof java.util.List<?> list) {
+            if (list.isEmpty()) {
+                return "";
+            }
+            current = list.get(0);
+        }
+        return String.valueOf(current);
     }
 
     private static String first(Object value) {

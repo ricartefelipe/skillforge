@@ -20,13 +20,18 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import skillforge.application.cohort.CohortApplication;
 import skillforge.domain.catalog.Course;
 import skillforge.domain.catalog.Module;
+import skillforge.domain.cohort.Announcement;
+import skillforge.domain.cohort.Certificate;
 import skillforge.domain.cohort.Choice;
 import skillforge.domain.cohort.CohortDetail;
+import skillforge.domain.cohort.CriterionMark;
 import skillforge.domain.cohort.CohortListing;
 import skillforge.domain.cohort.CohortSummary;
 import skillforge.domain.cohort.Delivery;
 import skillforge.domain.cohort.Exam;
 import skillforge.domain.cohort.ExamScore;
+import skillforge.domain.cohort.Presence;
+import skillforge.domain.cohort.Roll;
 import skillforge.domain.cohort.Practice;
 import skillforge.domain.cohort.Progress;
 import skillforge.domain.cohort.Report;
@@ -160,12 +165,17 @@ class CohortController {
             Authentication authentication,
             @PathVariable UUID id,
             @RequestBody PracticeRequest body) {
-        PracticeRequest request = body == null ? new PracticeRequest(null, null) : body;
+        PracticeRequest request = body == null ? new PracticeRequest(null, null, null, null) : body;
+        java.time.Instant dueAt = request.dueAt() == null || request.dueAt().isBlank()
+                ? null
+                : java.time.Instant.parse(request.dueAt());
         CohortApplication.Opened opened = cohorts.openPractice(
                 RequestActor.from(authentication),
                 id,
                 request.title(),
-                request.prompt());
+                request.prompt(),
+                dueAt,
+                request.criteria());
         return ResponseEntity.status(HttpStatus.CREATED).body(new IdName(opened.id(), opened.name()));
     }
 
@@ -185,14 +195,23 @@ class CohortController {
             @PathVariable UUID id,
             @PathVariable UUID practiceId,
             @RequestBody FeedbackRequest body) {
-        FeedbackRequest request = body == null ? new FeedbackRequest(null, null, null) : body;
+        FeedbackRequest request = body == null ? new FeedbackRequest(null, null, null, null) : body;
+        java.util.List<CriterionMark> marks = new java.util.ArrayList<>();
+        if (request.marks() != null) {
+            for (MarkRequest mark : request.marks()) {
+                if (mark != null) {
+                    marks.add(new CriterionMark(mark.criterionId(), mark.points()));
+                }
+            }
+        }
         cohorts.feedback(
                 RequestActor.from(authentication),
                 id,
                 practiceId,
                 request.student(),
                 request.text(),
-                request.grade());
+                request.grade(),
+                marks);
         return ResponseEntity.noContent().build();
     }
 
@@ -201,11 +220,15 @@ class CohortController {
             Authentication authentication,
             @PathVariable UUID id,
             @RequestBody ExamRequest body) {
-        ExamRequest request = body == null ? new ExamRequest(null, null) : body;
+        ExamRequest request = body == null ? new ExamRequest(null, null, null) : body;
+        java.time.Instant dueAt = request.dueAt() == null || request.dueAt().isBlank()
+                ? null
+                : java.time.Instant.parse(request.dueAt());
         CohortApplication.Opened opened = cohorts.openExam(
                 RequestActor.from(authentication),
                 id,
                 request.title(),
+                dueAt,
                 request.questions());
         return ResponseEntity.status(HttpStatus.CREATED).body(new IdName(opened.id(), opened.name()));
     }
@@ -228,6 +251,38 @@ class CohortController {
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
+    @GetMapping("/cohorts/{id}/announcements")
+    List<Announcement> announcements(Authentication authentication, @PathVariable UUID id) {
+        return cohorts.announcements(RequestActor.from(authentication), id);
+    }
+
+    @PostMapping("/cohorts/{id}/announcements")
+    ResponseEntity<IdName> announce(
+            Authentication authentication,
+            @PathVariable UUID id,
+            @RequestBody NoticeRequest body) {
+        NoticeRequest request = body == null ? new NoticeRequest(null, null) : body;
+        UUID created = cohorts.announce(RequestActor.from(authentication), id, request.title(), request.body());
+        return ResponseEntity.status(HttpStatus.CREATED).body(new IdName(created, request.title()));
+    }
+
+    @PostMapping("/cohorts/{id}/attendance")
+    ResponseEntity<Void> call(Authentication authentication, @PathVariable UUID id, @RequestBody CallRequest body) {
+        CallRequest request = body == null ? new CallRequest(null, null) : body;
+        cohorts.call(RequestActor.from(authentication), id, request.heldOn(), request.marks());
+        return ResponseEntity.status(HttpStatus.CREATED).build();
+    }
+
+    @GetMapping("/cohorts/{id}/attendance")
+    List<Roll> attendance(Authentication authentication, @PathVariable UUID id) {
+        return cohorts.rolls(RequestActor.from(authentication), id);
+    }
+
+    @GetMapping("/cohorts/{id}/certificate")
+    Certificate certificate(Authentication authentication, @PathVariable UUID id) {
+        return cohorts.certificate(RequestActor.from(authentication), id);
+    }
+
     private static List<ExamBody> exams(List<Exam> exams, boolean revealKey) {
         return exams.stream().map(exam -> ExamBody.from(exam, revealKey)).toList();
     }
@@ -239,13 +294,20 @@ class CohortController {
     record OpenBody(String name, UUID courseId, String teacher) {
     }
 
-    record PracticeRequest(String title, String prompt) {
+    record PracticeRequest(
+            String title,
+            String prompt,
+            String dueAt,
+            java.util.List<skillforge.domain.cohort.CriterionDraft> criteria) {
     }
 
     record TextRequest(String text) {
     }
 
-    record FeedbackRequest(String student, String text, Integer grade) {
+    record FeedbackRequest(String student, String text, Integer grade, java.util.List<MarkRequest> marks) {
+    }
+
+    record MarkRequest(UUID criterionId, int points) {
     }
 
     record IdName(UUID id, String name) {
@@ -287,16 +349,30 @@ class CohortController {
             List<ExamBody> exams) {
     }
 
-    record PracticeBody(UUID id, String title, String prompt, List<DeliveryBody> deliveries) {
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    record PracticeBody(
+            UUID id,
+            String title,
+            String prompt,
+            java.time.Instant dueAt,
+            List<CriterionBody> criteria,
+            List<DeliveryBody> deliveries) {
 
         static PracticeBody from(Practice practice) {
             return new PracticeBody(
                     practice.id(),
                     practice.title(),
                     practice.prompt(),
+                    practice.dueAt(),
+                    practice.criteria().stream()
+                            .map(criterion -> new CriterionBody(criterion.id(), criterion.name(), criterion.points()))
+                            .toList(),
                     practice.deliveries().stream().map(DeliveryBody::from).toList());
         }
 
+    }
+
+    record CriterionBody(UUID id, String name, int points) {
     }
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -326,21 +402,37 @@ class CohortController {
 
     }
 
-    record ExamRequest(String title, List<skillforge.domain.cohort.ExamDraft.QuestionDraft> questions) {
+    record ExamRequest(
+            String title,
+            String dueAt,
+            List<skillforge.domain.cohort.ExamDraft.QuestionDraft> questions) {
     }
 
     record AttemptRequest(List<AnswerRequest> answers) {
     }
 
+    record NoticeRequest(String title, String body) {
+    }
+
+    record CallRequest(java.time.LocalDate heldOn, List<Presence> marks) {
+    }
+
     record AnswerRequest(UUID questionId, UUID choiceId) {
     }
 
-    record ExamBody(UUID id, String title, List<QuestionBody> questions, List<ScoreBody> scores) {
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    record ExamBody(
+            UUID id,
+            String title,
+            java.time.Instant dueAt,
+            List<QuestionBody> questions,
+            List<ScoreBody> scores) {
 
         static ExamBody from(Exam exam, boolean revealKey) {
             return new ExamBody(
                     exam.id(),
                     exam.title(),
+                    exam.dueAt(),
                     exam.questions().stream().map(question -> QuestionBody.from(question, revealKey)).toList(),
                     exam.scores().stream().map(ScoreBody::from).toList());
         }
