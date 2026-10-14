@@ -117,6 +117,25 @@ set_password aluno "$ALUNO_PASSWORD"
 set_password docente "$DOCENTE_PASSWORD"
 set_password administracao "$ADMINISTRACAO_PASSWORD"
 
+port_in_use() {
+	local port="$1"
+	if ! command -v ss >/dev/null 2>&1; then
+		return 1
+	fi
+	ss -ltn "sport = :${port}" | awk 'NR > 1 { found = 1 } END { exit !found }'
+}
+
+if curl -fsS "${API_URL}/actuator/health/liveness" >/dev/null && curl -fsS "${WEB_URL}" >/dev/null; then
+	echo "Skillforge já está no ar."
+	echo "Interface: ${WEB_URL}"
+	exit 0
+fi
+
+if port_in_use "$API_PORT" || port_in_use "$WEB_PORT"; then
+	echo "A porta ${API_PORT} ou ${WEB_PORT} já está em uso. Encerre a instância anterior antes de subir outra." >&2
+	exit 1
+fi
+
 api_pid=""
 web_pid=""
 
@@ -165,7 +184,11 @@ wait_for() {
 	while [[ "$try" -lt 90 ]]; do
 		try=$((try + 1))
 		if curl -fsS "$url" >/dev/null; then
-			return 0
+			if kill -0 "$pid" 2>/dev/null; then
+				return 0
+			fi
+			echo "${name} encerrou antes de responder." >&2
+			exit 1
 		fi
 		if ! kill -0 "$pid" 2>/dev/null; then
 			echo "${name} encerrou antes de responder." >&2
