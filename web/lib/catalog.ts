@@ -96,7 +96,7 @@ export function lessonFromBody(httpOk: boolean, body: unknown): LessonDetail | n
   return { id, title, kind };
 }
 
-function courseFrom(value: unknown): Course | null {
+export function courseFrom(value: unknown): Course | null {
   if (value === null || typeof value !== "object") {
     return null;
   }

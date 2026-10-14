@@ -61,7 +61,7 @@ class CatalogAccessTest {
     @BeforeEach
     void emptyCatalog() throws Exception {
         mvc.perform(get("/courses").with(as("administracao"))).andExpect(status().isOk());
-        jdbc.update("TRUNCATE lesson, module, course");
+        jdbc.update("TRUNCATE enrollment, cohort, lesson, module, course");
     }
 
     @Test

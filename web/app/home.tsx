@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import Link from "next/link";
+
 import type { Session } from "../lib/access";
 import { gaugeLabel, headline, readingFromProbe, type ProbeReading } from "../lib/probes";
 
@@ -59,6 +61,7 @@ export function SkillforgeHome({ session }: { session: Session | null }) {
             <p className="who">{session.name}</p>
             <p className="role">{session.label}</p>
             <a href="/catalogo">Catálogo</a>
+            <Link href="/turmas">Turmas</Link>
             <a href="/logout">Sair</a>
           </article>
         ) : (
