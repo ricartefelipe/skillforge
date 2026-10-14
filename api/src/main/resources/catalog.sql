@@ -53,3 +53,11 @@ CREATE TABLE IF NOT EXISTS enrollment (
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS enrollment_student_ci ON enrollment (cohort_id, lower(student));
+
+CREATE TABLE IF NOT EXISTS completion (
+    cohort_id uuid NOT NULL REFERENCES cohort (id),
+    lesson_id uuid NOT NULL REFERENCES lesson (id),
+    student text NOT NULL,
+    CONSTRAINT completion_student_not_blank CHECK (length(btrim(student)) > 0),
+    PRIMARY KEY (cohort_id, lesson_id, student)
+);

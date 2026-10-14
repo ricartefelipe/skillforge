@@ -30,12 +30,8 @@ export function CatalogView({
   createLesson: (formData: FormData) => void;
 }) {
   return (
-    <main className="floor catalog">
-      <p className="mark">Skillforge</p>
+    <div className="page">
       <h1>Catálogo</h1>
-      <Link className="back" href="/">
-        Voltar
-      </Link>
       {notice ? <p role="alert">{notice}</p> : null}
       {canCompose ? (
         <form className="sheet" action={createCourse} aria-label="Novo curso">
@@ -78,6 +74,6 @@ export function CatalogView({
           ))}
         </section>
       ))}
-    </main>
+    </div>
   );
 }

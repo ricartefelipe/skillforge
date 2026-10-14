@@ -1,12 +1,20 @@
 import { courseFrom, type Course } from "./catalog";
 
+export type StudentProgress = {
+  student: string;
+  completed: number;
+  total: number;
+};
+
 export type CohortSummary = {
   id: string;
   name: string;
   courseId: string;
   courseName: string;
   teacher: string;
-  students: string[] | null;
+  students: StudentProgress[] | null;
+  completed: number | null;
+  total: number | null;
 };
 
 export type CohortDetail = {
@@ -14,10 +22,16 @@ export type CohortDetail = {
   name: string;
   teacher: string;
   course: Course;
-  students: string[] | null;
+  students: StudentProgress[] | null;
+  completed: number | null;
+  total: number | null;
 };
 
-type Roster = { present: false } | { present: true; students: string[] };
+type Roster = { present: false } | { present: true; students: StudentProgress[] };
+
+export function progressLabel(completed: number, total: number): string {
+  return `${completed} de ${total} aulas`;
+}
 
 export function canManageCohorts(role: string): boolean {
   return role === "administracao";
@@ -87,7 +101,8 @@ export function cohortDetailFromBody(httpOk: boolean, body: unknown): CohortDeta
   const courseValue = "course" in body ? body.course : undefined;
   const course = courseFrom(courseValue);
   const roster = rosterFrom(body);
-  if (id === null || name === null || teacher === null || course === null || roster === null) {
+  const tally = tallyFrom(body);
+  if (id === null || name === null || teacher === null || course === null || roster === null || tally === null) {
     return null;
   }
   return {
@@ -96,6 +111,8 @@ export function cohortDetailFromBody(httpOk: boolean, body: unknown): CohortDeta
     teacher,
     course,
     students: roster.present ? roster.students : null,
+    completed: tally === undefined ? null : tally.completed,
+    total: tally === undefined ? null : tally.total,
   };
 }
 
@@ -109,13 +126,15 @@ function summaryFrom(value: unknown): CohortSummary | null {
   const courseName = text(value, "courseName");
   const teacher = text(value, "teacher");
   const roster = rosterFrom(value);
+  const tally = tallyFrom(value);
   if (
     id === null ||
     name === null ||
     courseId === null ||
     courseName === null ||
     teacher === null ||
-    roster === null
+    roster === null ||
+    tally === null
   ) {
     return null;
   }
@@ -126,6 +145,8 @@ function summaryFrom(value: unknown): CohortSummary | null {
     courseName,
     teacher,
     students: roster.present ? roster.students : null,
+    completed: tally === undefined ? null : tally.completed,
+    total: tally === undefined ? null : tally.total,
   };
 }
 
@@ -133,18 +154,52 @@ function rosterFrom(value: object): Roster | null {
   if (!("students" in value)) {
     return { present: false };
   }
-  const found = value.students;
+  const found = (value as Record<string, unknown>).students;
   if (!Array.isArray(found)) {
     return null;
   }
-  const students: string[] = [];
+  const students: StudentProgress[] = [];
   for (const item of found) {
-    if (typeof item !== "string" || item.trim().length === 0) {
+    const member = memberFrom(item);
+    if (member === null) {
       return null;
     }
-    students.push(item);
+    students.push(member);
   }
   return { present: true, students };
+}
+
+function memberFrom(value: unknown): StudentProgress | null {
+  if (value === null || typeof value !== "object") {
+    return null;
+  }
+  const student = text(value, "student");
+  const completed = count(value, "completed");
+  const total = count(value, "total");
+  if (student === null || completed === null || total === null) {
+    return null;
+  }
+  return { student, completed, total };
+}
+
+function tallyFrom(value: object): { completed: number; total: number } | null | undefined {
+  if (!("completed" in value) && !("total" in value)) {
+    return undefined;
+  }
+  const completed = count(value, "completed");
+  const total = count(value, "total");
+  if (completed === null || total === null) {
+    return null;
+  }
+  return { completed, total };
+}
+
+function count(value: object, key: string): number | null {
+  const found = (value as Record<string, unknown>)[key];
+  if (typeof found !== "number" || !Number.isInteger(found) || found < 0) {
+    return null;
+  }
+  return found;
 }
 
 function text(value: object, key: string): string | null {

@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { canManageCohorts, emptyCohorts, type CohortSummary } from "../../lib/cohort";
+import { canManageCohorts, emptyCohorts, progressLabel, type CohortSummary } from "../../lib/cohort";
 import type { Course } from "../../lib/catalog";
 
 export function RosterView({
@@ -18,12 +18,8 @@ export function RosterView({
 }) {
   const manage = canManageCohorts(role);
   return (
-    <main className="floor catalog">
-      <p className="mark">Skillforge</p>
+    <div className="page">
       <h1>Turmas</h1>
-      <Link className="back" href="/">
-        Voltar
-      </Link>
       {notice ? <p role="alert">{notice}</p> : null}
       {manage && courses !== null && courses.length > 0 ? (
         <form className="sheet" action={openCohort} aria-label="Nova turma">
@@ -57,8 +53,10 @@ export function RosterView({
             <Link href={`/turmas/${cohort.id}`}>{cohort.name}</Link>
           </h2>
           <p>{cohort.courseName}</p>
-          <p className="meta">Docente</p>
-          <p>{cohort.teacher}</p>
+          <p className="meta">Ministrada por {cohort.teacher}</p>
+          {cohort.completed !== null && cohort.total !== null ? (
+            <p className="tally">{progressLabel(cohort.completed, cohort.total)}</p>
+          ) : null}
           {cohort.students ? (
             <>
               <h3>Alunos</h3>
@@ -67,7 +65,10 @@ export function RosterView({
               ) : (
                 <ul aria-label={`Alunos de ${cohort.name}`}>
                   {cohort.students.map((student) => (
-                    <li key={student}>{student}</li>
+                    <li key={student.student}>
+                      {student.student}
+                      <span className="tally">{progressLabel(student.completed, student.total)}</span>
+                    </li>
                   ))}
                 </ul>
               )}
@@ -75,6 +76,6 @@ export function RosterView({
           ) : null}
         </section>
       ))}
-    </main>
+    </div>
   );
 }

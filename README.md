@@ -52,6 +52,15 @@ A administração abre uma turma para um curso, indica a conta do docente e matr
 
 A interface lista as turmas de quem entrou. Só a administração abre turma e matricula.
 
+## Incremento 4
+
+O aluno marca a aula da turma como concluída. A marca permanece depois de sair e entrar.
+
+- Só o aluno matriculado conclui a aula da própria turma.
+- A turma mostra, para ele, quantas aulas concluiu. O docente vê a mesma conta de cada aluno.
+- Marcar de novo não muda a conta. Não há nota.
+- Com o Postgres fechado, a conclusão responde `503` e a vida continua `200`.
+
 ## Arranque
 
 É preciso Java 21, Node.js 22, Docker e curl.

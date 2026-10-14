@@ -55,7 +55,7 @@ class CohortAccessTest {
     @BeforeEach
     void emptyCohorts() throws Exception {
         mvc.perform(get("/cohorts").with(as("administracao", "administracao"))).andExpect(status().isOk());
-        jdbc.update("TRUNCATE enrollment, cohort, lesson, module, course");
+        jdbc.update("TRUNCATE completion, enrollment, cohort, lesson, module, course");
     }
 
     @Test
@@ -103,13 +103,16 @@ class CohortAccessTest {
                 .andExpect(jsonPath("$[0].name").value("Manhã"))
                 .andExpect(jsonPath("$[0].teacher").value("docente"))
                 .andExpect(jsonPath("$[0].courseName").value("Forja"))
-                .andExpect(jsonPath("$[0].students").doesNotExist());
+                .andExpect(jsonPath("$[0].students").doesNotExist())
+                .andExpect(jsonPath("$[0].completed").value(0))
+                .andExpect(jsonPath("$[0].total").value(1));
 
         mvc.perform(get("/cohorts/" + morning).with(as("aluno", "aluno")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.course.modules[0].lessons[0].title").value("O que é"))
+                .andExpect(jsonPath("$.course.modules[0].lessons[0].completed").value(false))
                 .andExpect(jsonPath("$.students").doesNotExist())
-                .andExpect(jsonPath("$.completed").doesNotExist());
+                .andExpect(jsonPath("$.grade").doesNotExist());
 
         mvc.perform(get("/cohorts/" + evening).with(as("aluno", "aluno")))
                 .andExpect(status().isNotFound());
@@ -123,7 +126,8 @@ class CohortAccessTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].id").value(morning))
-                .andExpect(jsonPath("$[0].students[0]").value("aluno"));
+                .andExpect(jsonPath("$[0].students[0].student").value("aluno"))
+                .andExpect(jsonPath("$[0].students[0].completed").value(0));
 
         mvc.perform(get("/cohorts/" + evening).with(as("docente", "docente")))
                 .andExpect(status().isNotFound());
@@ -131,11 +135,51 @@ class CohortAccessTest {
         mvc.perform(get("/cohorts").with(as("docente", "outro")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(evening))
-                .andExpect(jsonPath("$[0].students[0]").value("colega"));
+                .andExpect(jsonPath("$[0].students[0].student").value("colega"));
 
         mvc.perform(get("/cohorts").with(as("administracao", "administracao")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(2));
+    }
+
+    @Test
+    void aStudentKeepsAFinishedLessonAndTheTeacherSeesTheCount() throws Exception {
+        String courseId = createCourse("Forja");
+        String moduleId = createModule(courseId, "Fundamentos");
+        String lessonId = createMarkdown(moduleId, "O que é");
+        String otherModule = createModule(courseId, "Outro");
+        String otherLesson = createMarkdown(otherModule, "Depois");
+        String cohortId = openCohort("Manhã", courseId, "docente");
+        enroll(cohortId, "aluno");
+
+        mvc.perform(post("/cohorts/" + cohortId + "/lessons/" + lessonId + "/completion")
+                        .with(as("docente", "docente")))
+                .andExpect(status().isForbidden());
+
+        mvc.perform(post("/cohorts/" + cohortId + "/lessons/" + otherLesson + "/completion")
+                        .with(as("aluno", "colega")))
+                .andExpect(status().isNotFound());
+
+        mvc.perform(post("/cohorts/" + cohortId + "/lessons/" + lessonId + "/completion")
+                        .with(as("aluno", "aluno")))
+                .andExpect(status().isNoContent());
+        mvc.perform(post("/cohorts/" + cohortId + "/lessons/" + lessonId + "/completion")
+                        .with(as("aluno", "aluno")))
+                .andExpect(status().isNoContent());
+
+        mvc.perform(get("/cohorts/" + cohortId).with(as("aluno", "aluno")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.completed").value(1))
+                .andExpect(jsonPath("$.total").value(2))
+                .andExpect(jsonPath("$.course.modules[0].lessons[0].completed").value(true))
+                .andExpect(jsonPath("$.grade").doesNotExist());
+
+        mvc.perform(get("/cohorts/" + cohortId).with(as("docente", "docente")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.students[0].student").value("aluno"))
+                .andExpect(jsonPath("$.students[0].completed").value(1))
+                .andExpect(jsonPath("$.students[0].total").value(2))
+                .andExpect(jsonPath("$.grade").doesNotExist());
     }
 
     @Test
@@ -222,13 +266,15 @@ class CohortAccessTest {
         return JsonPath.read(result.getResponse().getContentAsString(), "$.id");
     }
 
-    private void createMarkdown(String moduleId, String title) throws Exception {
-        mvc.perform(multipart("/modules/" + moduleId + "/lessons")
+    private String createMarkdown(String moduleId, String title) throws Exception {
+        MvcResult result = mvc.perform(multipart("/modules/" + moduleId + "/lessons")
                         .param("title", title)
                         .param("kind", "markdown")
                         .param("markdown", "Oficina")
                         .with(as("administracao", "administracao")))
-                .andExpect(status().isCreated());
+                .andExpect(status().isCreated())
+                .andReturn();
+        return JsonPath.read(result.getResponse().getContentAsString(), "$.id");
     }
 
     private String openCohort(String name, String courseId, String teacher) throws Exception {
