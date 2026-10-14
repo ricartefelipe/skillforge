@@ -55,7 +55,9 @@ class CohortAccessTest {
     @BeforeEach
     void emptyCohorts() throws Exception {
         mvc.perform(get("/cohorts").with(as("administracao", "administracao"))).andExpect(status().isOk());
-        jdbc.update("TRUNCATE submission, practice, completion, enrollment, cohort, lesson, module, course");
+        jdbc.update("""
+                TRUNCATE reply, doubt, submission, practice, completion, enrollment, cohort, lesson, module, course
+                """);
     }
 
     @Test
@@ -290,7 +292,7 @@ class CohortAccessTest {
 
         mvc.perform(post("/cohorts/" + morning + "/practices/" + practice + "/feedback")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"student\":\"aluno\",\"text\":\"Falta o acabamento.\"}")
+                        .content("{\"student\":\"aluno\",\"text\":\"Falta o acabamento.\",\"grade\":8}")
                         .with(as("docente", "docente")))
                 .andExpect(status().isNoContent());
 
@@ -302,11 +304,64 @@ class CohortAccessTest {
                 .andExpect(jsonPath("$.error").value("already-returned"));
 
         mvc.perform(get("/cohorts/" + morning).with(as("docente", "docente")))
-                .andExpect(jsonPath("$.practices[0].deliveries[0].feedback").value("Falta o acabamento."));
+                .andExpect(jsonPath("$.practices[0].deliveries[0].feedback").value("Falta o acabamento."))
+                .andExpect(jsonPath("$.practices[0].deliveries[0].grade").value(8));
 
         mvc.perform(get("/cohorts/" + morning).with(as("aluno", "aluno")))
                 .andExpect(jsonPath("$.practices[0].deliveries.length()").value(1))
-                .andExpect(jsonPath("$.practices[0].deliveries[0].feedback").value("Falta o acabamento."));
+                .andExpect(jsonPath("$.practices[0].deliveries[0].feedback").value("Falta o acabamento."))
+                .andExpect(jsonPath("$.practices[0].deliveries[0].grade").value(8));
+    }
+
+    @Test
+    void theTeacherPostsALessonAndTheClassTalksOnIt() throws Exception {
+        String courseId = createCourse("Forja");
+        String morning = openCohort("Manhã", courseId, "docente");
+        enroll(morning, "aluno");
+        String moduleId = createModule(courseId, "Bancada");
+
+        mvc.perform(post("/courses/" + courseId + "/modules")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Do docente\"}")
+                        .with(as("docente", "docente")))
+                .andExpect(status().isCreated());
+
+        String lessonId = createMarkdown(moduleId, "Vídeo da grade");
+
+        mvc.perform(get("/courses/curriculum").with(as("aluno", "aluno")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].name").value("Forja"));
+
+        mvc.perform(get("/courses/curriculum").with(as("aluno", "colega")))
+                .andExpect(jsonPath("$.length()").value(0));
+
+        mvc.perform(post("/lessons/" + lessonId + "/doubts")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"Dúvida\",\"body\":\"Qual broca?\"}")
+                        .with(as("aluno", "colega")))
+                .andExpect(status().isNotFound());
+
+        MvcResult doubt = mvc.perform(post("/lessons/" + lessonId + "/doubts")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"Dúvida\",\"body\":\"Qual broca?\"}")
+                        .with(as("aluno", "aluno")))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String doubtId = JsonPath.read(doubt.getResponse().getContentAsString(), "$.id");
+
+        mvc.perform(post("/lessons/" + lessonId + "/doubts/" + doubtId + "/replies")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"body\":\"A de 6 mm.\"}")
+                        .with(as("docente", "docente")))
+                .andExpect(status().isCreated());
+
+        mvc.perform(get("/lessons/" + lessonId + "/doubts").with(as("aluno", "aluno")))
+                .andExpect(jsonPath("$[0].title").value("Dúvida"))
+                .andExpect(jsonPath("$[0].replies[0].body").value("A de 6 mm."));
+
+        mvc.perform(get("/grades").with(as("aluno", "aluno")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].cohortName").value("Manhã"));
     }
 
     private String openPractice(String cohortId) throws Exception {

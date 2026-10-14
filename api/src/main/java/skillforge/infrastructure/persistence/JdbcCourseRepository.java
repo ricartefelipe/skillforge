@@ -170,6 +170,24 @@ class JdbcCourseRepository implements CourseRepository {
     }
 
     @Override
+    public Optional<UUID> courseOfModule(UUID moduleId) {
+        schema.ensure();
+        try {
+            List<UUID> rows = jdbc.query(
+                    "SELECT course_id FROM module WHERE id = ?",
+                    (rs, row) -> rs.getObject("course_id", UUID.class),
+                    moduleId);
+            if (rows.isEmpty()) {
+                return Optional.empty();
+            }
+            return Optional.of(rows.get(0));
+        }
+        catch (DataAccessResourceFailureException ex) {
+            throw new Unavailable(ex);
+        }
+    }
+
+    @Override
     public Optional<LessonFile> media(UUID id) {
         schema.ensure();
         try {

@@ -38,6 +38,8 @@ export function catalogNotice(code: string | null): string | null {
       return "O módulo precisa de um nome.";
     case "blank-title":
       return "A aula precisa de um título.";
+    case "blank-prompt":
+      return "A mensagem precisa de um texto.";
     case "duplicate-course":
       return "Já existe um curso com esse nome.";
     case "markdown-only":

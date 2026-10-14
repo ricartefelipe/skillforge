@@ -24,6 +24,7 @@ import skillforge.domain.cohort.CohortSummary;
 import skillforge.domain.cohort.Delivery;
 import skillforge.domain.cohort.Practice;
 import skillforge.domain.cohort.Progress;
+import skillforge.domain.cohort.Report;
 import skillforge.domain.identity.Actor;
 
 @RestController
@@ -33,6 +34,11 @@ class CohortController {
 
     CohortController(CohortApplication cohorts) {
         this.cohorts = cohorts;
+    }
+
+    @GetMapping("/grades")
+    List<ReportBody> grades(Authentication authentication) {
+        return cohorts.report(RequestActor.from(authentication)).stream().map(ReportBody::from).toList();
     }
 
     @GetMapping("/cohorts")
@@ -167,8 +173,14 @@ class CohortController {
             @PathVariable UUID id,
             @PathVariable UUID practiceId,
             @RequestBody FeedbackRequest body) {
-        FeedbackRequest request = body == null ? new FeedbackRequest(null, null) : body;
-        cohorts.feedback(RequestActor.from(authentication), id, practiceId, request.student(), request.text());
+        FeedbackRequest request = body == null ? new FeedbackRequest(null, null, null) : body;
+        cohorts.feedback(
+                RequestActor.from(authentication),
+                id,
+                practiceId,
+                request.student(),
+                request.text(),
+                request.grade());
         return ResponseEntity.noContent().build();
     }
 
@@ -185,7 +197,7 @@ class CohortController {
     record TextRequest(String text) {
     }
 
-    record FeedbackRequest(String student, String text) {
+    record FeedbackRequest(String student, String text, Integer grade) {
     }
 
     record IdName(UUID id, String name) {
@@ -239,10 +251,22 @@ class CohortController {
     }
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    record DeliveryBody(String student, String text, String feedback) {
+    record DeliveryBody(String student, String text, String feedback, Integer grade) {
 
         static DeliveryBody from(Delivery delivery) {
-            return new DeliveryBody(delivery.student(), delivery.text(), delivery.feedback());
+            return new DeliveryBody(delivery.student(), delivery.text(), delivery.feedback(), delivery.grade());
+        }
+
+    }
+
+    record ReportBody(UUID cohortId, String cohortName, String courseName, List<PracticeBody> practices) {
+
+        static ReportBody from(Report report) {
+            return new ReportBody(
+                    report.cohortId(),
+                    report.cohortName(),
+                    report.courseName(),
+                    report.practices().stream().map(PracticeBody::from).toList());
         }
 
     }

@@ -2,6 +2,7 @@ package skillforge.domain.cohort;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import skillforge.domain.identity.Actor;
@@ -22,6 +23,12 @@ public interface CohortRepository {
 
     void submit(UUID cohortId, UUID practiceId, Actor actor, String text);
 
-    void feedback(UUID cohortId, UUID practiceId, Actor actor, String student, String text);
+    void feedback(UUID cohortId, UUID practiceId, Actor actor, String student, String text, int grade);
+
+    boolean teaches(String teacher, UUID courseId);
+
+    Set<UUID> courseIds(Actor actor);
+
+    List<Report> report(Actor actor);
 
 }

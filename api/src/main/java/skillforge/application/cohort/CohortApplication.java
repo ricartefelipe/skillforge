@@ -8,7 +8,9 @@ import skillforge.domain.cohort.CohortListing;
 import skillforge.domain.cohort.CohortRepository;
 import skillforge.domain.identity.Actor;
 import skillforge.domain.identity.Role;
+import skillforge.domain.cohort.Report;
 import skillforge.domain.shared.Failure;
+import skillforge.domain.shared.Marks;
 import skillforge.domain.shared.Names;
 import skillforge.domain.shared.Rejection;
 import skillforge.domain.shared.Texts;
@@ -63,12 +65,28 @@ public class CohortApplication {
         cohorts.submit(cohortId, practiceId, actor, Texts.require(rawText, Failure.BLANK_SUBMISSION));
     }
 
-    public void feedback(Actor actor, UUID cohortId, UUID practiceId, String rawStudent, String rawText) {
+    public void feedback(
+            Actor actor,
+            UUID cohortId,
+            UUID practiceId,
+            String rawStudent,
+            String rawText,
+            Integer rawGrade) {
         if (actor.role() == Role.ALUNO) {
             throw new Rejection(Failure.FORBIDDEN);
         }
         String student = Names.require(rawStudent, Failure.BLANK_STUDENT);
-        cohorts.feedback(cohortId, practiceId, actor, student, Texts.require(rawText, Failure.BLANK_FEEDBACK));
+        cohorts.feedback(
+                cohortId,
+                practiceId,
+                actor,
+                student,
+                Texts.require(rawText, Failure.BLANK_FEEDBACK),
+                Marks.require(rawGrade));
+    }
+
+    public List<Report> report(Actor actor) {
+        return cohorts.report(actor);
     }
 
     public record Opened(UUID id, String name) {
