@@ -71,6 +71,8 @@ O aluno marca a aula da turma como concluída. A marca permanece depois de sair 
 
 Na primeira execução o script cria um `.env` local, com senhas geradas, e sobe o Postgres, o acesso, a API e a interface. O `.env` não entra no repositório. O modelo vazio está em `.env.example`.
 
+Se a API e a interface já respondem, o script avisa e não sobe outra cópia. Se a porta da API ou da interface está ocupada sem responder, ele para antes de misturar as duas instâncias.
+
 ## Versão
 
 `VERSION` é a versão do produto. O CI publica a tag anotada `vX.Y.Z` quando essa versão chega em `main`.
