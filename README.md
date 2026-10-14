@@ -4,23 +4,30 @@ Construção de competências pela prática.
 
 O repositório, o pacote Java e a interface usam o mesmo nome: **skillforge**.
 
+O ambiente hoje é a soma dos incrementos abaixo. Cada seção guarda o que entrou naquela etapa. O que veio depois amplia, e o registro permanece.
+
 ## Quem entra
 
-O acesso é pelo Keycloak. Há três contas: `aluno`, `docente` e `administracao`. Cada uma tem só o primeiro nome. Sem sessão, a API responde `401`. Zero papéis, ou mais de um entre esses três, responde `403`.
+O acesso é pelo Keycloak, em `http://localhost:8180`. Há três contas: `aluno`, `docente` e `administracao`. Cada uma tem só o primeiro nome. O arranque ajusta o perfil para não exigir e-mail nem sobrenome. As senhas ficam no `.env` local, geradas no arranque.
+
+- Sem sessão, `GET /me` responde `401`.
+- Com um papel institucional, `GET /me` devolve o nome e o papel.
+- Zero papéis, ou mais de um entre aluno, docente e administração, responde `403`.
+- Vida e prontidão continuam sem sessão. A prontidão também recusa tráfego se o acesso não responde.
+
+A interface mostra Entrar, ou o nome e o papel com Sair. Com sessão, o menu tem Cursos, Aulas, Turmas e Boletim. Docente e administração também têm a bancada Docente.
 
 | Papel | O que faz |
 | --- | --- |
 | Aluno | Vê a grade das turmas em que está, conclui aula, entrega prática, faz a prova uma vez, abre dúvida e lê o próprio boletim e o certificado. |
 | Docente | Ministra as próprias turmas. Publica módulo, material, videoaula, prática, prova, aviso e chamada. Devolve a nota. |
-| Administração | Cria curso, abre turma, indica o docente e matricula. Vê o catálogo e as turmas inteiros. |
+| Administração | Cria curso, abre turma, indica o docente e matricula. Vê o catálogo e as turmas inteiros. Publica o mesmo que o docente. |
 
-A interface tem Cursos, Aulas, Turmas e Boletim. Docente e administração também têm a bancada Docente.
-
-## A turma
+## A turma, como está
 
 Um curso tem módulos. Cada aula é markdown, um PDF ou um vídeo, e só uma dessas coisas. A administração cria o curso. Quem ministra publica módulo e aula no curso da própria turma.
 
-A administração abre a turma, indica a conta do docente e matricula pela conta. O aluno vê só as turmas em que está. O docente vê só as que ministra.
+A administração abre a turma, indica a conta do docente e matricula pela conta. O aluno vê só as turmas em que está. O docente vê só as que ministra. A administração vê todas.
 
 - O aluno marca a aula como concluída. A marca permanece. Marcar de novo não muda a conta.
 - A prática tem enunciado, prazo opcional e rubrica opcional. O aluno entrega um texto. O docente devolve um comentário e a nota de 0 a 10. Com rubrica, a nota é a soma dos critérios. Depois da devolutiva, a entrega não muda.
@@ -32,9 +39,120 @@ A administração abre a turma, indica a conta do docente e matricula pela conta
 
 O aluno vê só a própria entrega, a própria nota de prova e a própria presença. O docente vê a turma.
 
+| Rotina | Caminho |
+| --- | --- |
+| Cursos | `GET /courses`, `GET /courses/curriculum`, `GET /courses/teaching` |
+| Curso, módulo, aula | `POST /courses`, `POST /courses/{id}/modules`, `POST /modules/{id}/lessons` |
+| Aula e arquivo | `GET /lessons/{id}`, `GET /lessons/{id}/media` |
+| Turmas e matrícula | `GET /cohorts`, `GET /cohorts/{id}`, `POST /cohorts`, `POST /cohorts/{id}/enrollments` |
+| Conclusão da aula | `POST /cohorts/{id}/lessons/{lessonId}/completion` |
+| Prática | `POST /cohorts/{id}/practices`, `POST .../submission`, `POST .../feedback` |
+| Prova | `POST /cohorts/{id}/exams`, `POST /cohorts/{id}/exams/{examId}/attempt` |
+| Aviso | `GET` e `POST /cohorts/{id}/announcements` |
+| Chamada | `GET` e `POST /cohorts/{id}/attendance` |
+| Certificado | `GET /cohorts/{id}/certificate` |
+| Boletim | `GET /grades` |
+| Fórum da aula | `GET` e `POST /lessons/{id}/doubts`, `POST /lessons/{id}/doubts/{doubtId}/replies` |
+
 ## Quando algo falha
 
 Vida (`GET /actuator/health/liveness`) responde `200` mesmo com o Postgres fechado. Prontidão (`GET /actuator/health/readiness`) responde `503` e o tráfego deve ser recusado. As rotas de curso, turma, prática, prova, fórum, aviso, chamada e certificado respondem `503` com o Postgres fechado. Vida e prontidão não exigem sessão.
+
+## Incremento 0
+
+A aplicação sobe e responde duas sondas:
+
+- **Vida** — o processo está no ar, mesmo se o Postgres não estiver.
+- **Prontidão** — o processo atende. Se o Postgres não aceita conexão, a prontidão responde `503` e o tráfego deve ser recusado.
+
+| Sonda | Caminho |
+| --- | --- |
+| Vida | `GET /actuator/health/liveness` |
+| Prontidão | `GET /actuator/health/readiness` |
+
+A interface em `http://localhost:3000` lê as duas sondas e diz se o ambiente está de pé.
+
+## Incremento 1
+
+O acesso entra pelo Keycloak, em `http://localhost:8180`. Há três contas: `aluno`, `docente` e `administracao`. Cada uma tem só o primeiro nome. O arranque ajusta o perfil para não exigir e-mail nem sobrenome. As senhas ficam no `.env` local, geradas no arranque.
+
+- Sem sessão, `GET /me` responde `401`.
+- Com um papel institucional, `GET /me` devolve o nome e o papel.
+- Zero papéis, ou mais de um entre aluno, docente e administração, responde `403`.
+- Vida e prontidão continuam sem sessão. A prontidão também recusa tráfego se o acesso não responde.
+
+A interface mostra Entrar, ou o nome e o papel com Sair.
+
+## Incremento 2
+
+O catálogo tem cursos, módulos e aulas. Uma aula é markdown, um PDF ou um vídeo, e só uma dessas coisas.
+
+- Sem sessão, `GET /courses` responde `401`.
+- Aluno e docente leem. Nesta etapa, só a administração cria o curso. A partir do incremento 6, quem ministra também publica módulo, material e videoaula no curso da própria turma.
+- Nome em branco, curso repetido, arquivo que não é o tipo declarado, ou conteúdo acima do limite, são recusados.
+- Com o Postgres fechado, o catálogo responde `503` e a vida continua `200`.
+
+A interface lista o catálogo para quem entrou. A administração vê os formulários de todo curso. O docente vê os formulários do curso que ministra.
+
+## Incremento 3
+
+A administração abre uma turma para um curso, indica a conta do docente e matricula alunos pela conta.
+
+- Sem sessão, `GET /cohorts` responde `401`.
+- O aluno vê somente as turmas em que está. O docente vê somente as que ministra. A administração vê todas.
+- A aula do curso aparece para quem está na turma. A conclusão da aula entrou no incremento 4.
+- Nome em branco, docente em branco, aluno em branco, turma repetida no mesmo curso ou matrícula repetida são recusados.
+- Com o Postgres fechado, a turma responde `503` e a vida continua `200`.
+
+A interface lista as turmas de quem entrou. Só a administração abre turma e matricula.
+
+## Incremento 4
+
+O aluno marca a aula da turma como concluída. A marca permanece depois de sair e entrar.
+
+- Só o aluno matriculado conclui a aula da própria turma.
+- A turma mostra, para ele, quantas aulas concluiu. O docente vê a mesma conta de cada aluno.
+- Marcar de novo não muda a conta. A conclusão da aula continua sem nota. A nota entrou na prática, no incremento 6, e na prova, no incremento 7.
+- Com o Postgres fechado, a conclusão responde `503` e a vida continua `200`.
+
+## Incremento 5
+
+A turma tem práticas. O docente abre o enunciado, o aluno entrega um texto e o docente devolve um comentário. A nota dessa devolutiva entrou no incremento 6. Prazo e rubrica entraram no incremento 8.
+
+- O aluno não abre prática. Quem não ministra a turma não a vê.
+- Título repetido na mesma turma, texto em branco ou acima do limite são recusados.
+- Depois da devolutiva, a entrega não muda.
+- O aluno vê só a própria entrega. O docente vê as entregas da turma.
+- Com o Postgres fechado, a prática responde `503` e a vida continua `200`.
+
+## Incremento 6
+
+O ambiente cobre a rotina de um AVA: cursos disponíveis, a grade cursada, a bancada do docente, nota, boletim e o fórum da aula.
+
+- Quem ministra publica módulo, material e videoaula no curso da própria turma. Quem não ministra continua sem esse poder.
+- Aulas lista só a grade de quem está na turma ou a ministra. A administração vê o catálogo inteiro.
+- A devolutiva da prática traz nota de 0 a 10. O boletim mostra a média.
+- Na aula, quem está no curso abre uma dúvida e os outros respondem. Quem está fora recebe `404`.
+- Com o Postgres fechado, essas rotas respondem `503` e a vida continua `200`.
+
+## Incremento 7
+
+A área do docente publica a prova da turma. O gabarito não sai para o aluno. A tentativa é única e a nota entra no boletim.
+
+- Só quem ministra, ou a administração, abre a prova.
+- Cada questão tem ao menos duas alternativas e uma só correta.
+- O aluno de fora da turma não vê a prova.
+- A nota é 0 a 10, na proporção das questões certas.
+
+## Incremento 8
+
+Prazo, rubrica, chamada, aviso e certificado seguem a regra de uma turma a distância.
+
+- Prática e prova podem fechar numa data. Depois do prazo, o aluno não entrega.
+- A rubrica da prática soma os critérios e essa soma é a nota.
+- O docente registra a chamada do dia. Com chamada aberta, o certificado exige 75% de presença.
+- O aviso da turma aparece para quem está nela. A bancada do docente também publica o aviso. A chamada fica na página da turma, onde está a lista de alunos.
+- O certificado sai com média igual ou maior que 7. Sem nenhuma chamada, a presença não bloqueia o certificado.
 
 ## Arranque
 
