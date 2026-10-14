@@ -1,8 +1,14 @@
 import type { Metadata } from "next";
-import { Familjen_Grotesk, Literata } from "next/font/google";
+import { Familjen_Grotesk, Fraunces, Literata } from "next/font/google";
 import type { ReactNode } from "react";
 
 import "./globals.css";
+
+const display = Fraunces({
+  subsets: ["latin"],
+  variable: "--font-display",
+  weight: ["500", "600", "700"],
+});
 
 const literata = Literata({
   subsets: ["latin"],
@@ -23,7 +29,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="pt-BR" className={`${literata.variable} ${grotesk.variable}`}>
+    <html lang="pt-BR" className={`${display.variable} ${literata.variable} ${grotesk.variable}`}>
       <body>{children}</body>
     </html>
   );
