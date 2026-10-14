@@ -27,6 +27,35 @@ export async function completeLesson(formData: FormData) {
   redirect(page);
 }
 
+export async function openExam(formData: FormData) {
+  const cohortId = field(formData, "cohortId");
+  const page = field(formData, "returnTo") || `/turmas/${cohortId}`;
+  const spec = field(formData, "spec");
+  let payload: unknown = null;
+  try {
+    payload = JSON.parse(spec);
+  } catch {
+    redirect(`${page}?erro=invalid-exam`);
+  }
+  await post(`/cohorts/${cohortId}/exams`, payload, page);
+  redirect(page);
+}
+
+export async function takeExam(formData: FormData) {
+  const cohortId = field(formData, "cohortId");
+  const examId = field(formData, "examId");
+  const page = `/turmas/${cohortId}`;
+  const answers: { questionId: string; choiceId: string }[] = [];
+  for (const [key, value] of formData.entries()) {
+    if (key === "cohortId" || key === "examId" || typeof value !== "string") {
+      continue;
+    }
+    answers.push({ questionId: key, choiceId: value });
+  }
+  await post(`/cohorts/${cohortId}/exams/${examId}/attempt`, { answers }, page);
+  redirect(page);
+}
+
 export async function openPractice(formData: FormData) {
   const cohortId = field(formData, "cohortId");
   const page = `/turmas/${cohortId}`;
@@ -72,7 +101,7 @@ function field(formData: FormData, name: string): string {
 
 async function post(
   path: string,
-  payload: Record<string, string | number>,
+  payload: unknown,
   failurePage: string,
 ): Promise<string | null> {
   const token = (await cookies()).get(ACCESS_COOKIE)?.value;

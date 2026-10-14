@@ -31,6 +31,30 @@ export type Practice = {
   deliveries: Delivery[];
 };
 
+export type ExamChoice = {
+  id: string;
+  label: string;
+  correct: boolean | null;
+};
+
+export type ExamQuestion = {
+  id: string;
+  prompt: string;
+  choices: ExamChoice[];
+};
+
+export type ExamScore = {
+  student: string;
+  grade: number;
+};
+
+export type ClassExam = {
+  id: string;
+  title: string;
+  questions: ExamQuestion[];
+  scores: ExamScore[];
+};
+
 export type CohortDetail = {
   id: string;
   name: string;
@@ -40,6 +64,7 @@ export type CohortDetail = {
   completed: number | null;
   total: number | null;
   practices: Practice[];
+  exams: ClassExam[];
 };
 
 type Roster = { present: false } | { present: true; students: StudentProgress[] };
@@ -82,6 +107,18 @@ export function cohortNotice(code: string | null): string | null {
       return "O docente já devolveu esta entrega.";
     case "invalid-grade":
       return "A nota vai de 0 a 10.";
+    case "blank-exam":
+      return "A prova precisa de um título.";
+    case "blank-question":
+      return "A questão precisa de um enunciado.";
+    case "blank-choice":
+      return "A alternativa precisa de um texto.";
+    case "invalid-exam":
+      return "Cada questão precisa de duas alternativas e uma só correta.";
+    case "duplicate-exam":
+      return "Já existe uma prova com esse título nesta turma.";
+    case "already-taken":
+      return "Esta prova já foi feita.";
     case "too-large":
       return "Passa do limite.";
     case "not-found":
@@ -136,6 +173,7 @@ export function cohortDetailFromBody(httpOk: boolean, body: unknown): CohortDeta
   const roster = rosterFrom(body);
   const tally = tallyFrom(body);
   const practices = practicesFrom(body);
+  const exams = examsFrom(body);
   if (
     id === null ||
     name === null ||
@@ -143,7 +181,8 @@ export function cohortDetailFromBody(httpOk: boolean, body: unknown): CohortDeta
     course === null ||
     roster === null ||
     tally === null ||
-    practices === null
+    practices === null ||
+    exams === null
   ) {
     return null;
   }
@@ -156,6 +195,7 @@ export function cohortDetailFromBody(httpOk: boolean, body: unknown): CohortDeta
     completed: tally === undefined ? null : tally.completed,
     total: tally === undefined ? null : tally.total,
     practices,
+    exams,
   };
 }
 
@@ -245,8 +285,113 @@ function count(value: object, key: string): number | null {
   return found;
 }
 
+export function examsFromObject(value: object): ClassExam[] | null {
+  return examsFrom(value);
+}
+
 export function practicesFromObject(value: object): Practice[] | null {
   return practicesFrom(value);
+}
+
+function examsFrom(value: object): ClassExam[] | null {
+  if (!("exams" in value)) {
+    return [];
+  }
+  const found = (value as Record<string, unknown>).exams;
+  if (!Array.isArray(found)) {
+    return null;
+  }
+  const exams: ClassExam[] = [];
+  for (const item of found) {
+    const exam = examFrom(item);
+    if (exam === null) {
+      return null;
+    }
+    exams.push(exam);
+  }
+  return exams;
+}
+
+function examFrom(value: unknown): ClassExam | null {
+  if (value === null || typeof value !== "object") {
+    return null;
+  }
+  const id = text(value, "id");
+  const title = text(value, "title");
+  const questionsValue = (value as Record<string, unknown>).questions;
+  const scoresValue = (value as Record<string, unknown>).scores;
+  if (id === null || title === null || !Array.isArray(questionsValue) || !Array.isArray(scoresValue)) {
+    return null;
+  }
+  const questions: ExamQuestion[] = [];
+  for (const item of questionsValue) {
+    const question = questionFrom(item);
+    if (question === null) {
+      return null;
+    }
+    questions.push(question);
+  }
+  const scores: ExamScore[] = [];
+  for (const item of scoresValue) {
+    const score = scoreFrom(item);
+    if (score === null) {
+      return null;
+    }
+    scores.push(score);
+  }
+  return { id, title, questions, scores };
+}
+
+function questionFrom(value: unknown): ExamQuestion | null {
+  if (value === null || typeof value !== "object") {
+    return null;
+  }
+  const id = text(value, "id");
+  const prompt = text(value, "prompt");
+  const choicesValue = (value as Record<string, unknown>).choices;
+  if (id === null || prompt === null || !Array.isArray(choicesValue)) {
+    return null;
+  }
+  const choices: ExamChoice[] = [];
+  for (const item of choicesValue) {
+    const choice = choiceFrom(item);
+    if (choice === null) {
+      return null;
+    }
+    choices.push(choice);
+  }
+  return { id, prompt, choices };
+}
+
+function choiceFrom(value: unknown): ExamChoice | null {
+  if (value === null || typeof value !== "object") {
+    return null;
+  }
+  const id = text(value, "id");
+  const label = text(value, "label");
+  if (id === null || label === null) {
+    return null;
+  }
+  if (!("correct" in value)) {
+    return { id, label, correct: null };
+  }
+  const correct = (value as Record<string, unknown>).correct;
+  if (typeof correct !== "boolean") {
+    return null;
+  }
+  return { id, label, correct };
+}
+
+function scoreFrom(value: unknown): ExamScore | null {
+  if (value === null || typeof value !== "object") {
+    return null;
+  }
+  const student = text(value, "student");
+  const grade = (value as Record<string, unknown>).grade;
+  if (student === null || typeof grade !== "number" || !Number.isInteger(grade)) {
+    return null;
+  }
+  return { student, grade };
 }
 
 function practicesFrom(value: object): Practice[] | null {

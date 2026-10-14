@@ -72,6 +72,7 @@ describe("cohort", () => {
       completed: 1,
       total: 3,
       practices: [],
+      exams: [],
     });
 
     expect(

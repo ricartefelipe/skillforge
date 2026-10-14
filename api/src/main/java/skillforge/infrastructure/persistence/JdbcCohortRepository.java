@@ -16,10 +16,16 @@ import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import skillforge.domain.catalog.Course;
 import skillforge.domain.catalog.CourseRepository;
+import skillforge.domain.cohort.Choice;
 import skillforge.domain.cohort.CohortAccess;
+import skillforge.domain.cohort.Exam;
+import skillforge.domain.cohort.ExamDraft;
+import skillforge.domain.cohort.ExamGrade;
+import skillforge.domain.cohort.ExamScore;
 import skillforge.domain.cohort.CohortDetail;
 import skillforge.domain.cohort.CohortListing;
 import skillforge.domain.cohort.CohortRepository;
@@ -27,6 +33,7 @@ import skillforge.domain.cohort.CohortSummary;
 import skillforge.domain.cohort.Delivery;
 import skillforge.domain.cohort.Practice;
 import skillforge.domain.cohort.Progress;
+import skillforge.domain.cohort.Question;
 import skillforge.domain.cohort.Report;
 import skillforge.domain.identity.Actor;
 import skillforge.domain.identity.Role;
@@ -143,10 +150,15 @@ class JdbcCohortRepository implements CohortRepository {
                             mine.total(),
                             course,
                             completedLessons(id, actor.username()),
-                            practicesOf(id, actor)));
+                            practicesOf(id, actor),
+                            examsOf(id, actor)));
                 }
-                case DOCENTE, ADMINISTRACAO -> Optional.of(
-                        new CohortDetail.Staff(row, membersOf(row), course, practicesOf(id, actor)));
+                case DOCENTE, ADMINISTRACAO -> Optional.of(new CohortDetail.Staff(
+                        row,
+                        membersOf(row),
+                        course,
+                        practicesOf(id, actor),
+                        examsOf(id, actor)));
             };
         }
         catch (DataAccessResourceFailureException ex) {
@@ -280,7 +292,8 @@ class JdbcCohortRepository implements CohortRepository {
                         listing.summary().id(),
                         listing.summary().name(),
                         listing.summary().courseName(),
-                        practicesOf(listing.summary().id(), actor)));
+                        practicesOf(listing.summary().id(), actor),
+                        examsOf(listing.summary().id(), actor)));
             }
             return List.copyOf(reports);
         }
@@ -305,6 +318,168 @@ class JdbcCohortRepository implements CohortRepository {
         catch (DataAccessResourceFailureException ex) {
             throw new Unavailable(ex);
         }
+    }
+
+    @Override
+    @Transactional
+    public UUID openExam(UUID cohortId, Actor actor, ExamDraft draft) {
+        schema.ensure();
+        try {
+            CohortSummary cohort = requireLead(cohortId, actor);
+            UUID examId = UUID.randomUUID();
+            jdbc.update("INSERT INTO exam (id, cohort_id, title) VALUES (?, ?, ?)", examId, cohort.id(), draft.title());
+            int position = 1;
+            for (ExamDraft.QuestionDraft question : draft.questions()) {
+                UUID questionId = UUID.randomUUID();
+                jdbc.update(
+                        "INSERT INTO question (id, exam_id, position, prompt) VALUES (?, ?, ?, ?)",
+                        questionId,
+                        examId,
+                        position,
+                        question.prompt());
+                position++;
+                for (ExamDraft.ChoiceDraft choice : question.choices()) {
+                    jdbc.update(
+                            "INSERT INTO choice (id, question_id, label, correct) VALUES (?, ?, ?, ?)",
+                            UUID.randomUUID(),
+                            questionId,
+                            choice.label(),
+                            choice.correct());
+                }
+            }
+            return examId;
+        }
+        catch (DuplicateKeyException ex) {
+            throw new Rejection(Failure.DUPLICATE_EXAM);
+        }
+        catch (DataAccessResourceFailureException ex) {
+            throw new Unavailable(ex);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void takeExam(UUID cohortId, UUID examId, Actor actor, Map<UUID, UUID> answers) {
+        schema.ensure();
+        try {
+            if (!enrolled(cohortId, actor.username()) || !examInCohort(cohortId, examId)) {
+                throw new Rejection(Failure.NOT_FOUND);
+            }
+            Exam exam = examsOf(cohortId, actor).stream()
+                    .filter(item -> item.id().equals(examId))
+                    .findFirst()
+                    .orElseThrow(() -> new Rejection(Failure.NOT_FOUND));
+            if (!exam.scores().isEmpty()) {
+                throw new Rejection(Failure.ALREADY_TAKEN);
+            }
+            int grade = ExamGrade.of(exam, answers);
+            jdbc.update(
+                    "INSERT INTO attempt (exam_id, student, grade) VALUES (?, ?, ?)",
+                    examId,
+                    actor.username(),
+                    grade);
+            for (Map.Entry<UUID, UUID> answer : answers.entrySet()) {
+                jdbc.update(
+                        "INSERT INTO attempt_answer (exam_id, student, question_id, choice_id) VALUES (?, ?, ?, ?)",
+                        examId,
+                        actor.username(),
+                        answer.getKey(),
+                        answer.getValue());
+            }
+        }
+        catch (DuplicateKeyException ex) {
+            throw new Rejection(Failure.ALREADY_TAKEN);
+        }
+        catch (DataAccessResourceFailureException ex) {
+            throw new Unavailable(ex);
+        }
+    }
+
+    private boolean examInCohort(UUID cohortId, UUID examId) {
+        Integer count = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM exam WHERE id = ? AND cohort_id = ?",
+                Integer.class,
+                examId,
+                cohortId);
+        return count != null && count > 0;
+    }
+
+    private List<Exam> examsOf(UUID cohortId, Actor actor) {
+        List<IdTitle> exams = jdbc.query(
+                "SELECT id, title FROM exam WHERE cohort_id = ? ORDER BY title",
+                (rs, row) -> new IdTitle(rs.getObject("id", UUID.class), rs.getString("title")),
+                cohortId);
+        if (exams.isEmpty()) {
+            return List.of();
+        }
+        Map<UUID, List<QuestionRow>> questions = new LinkedHashMap<>();
+        for (IdTitle exam : exams) {
+            questions.put(exam.id(), new ArrayList<>());
+        }
+        jdbc.query("""
+                SELECT id, exam_id, prompt
+                FROM question
+                WHERE exam_id IN (SELECT id FROM exam WHERE cohort_id = ?)
+                ORDER BY position
+                """, (rs, row) -> {
+                    questions.get(rs.getObject("exam_id", UUID.class)).add(new QuestionRow(
+                            rs.getObject("id", UUID.class),
+                            rs.getString("prompt")));
+                    return null;
+                }, cohortId);
+        Map<UUID, List<Choice>> choices = new LinkedHashMap<>();
+        jdbc.query("""
+                SELECT choice.id, choice.question_id, choice.label, choice.correct
+                FROM choice
+                JOIN question ON question.id = choice.question_id
+                JOIN exam ON exam.id = question.exam_id
+                WHERE exam.cohort_id = ?
+                ORDER BY choice.label
+                """, (rs, row) -> {
+                    choices.computeIfAbsent(rs.getObject("question_id", UUID.class), id -> new ArrayList<>())
+                            .add(new Choice(
+                                    rs.getObject("id", UUID.class),
+                                    rs.getString("label"),
+                                    rs.getBoolean("correct")));
+                    return null;
+                }, cohortId);
+        Map<UUID, List<ExamScore>> scores = new LinkedHashMap<>();
+        for (IdTitle exam : exams) {
+            scores.put(exam.id(), new ArrayList<>());
+        }
+        if (actor.role() == Role.ALUNO) {
+            jdbc.query("""
+                    SELECT exam_id, student, grade FROM attempt
+                    WHERE student = ? AND exam_id IN (SELECT id FROM exam WHERE cohort_id = ?)
+                    """, (rs, row) -> keepScore(scores, rs), actor.username(), cohortId);
+        }
+        else {
+            jdbc.query("""
+                    SELECT exam_id, student, grade FROM attempt
+                    WHERE exam_id IN (SELECT id FROM exam WHERE cohort_id = ?)
+                    ORDER BY student
+                    """, (rs, row) -> keepScore(scores, rs), cohortId);
+        }
+        List<Exam> assembled = new ArrayList<>();
+        for (IdTitle exam : exams) {
+            List<Question> examQuestions = new ArrayList<>();
+            for (QuestionRow question : questions.get(exam.id())) {
+                examQuestions.add(new Question(
+                        question.id(),
+                        question.prompt(),
+                        choices.getOrDefault(question.id(), List.of())));
+            }
+            assembled.add(new Exam(exam.id(), exam.title(), examQuestions, scores.get(exam.id())));
+        }
+        return List.copyOf(assembled);
+    }
+
+    private static Object keepScore(Map<UUID, List<ExamScore>> scores, ResultSet rs) throws SQLException {
+        List<ExamScore> found = scores.get(rs.getObject("exam_id", UUID.class));
+        if (found != null) {
+            found.add(new ExamScore(rs.getString("student"), rs.getInt("grade")));
+        }
+        return null;
     }
 
     private CohortSummary requireLead(UUID cohortId, Actor actor) {
@@ -538,6 +713,12 @@ class JdbcCohortRepository implements CohortRepository {
     }
 
     private record PracticeSeed(UUID id, String title, String prompt) {
+    }
+
+    private record IdTitle(UUID id, String title) {
+    }
+
+    private record QuestionRow(UUID id, String prompt) {
     }
 
     private List<CohortSummary> query(String sql, Object... args) {

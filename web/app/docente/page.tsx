@@ -7,6 +7,8 @@ import { ACCESS_COOKIE } from "../../lib/cookies";
 import { apiUrl } from "../../lib/openid";
 import { readJson } from "../../lib/api-read";
 import { loadReports } from "../../lib/report";
+import { ExamForm } from "../exam-form";
+import { openExam } from "../turmas/actions";
 import { Shell } from "../shell";
 
 export default async function Page() {
@@ -72,6 +74,12 @@ export default async function Page() {
             </h2>
             <p className="course-name">{cohort.courseName}</p>
             <p className="tally">{waiting.get(cohort.id) ?? 0} entregas sem devolutiva</p>
+            {(reports?.find((report) => report.cohortId === cohort.id)?.exams ?? []).map((exam) => (
+              <p key={exam.id} className="tally">
+                Prova {exam.title}: {exam.scores.length} nota{exam.scores.length === 1 ? "" : "s"}
+              </p>
+            ))}
+            <ExamForm cohortId={cohort.id} action={openExam} returnTo="/docente" />
           </section>
         ))}
       </div>
