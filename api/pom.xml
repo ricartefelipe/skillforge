@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>skillforge</groupId>
 	<artifactId>skillforge</artifactId>
-	<version>0.9.0</version>
+	<version>0.9.1</version>
 	<name>skillforge</name>
 	<description>Construção de competências pela prática</description>
 	<properties>
