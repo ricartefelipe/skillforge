@@ -123,6 +123,59 @@ CREATE TABLE IF NOT EXISTS attempt (
     CONSTRAINT attempt_student_not_blank CHECK (length(btrim(student)) > 0)
 );
 
+ALTER TABLE practice ADD COLUMN IF NOT EXISTS due_at timestamptz;
+ALTER TABLE exam ADD COLUMN IF NOT EXISTS due_at timestamptz;
+
+CREATE TABLE IF NOT EXISTS criterion (
+    id uuid PRIMARY KEY,
+    practice_id uuid NOT NULL REFERENCES practice (id),
+    name text NOT NULL,
+    points smallint NOT NULL,
+    CONSTRAINT criterion_name_not_blank CHECK (length(btrim(name)) > 0),
+    CONSTRAINT criterion_points CHECK (points BETWEEN 1 AND 10)
+);
+
+CREATE TABLE IF NOT EXISTS criterion_mark (
+    criterion_id uuid NOT NULL REFERENCES criterion (id),
+    student text NOT NULL,
+    points smallint NOT NULL,
+    PRIMARY KEY (criterion_id, student),
+    CONSTRAINT criterion_mark_points CHECK (points >= 0)
+);
+
+CREATE TABLE IF NOT EXISTS class_day (
+    id uuid PRIMARY KEY,
+    cohort_id uuid NOT NULL REFERENCES cohort (id),
+    held_on date NOT NULL,
+    CONSTRAINT class_day_unique UNIQUE (cohort_id, held_on)
+);
+
+CREATE TABLE IF NOT EXISTS presence (
+    class_day_id uuid NOT NULL REFERENCES class_day (id),
+    student text NOT NULL,
+    present boolean NOT NULL,
+    PRIMARY KEY (class_day_id, student),
+    CONSTRAINT presence_student_not_blank CHECK (length(btrim(student)) > 0)
+);
+
+CREATE TABLE IF NOT EXISTS announcement (
+    id uuid PRIMARY KEY,
+    cohort_id uuid NOT NULL REFERENCES cohort (id),
+    title text NOT NULL,
+    body text NOT NULL,
+    CONSTRAINT announcement_title_not_blank CHECK (length(btrim(title)) > 0),
+    CONSTRAINT announcement_body_not_blank CHECK (length(btrim(body)) > 0)
+);
+
+CREATE TABLE IF NOT EXISTS certificate (
+    cohort_id uuid NOT NULL REFERENCES cohort (id),
+    student text NOT NULL,
+    average_tenths integer NOT NULL,
+    issued_on date NOT NULL,
+    PRIMARY KEY (cohort_id, student),
+    CONSTRAINT certificate_student_not_blank CHECK (length(btrim(student)) > 0)
+);
+
 CREATE TABLE IF NOT EXISTS attempt_answer (
     exam_id uuid NOT NULL,
     student text NOT NULL,

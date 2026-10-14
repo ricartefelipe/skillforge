@@ -28,6 +28,8 @@ export type Practice = {
   id: string;
   title: string;
   prompt: string;
+  dueAt: string | null;
+  criteria: { id: string; name: string; points: number }[];
   deliveries: Delivery[];
 };
 
@@ -48,9 +50,21 @@ export type ExamScore = {
   grade: number;
 };
 
+export type ClassNotice = {
+  id: string;
+  title: string;
+  body: string;
+};
+
+export type RollCall = {
+  heldOn: string;
+  marks: { student: string; present: boolean }[];
+};
+
 export type ClassExam = {
   id: string;
   title: string;
+  dueAt: string | null;
   questions: ExamQuestion[];
   scores: ExamScore[];
 };
@@ -81,7 +95,17 @@ export function canLeadPractices(role: string): boolean {
   return role === "docente" || role === "administracao";
 }
 
+const laterNotices: Record<string, string> = {
+  "past-due": "O prazo desta atividade já fechou.",
+  "duplicate-day": "Já existe chamada neste dia.",
+  rubric: "A nota tem de seguir a rubrica.",
+  "not-certified": "Ainda não há certificado: é preciso média 7 e, se houver chamada, 75% de presença.",
+};
+
 export function cohortNotice(code: string | null): string | null {
+  if (code !== null && laterNotices[code] !== undefined) {
+    return laterNotices[code];
+  }
   switch (code) {
     case "blank-cohort":
       return "A turma precisa de um nome.";
@@ -339,7 +363,9 @@ function examFrom(value: unknown): ClassExam | null {
     }
     scores.push(score);
   }
-  return { id, title, questions, scores };
+  const due = (value as Record<string, unknown>).dueAt;
+  const dueAt = typeof due === "string" ? due : null;
+  return { id, title, dueAt, questions, scores };
 }
 
 function questionFrom(value: unknown): ExamQuestion | null {
@@ -434,7 +460,23 @@ function practiceFrom(value: unknown): Practice | null {
   if (id === null || title === null || prompt === null) {
     return null;
   }
-  return { id, title, prompt, deliveries };
+  const due = (value as Record<string, unknown>).dueAt;
+  const dueAt = typeof due === "string" ? due : null;
+  const criteriaValue = (value as Record<string, unknown>).criteria;
+  const criteria: { id: string; name: string; points: number }[] = [];
+  if (Array.isArray(criteriaValue)) {
+    for (const item of criteriaValue) {
+      if (item === null || typeof item !== "object") {
+        return null;
+      }
+      const row = item as Record<string, unknown>;
+      if (typeof row.id !== "string" || typeof row.name !== "string" || typeof row.points !== "number") {
+        return null;
+      }
+      criteria.push({ id: row.id, name: row.name, points: row.points });
+    }
+  }
+  return { id, title, prompt, dueAt, criteria, deliveries };
 }
 
 function deliveryFrom(value: unknown): Delivery | null {

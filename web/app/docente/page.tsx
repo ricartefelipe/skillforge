@@ -8,7 +8,7 @@ import { apiUrl } from "../../lib/openid";
 import { readJson } from "../../lib/api-read";
 import { loadReports } from "../../lib/report";
 import { ExamForm } from "../exam-form";
-import { openExam } from "../turmas/actions";
+import { announce, openExam } from "../turmas/actions";
 import { Shell } from "../shell";
 
 export default async function Page() {
@@ -80,6 +80,22 @@ export default async function Page() {
               </p>
             ))}
             <ExamForm cohortId={cohort.id} action={openExam} returnTo="/docente" />
+            <form className="compose" action={announce} aria-label={`Aviso de ${cohort.name}`}>
+              <input type="hidden" name="cohortId" value={cohort.id} />
+              <input type="hidden" name="returnTo" value="/docente" />
+              <label>
+                Título do aviso
+                <input name="title" required />
+              </label>
+              <label>
+                Aviso
+                <textarea name="body" required />
+              </label>
+              <button type="submit">Publicar aviso</button>
+            </form>
+            <p>
+              <Link href={`/turmas/${cohort.id}`}>Registrar chamada nesta turma</Link>
+            </p>
           </section>
         ))}
       </div>

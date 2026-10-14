@@ -1,6 +1,14 @@
 import Link from "next/link";
 
-import { canLeadPractices, canManageCohorts, progressLabel, type CohortDetail, type Practice } from "../../lib/cohort";
+import {
+  canLeadPractices,
+  canManageCohorts,
+  progressLabel,
+  type CohortDetail,
+  type Practice,
+  type RollCall,
+  type ClassNotice,
+} from "../../lib/cohort";
 import type { LessonSummary } from "../../lib/catalog";
 import { ExamForm } from "../exam-form";
 import { ProgressMeter } from "../meter";
@@ -31,6 +39,10 @@ export function CohortDetailView({
   returnPractice,
   openExam,
   takeExam,
+  announcements = [],
+  rolls = [],
+  announce,
+  callRoll,
 }: {
   cohort: CohortDetail;
   role: string;
@@ -42,6 +54,10 @@ export function CohortDetailView({
   returnPractice: (formData: FormData) => void;
   openExam: (formData: FormData) => void;
   takeExam: (formData: FormData) => void;
+  announcements?: ClassNotice[];
+  rolls?: RollCall[];
+  announce?: (formData: FormData) => void;
+  callRoll?: (formData: FormData) => void;
 }) {
   return (
     <div className="page">
@@ -100,6 +116,58 @@ export function CohortDetailView({
             )}
           </>
         ) : null}
+        <h3>Avisos</h3>
+        {announcements.length === 0 ? <p className="empty">Nenhum aviso.</p> : null}
+        {announcements.map((item) => (
+          <section key={item.id} className="module" aria-label={item.title}>
+            <h3>{item.title}</h3>
+            <p>{item.body}</p>
+          </section>
+        ))}
+        {canLeadPractices(role) && announce ? (
+          <form className="compose" action={announce} aria-label="Novo aviso">
+            <input type="hidden" name="cohortId" value={cohort.id} />
+            <label>
+              Título
+              <input name="title" required />
+            </label>
+            <label>
+              Aviso
+              <textarea name="body" required />
+            </label>
+            <button type="submit">Publicar aviso</button>
+          </form>
+        ) : null}
+        <h3>Chamada</h3>
+        {rolls.length === 0 ? <p className="empty">Nenhuma chamada.</p> : null}
+        <ul>
+          {rolls.map((roll) => (
+            <li key={roll.heldOn}>
+              {roll.heldOn}
+              {roll.marks.map((mark) => (
+                <span key={mark.student} className="tally">
+                  {mark.student} {mark.present ? "presente" : "ausente"}
+                </span>
+              ))}
+            </li>
+          ))}
+        </ul>
+        {canLeadPractices(role) && callRoll ? (
+          <form className="compose" action={callRoll} aria-label="Nova chamada">
+            <input type="hidden" name="cohortId" value={cohort.id} />
+            <input type="hidden" name="roster" value={(cohort.students ?? []).map((student) => student.student).join(",")} />
+            <label>
+              Data
+              <input name="heldOn" type="date" required />
+            </label>
+            {(cohort.students ?? []).map((student) => (
+              <label key={student.student}>
+                <input type="checkbox" name="present" value={student.student} /> {student.student}
+              </label>
+            ))}
+            <button type="submit">Registrar chamada</button>
+          </form>
+        ) : null}
         <h3>Provas</h3>
         {cohort.exams.length === 0 ? <p className="empty">Nenhuma prova ainda.</p> : null}
         {cohort.exams.map((exam) => {
@@ -107,6 +175,7 @@ export function CohortDetailView({
           return (
             <section className="module" key={exam.id} aria-label={exam.title}>
               <h3>{exam.title}</h3>
+              {exam.dueAt ? <p className="meta">Prazo {exam.dueAt}</p> : null}
               {role === "aluno" && own === null ? (
                 <form className="compose" action={takeExam} aria-label={`Fazer ${exam.title}`}>
                   <input type="hidden" name="cohortId" value={cohort.id} />
@@ -162,6 +231,18 @@ export function CohortDetailView({
               Enunciado
               <textarea name="prompt" required />
             </label>
+            <label>
+              Prazo
+              <input name="dueAt" type="datetime-local" />
+            </label>
+            <label>
+              Critério da rubrica
+              <input name="criterion" />
+            </label>
+            <label>
+              Pontos do critério
+              <input name="points" type="number" min={1} max={10} />
+            </label>
             <button type="submit">Abrir prática</button>
           </form>
         ) : null}
@@ -199,6 +280,16 @@ function PracticeCard({
     <section className="module" aria-label={practice.title}>
       <h3>{practice.title}</h3>
       <p>{practice.prompt}</p>
+      {practice.dueAt ? <p className="meta">Prazo {practice.dueAt}</p> : null}
+      {practice.criteria.length > 0 ? (
+        <ul>
+          {practice.criteria.map((criterion) => (
+            <li key={criterion.id}>
+              {criterion.name} <span className="tally">{criterion.points}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
       {role === "aluno" && own === null ? (
         <form className="compose" action={submitPractice} aria-label="Entrega">
           <input type="hidden" name="cohortId" value={cohortId} />
@@ -242,16 +333,25 @@ function PracticeCard({
                     Devolutiva
                     <textarea name="text" required />
                   </label>
-                  <label>
-                    Nota
-                    <select name="grade" required defaultValue="10">
-                      {Array.from({ length: 11 }, (_, mark) => (
-                        <option key={mark} value={mark}>
-                          {mark}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                  {practice.criteria.length === 0 ? (
+                    <label>
+                      Nota
+                      <select name="grade" required defaultValue="10">
+                        {Array.from({ length: 11 }, (_, mark) => (
+                          <option key={mark} value={mark}>
+                            {mark}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : (
+                    practice.criteria.map((criterion) => (
+                      <label key={criterion.id}>
+                        {criterion.name}
+                        <input name={`mark:${criterion.id}`} type="number" min={0} max={criterion.points} required />
+                      </label>
+                    ))
+                  )}
                   <button type="submit">Devolver</button>
                 </form>
               ) : (

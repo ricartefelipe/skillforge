@@ -35,6 +35,10 @@ export function ExamForm({
         Título da prova
         <input value={title} onChange={(event) => setTitle(event.target.value)} required />
       </label>
+      <label>
+        Prazo
+        <input name="dueAt" type="datetime-local" />
+      </label>
       {questions.map((question, questionIndex) => (
         <fieldset key={questionIndex}>
           <legend>Questão {questionIndex + 1}</legend>

@@ -1,11 +1,21 @@
 import { cookies } from "next/headers";
 
 import { loadSession } from "../../../lib/access";
-import { cohortDetailFromBody, cohortNotice } from "../../../lib/cohort";
+import { cohortDetailFromBody, cohortNotice, type ClassNotice, type RollCall } from "../../../lib/cohort";
 import { ACCESS_COOKIE } from "../../../lib/cookies";
 import { apiUrl } from "../../../lib/openid";
 import { Shell } from "../../shell";
-import { completeLesson, enrollStudent, openExam, openPractice, returnPractice, submitPractice, takeExam } from "../actions";
+import {
+  announce,
+  callRoll,
+  completeLesson,
+  enrollStudent,
+  openExam,
+  openPractice,
+  returnPractice,
+  submitPractice,
+  takeExam,
+} from "../actions";
 import { CohortDetailView } from "../detail";
 
 export default async function Page({
@@ -62,9 +72,72 @@ export default async function Page({
         returnPractice={returnPractice}
         openExam={openExam}
         takeExam={takeExam}
+        announcements={await loadNotices(access, id)}
+        rolls={await loadRolls(access, id)}
+        announce={announce}
+        callRoll={callRoll}
       />
     </Shell>
   );
+}
+
+async function loadNotices(token: string, id: string): Promise<ClassNotice[]> {
+  const body = await loadJson(token, `/cohorts/${id}/announcements`);
+  if (!Array.isArray(body)) {
+    return [];
+  }
+  return body.flatMap((item) => {
+    if (item === null || typeof item !== "object") {
+      return [];
+    }
+    const record = item as Record<string, unknown>;
+    if (typeof record.id !== "string" || typeof record.title !== "string" || typeof record.body !== "string") {
+      return [];
+    }
+    return [{ id: record.id, title: record.title, body: record.body }];
+  });
+}
+
+async function loadRolls(token: string, id: string): Promise<RollCall[]> {
+  const body = await loadJson(token, `/cohorts/${id}/attendance`);
+  if (!Array.isArray(body)) {
+    return [];
+  }
+  return body.flatMap((item) => {
+    if (item === null || typeof item !== "object") {
+      return [];
+    }
+    const record = item as Record<string, unknown>;
+    if (typeof record.heldOn !== "string" || !Array.isArray(record.marks)) {
+      return [];
+    }
+    const marks = record.marks.flatMap((mark) => {
+      if (mark === null || typeof mark !== "object") {
+        return [];
+      }
+      const row = mark as Record<string, unknown>;
+      if (typeof row.student !== "string" || typeof row.present !== "boolean") {
+        return [];
+      }
+      return [{ student: row.student, present: row.present }];
+    });
+    return [{ heldOn: record.heldOn, marks }];
+  });
+}
+
+async function loadJson(token: string, path: string): Promise<unknown> {
+  try {
+    const response = await fetch(`${apiUrl()}${path}`, {
+      headers: { authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      return null;
+    }
+    return await response.json();
+  } catch {
+    return null;
+  }
 }
 
 async function loadCohort(token: string, id: string) {
