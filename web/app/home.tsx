@@ -51,14 +51,19 @@ export function SkillforgeHome({ session }: { session: Session | null }) {
   return (
     <Shell session={session}>
       <div className={`page reading-${liveness} readiness-${readiness}`}>
-        <h1 aria-live="polite">{headline(liveness, readiness)}</h1>
-        <p className="lede">Construção de competências pela prática.</p>
+        <header className="intro">
+          <p className="kicker">Ambiente</p>
+          <h1 aria-live="polite">{headline(liveness, readiness)}</h1>
+          <p className="lede">Construção de competências pela prática.</p>
+        </header>
         <section className="panel access" aria-label="Acesso">
           {session ? (
             <article>
               <h2>Acesso</h2>
               <p className="who">{session.name}</p>
-              <p className="role">{session.label}</p>
+              {session.name.localeCompare(session.label, "pt-BR", { sensitivity: "accent" }) === 0 ? null : (
+                <p className="role">{session.label}</p>
+              )}
             </article>
           ) : (
             <article>

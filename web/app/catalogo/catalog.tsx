@@ -31,7 +31,10 @@ export function CatalogView({
 }) {
   return (
     <div className="page">
-      <h1>Catálogo</h1>
+      <header className="intro">
+        <p className="kicker">Oficina</p>
+        <h1>Catálogo</h1>
+      </header>
       {notice ? <p role="alert">{notice}</p> : null}
       {canCompose ? (
         <form className="sheet" action={createCourse} aria-label="Novo curso">
@@ -42,13 +45,13 @@ export function CatalogView({
           <button type="submit">Criar curso</button>
         </form>
       ) : null}
-      {courses === null ? <p>O catálogo não responde.</p> : null}
-      {courses !== null && courses.length === 0 ? <p>Nenhum curso ainda.</p> : null}
+      {courses === null ? <p className="empty">O catálogo não responde.</p> : null}
+      {courses !== null && courses.length === 0 ? <p className="empty">Nenhum curso ainda.</p> : null}
       {courses?.map((course) => (
         <section className="tree" key={course.id} aria-label={course.name}>
           <h2>{course.name}</h2>
           {canCompose ? (
-            <form action={createModule} aria-label={`Novo módulo em ${course.name}`}>
+            <form className="compose" action={createModule} aria-label={`Novo módulo em ${course.name}`}>
               <input type="hidden" name="courseId" value={course.id} />
               <label>
                 Nome do módulo
@@ -57,13 +60,13 @@ export function CatalogView({
               <button type="submit">Criar módulo</button>
             </form>
           ) : null}
-          {course.modules.length === 0 ? <p>Nenhum módulo ainda.</p> : null}
+          {course.modules.length === 0 ? <p className="empty">Nenhum módulo ainda.</p> : null}
           {course.modules.map((module) => (
-            <section key={module.id} aria-label={module.name}>
+            <section className="module" key={module.id} aria-label={module.name}>
               <h3>{module.name}</h3>
               <ul>
                 {module.lessons.map((lesson) => (
-                  <li key={lesson.id}>
+                  <li className="lesson-row" key={lesson.id}>
                     <Link href={`/catalogo/aulas/${lesson.id}`}>{lesson.title}</Link>
                     <span className="kind">{kindLabel(lesson.kind)}</span>
                   </li>

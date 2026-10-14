@@ -16,8 +16,11 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
     return (
       <Shell session={null}>
         <div className="page">
-          <h1>Aula</h1>
-          <p>Entre com a sua conta.</p>
+          <header className="intro">
+            <p className="kicker">Aula</p>
+            <h1>Aula</h1>
+          </header>
+          <p className="empty">Entre com a sua conta.</p>
         </div>
       </Shell>
     );
@@ -28,8 +31,11 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
     return (
       <Shell session={session}>
         <div className="page">
-          <h1>Aula</h1>
-          <p>Não encontrei essa aula.</p>
+          <header className="intro">
+            <p className="kicker">Aula</p>
+            <h1>Aula</h1>
+          </header>
+          <p className="empty">Não encontrei essa aula.</p>
         </div>
       </Shell>
     );
@@ -38,7 +44,10 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   return (
     <Shell session={session}>
       <div className="page">
-        <h1>{lesson.title}</h1>
+        <header className="intro">
+          <p className="kicker">Aula</p>
+          <h1>{lesson.title}</h1>
+        </header>
         <LessonView lesson={lesson} />
       </div>
     </Shell>

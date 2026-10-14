@@ -12,7 +12,7 @@ export function LessonForm({
   const [kind, setKind] = useState("markdown");
 
   return (
-    <form action={action} aria-label="Nova aula">
+    <form className="compose" action={action} aria-label="Nova aula">
       <input type="hidden" name="moduleId" value={moduleId} />
       <label>
         Título

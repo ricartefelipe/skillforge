@@ -23,8 +23,11 @@ export default async function Page({
     return (
       <Shell session={null}>
         <div className="page">
-          <h1>Turma</h1>
-          <p>Entre com a sua conta.</p>
+          <header className="intro">
+            <p className="kicker">Turma</p>
+            <h1>Turma</h1>
+          </header>
+          <p className="empty">Entre com a sua conta.</p>
         </div>
       </Shell>
     );
@@ -35,8 +38,11 @@ export default async function Page({
     return (
       <Shell session={session}>
         <div className="page">
-          <h1>Turma</h1>
-          <p>Não encontrei essa turma.</p>
+          <header className="intro">
+            <p className="kicker">Turma</p>
+            <h1>Turma</h1>
+          </header>
+          <p className="empty">Não encontrei essa turma.</p>
         </div>
       </Shell>
     );
