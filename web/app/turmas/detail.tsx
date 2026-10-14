@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { canManageCohorts, type CohortDetail } from "../../lib/cohort";
+import { canManageCohorts, progressLabel, type CohortDetail } from "../../lib/cohort";
 import type { LessonSummary } from "../../lib/catalog";
 
 function kindLabel(kind: LessonSummary["kind"]): string {
@@ -23,25 +23,25 @@ export function CohortDetailView({
   role,
   notice,
   enrollStudent,
+  completeLesson,
 }: {
   cohort: CohortDetail;
   role: string;
   notice: string | null;
   enrollStudent: (formData: FormData) => void;
+  completeLesson: (formData: FormData) => void;
 }) {
   return (
-    <main className="floor catalog">
-      <p className="mark">Skillforge</p>
+    <div className="page">
       <h1>{cohort.name}</h1>
-      <Link className="back" href="/turmas">
-        Voltar
-      </Link>
       {notice ? <p role="alert">{notice}</p> : null}
       <section className="tree" aria-label={cohort.course.name}>
         <p className="meta">Curso</p>
         <h2>{cohort.course.name}</h2>
-        <p className="meta">Docente</p>
-        <p>{cohort.teacher}</p>
+        <p className="meta">Ministrada por {cohort.teacher}</p>
+        {cohort.completed !== null && cohort.total !== null ? (
+          <p className="tally">{progressLabel(cohort.completed, cohort.total)}</p>
+        ) : null}
         {cohort.course.modules.length === 0 ? <p>Nenhuma aula ainda.</p> : null}
         {cohort.course.modules.map((module) => (
           <section key={module.id} aria-label={module.name}>
@@ -51,6 +51,14 @@ export function CohortDetailView({
                 <li key={lesson.id}>
                   <Link href={`/catalogo/aulas/${lesson.id}`}>{lesson.title}</Link>
                   <span className="kind">{kindLabel(lesson.kind)}</span>
+                  {lesson.completed === true ? <span>Concluída</span> : null}
+                  {role === "aluno" && lesson.completed === false ? (
+                    <form action={completeLesson}>
+                      <input type="hidden" name="cohortId" value={cohort.id} />
+                      <input type="hidden" name="lessonId" value={lesson.id} />
+                      <button type="submit">Concluir</button>
+                    </form>
+                  ) : null}
                 </li>
               ))}
             </ul>
@@ -64,7 +72,10 @@ export function CohortDetailView({
             ) : (
               <ul aria-label="Alunos">
                 {cohort.students.map((student) => (
-                  <li key={student}>{student}</li>
+                  <li key={student.student}>
+                    {student.student}
+                    <span className="tally">{progressLabel(student.completed, student.total)}</span>
+                  </li>
                 ))}
               </ul>
             )}
@@ -81,6 +92,6 @@ export function CohortDetailView({
           </form>
         ) : null}
       </section>
-    </main>
+    </div>
   );
 }

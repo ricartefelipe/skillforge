@@ -19,6 +19,14 @@ export async function openCohort(formData: FormData) {
   redirect(id ? `/turmas/${id}` : "/turmas");
 }
 
+export async function completeLesson(formData: FormData) {
+  const cohortId = field(formData, "cohortId");
+  const lessonId = field(formData, "lessonId");
+  const page = `/turmas/${cohortId}`;
+  await post(`/cohorts/${cohortId}/lessons/${lessonId}/completion`, {}, page);
+  redirect(page);
+}
+
 export async function enrollStudent(formData: FormData) {
   const cohortId = field(formData, "cohortId");
   const page = `/turmas/${cohortId}`;

@@ -17,7 +17,9 @@ const morning: CohortSummary = {
   courseId: "c1",
   courseName: "Forja",
   teacher: "docente",
-  students: ["aluno"],
+  students: [{ student: "aluno", completed: 1, total: 3 }],
+  completed: null,
+  total: null,
 };
 
 const noop = () => undefined;
@@ -41,12 +43,13 @@ describe("RosterView", () => {
     const card = screen.getByRole("region", { name: "Manhã" });
     expect(within(card).getByRole("link", { name: "Manhã" })).toHaveAttribute("href", "/turmas/t1");
     expect(within(card).getByText("aluno")).toBeInTheDocument();
+    expect(within(card).getByText("1 de 3 aulas")).toBeInTheDocument();
   });
 
   it("shows a student only the cohort, without the roster or the form", () => {
     render(
       <RosterView
-        cohorts={[{ ...morning, students: null }]}
+        cohorts={[{ ...morning, students: null, completed: 1, total: 3 }]}
         courses={null}
         role="aluno"
         notice={null}
@@ -57,6 +60,7 @@ describe("RosterView", () => {
     expect(screen.queryByRole("form", { name: "Nova turma" })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Alunos" })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Manhã" })).toBeInTheDocument();
+    expect(screen.getByText("1 de 3 aulas")).toBeInTheDocument();
   });
 
   it("does not pretend the list is empty when the cohorts cannot be read", () => {

@@ -2,10 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import Link from "next/link";
-
 import type { Session } from "../lib/access";
 import { gaugeLabel, headline, readingFromProbe, type ProbeReading } from "../lib/probes";
+import { Shell } from "./shell";
 
 async function consult(path: string): Promise<ProbeReading> {
   try {
@@ -50,41 +49,38 @@ export function SkillforgeHome({ session }: { session: Session | null }) {
   }, [load]);
 
   return (
-    <main className={`floor reading-${liveness} readiness-${readiness}`}>
-      <p className="mark">Skillforge</p>
-      <h1 aria-live="polite">{headline(liveness, readiness)}</h1>
-      <p className="lede">Construção de competências pela prática.</p>
-      <section className="plate access" aria-label="Acesso">
-        {session ? (
-          <article>
-            <h2>Acesso</h2>
-            <p className="who">{session.name}</p>
-            <p className="role">{session.label}</p>
-            <a href="/catalogo">Catálogo</a>
-            <Link href="/turmas">Turmas</Link>
-            <a href="/logout">Sair</a>
+    <Shell session={session}>
+      <div className={`page reading-${liveness} readiness-${readiness}`}>
+        <h1 aria-live="polite">{headline(liveness, readiness)}</h1>
+        <p className="lede">Construção de competências pela prática.</p>
+        <section className="panel access" aria-label="Acesso">
+          {session ? (
+            <article>
+              <h2>Acesso</h2>
+              <p className="who">{session.name}</p>
+              <p className="role">{session.label}</p>
+            </article>
+          ) : (
+            <article>
+              <h2>Acesso</h2>
+              <p className="prompt">Entre com a sua conta.</p>
+            </article>
+          )}
+        </section>
+        <section className="panel" aria-label="Estado do ambiente">
+          <article aria-label="Vida" data-reading={liveness}>
+            <h2>Vida</h2>
+            <p>{gaugeLabel(liveness, "no ar", "fora do ar")}</p>
           </article>
-        ) : (
-          <article>
-            <h2>Acesso</h2>
-            <p className="prompt">Entre com a sua conta.</p>
-            <a href="/login">Entrar</a>
+          <article aria-label="Prontidão" data-reading={readiness}>
+            <h2>Prontidão</h2>
+            <p>{gaugeLabel(readiness, "pronta", "indisponível")}</p>
           </article>
-        )}
-      </section>
-      <section className="plate" aria-label="Estado do ambiente">
-        <article aria-label="Vida" data-reading={liveness}>
-          <h2>Vida</h2>
-          <p>{gaugeLabel(liveness, "no ar", "fora do ar")}</p>
-        </article>
-        <article aria-label="Prontidão" data-reading={readiness}>
-          <h2>Prontidão</h2>
-          <p>{gaugeLabel(readiness, "pronta", "indisponível")}</p>
-        </article>
-      </section>
-      <button type="button" onClick={refresh}>
-        Consultar de novo
-      </button>
-    </main>
+        </section>
+        <button type="button" onClick={refresh}>
+          Consultar de novo
+        </button>
+      </div>
+    </Shell>
   );
 }

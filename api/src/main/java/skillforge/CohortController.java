@@ -1,9 +1,11 @@
 package skillforge;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
@@ -39,11 +41,24 @@ class CohortController {
         CohortStore.CohortPage page = store.page(id, caller.role(), caller.username())
                 .orElseThrow(() -> new CatalogRejection("not-found", HttpStatus.NOT_FOUND));
         Map<String, Object> body = summary(page.cohort());
-        body.put("course", CatalogController.CourseBody.from(page.course()));
+        body.put("course", courseBody(page.course(), page.done()));
         if (page.students() != null) {
             body.put("students", page.students());
         }
         return body;
+    }
+
+    @PostMapping("/cohorts/{id}/lessons/{lessonId}/completion")
+    ResponseEntity<Void> complete(
+            Authentication authentication,
+            @PathVariable UUID id,
+            @PathVariable UUID lessonId) {
+        Caller caller = caller(authentication);
+        if (!"aluno".equals(caller.role())) {
+            throw new CatalogRejection("forbidden", HttpStatus.FORBIDDEN);
+        }
+        store.complete(id, lessonId, caller.username());
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/cohorts")
@@ -77,6 +92,37 @@ class CohortController {
         if (row.students() != null) {
             body.put("students", row.students());
         }
+        if (row.completed() != null && row.total() != null) {
+            body.put("completed", row.completed());
+            body.put("total", row.total());
+        }
+        return body;
+    }
+
+    private static Map<String, Object> courseBody(CatalogStore.CourseView course, Set<UUID> done) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("id", course.id());
+        body.put("name", course.name());
+        List<Map<String, Object>> modules = new ArrayList<>();
+        for (CatalogStore.ModuleView module : course.modules()) {
+            Map<String, Object> moduleBody = new LinkedHashMap<>();
+            moduleBody.put("id", module.id());
+            moduleBody.put("name", module.name());
+            List<Map<String, Object>> lessons = new ArrayList<>();
+            for (CatalogStore.LessonSummary lesson : module.lessons()) {
+                Map<String, Object> lessonBody = new LinkedHashMap<>();
+                lessonBody.put("id", lesson.id());
+                lessonBody.put("title", lesson.title());
+                lessonBody.put("kind", lesson.kind());
+                if (done != null) {
+                    lessonBody.put("completed", done.contains(lesson.id()));
+                }
+                lessons.add(lessonBody);
+            }
+            moduleBody.put("lessons", lessons);
+            modules.add(moduleBody);
+        }
+        body.put("modules", modules);
         return body;
     }
 

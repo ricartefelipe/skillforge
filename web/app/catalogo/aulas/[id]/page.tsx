@@ -4,6 +4,7 @@ import { loadSession } from "../../../../lib/access";
 import { lessonFromBody } from "../../../../lib/catalog";
 import { ACCESS_COOKIE } from "../../../../lib/cookies";
 import { apiUrl } from "../../../../lib/openid";
+import { Shell } from "../../../shell";
 import { LessonView } from "../../lesson";
 
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
@@ -13,37 +14,34 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   const session = access ? await loadSession(access, apiUrl()) : null;
   if (!session || !access) {
     return (
-      <main className="floor catalog">
-        <p className="mark">Skillforge</p>
-        <h1>Aula</h1>
-        <a href="/login">Entrar</a>
-      </main>
+      <Shell session={null}>
+        <div className="page">
+          <h1>Aula</h1>
+          <p>Entre com a sua conta.</p>
+        </div>
+      </Shell>
     );
   }
 
   const lesson = await loadLesson(access, id);
   if (!lesson) {
     return (
-      <main className="floor catalog">
-        <p className="mark">Skillforge</p>
-        <h1>Aula</h1>
-        <p>Não encontrei essa aula.</p>
-        <a className="back" href="/catalogo">
-          Voltar
-        </a>
-      </main>
+      <Shell session={session}>
+        <div className="page">
+          <h1>Aula</h1>
+          <p>Não encontrei essa aula.</p>
+        </div>
+      </Shell>
     );
   }
 
   return (
-    <main className="floor catalog">
-      <p className="mark">Skillforge</p>
-      <h1>{lesson.title}</h1>
-      <a className="back" href="/catalogo">
-        Voltar
-      </a>
-      <LessonView lesson={lesson} />
-    </main>
+    <Shell session={session}>
+      <div className="page">
+        <h1>{lesson.title}</h1>
+        <LessonView lesson={lesson} />
+      </div>
+    </Shell>
   );
 }
 
