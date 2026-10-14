@@ -4,6 +4,8 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 
+import skillforge.infrastructure.config.SkillforgeProperties;
+
 @SpringBootApplication
 @EnableConfigurationProperties(SkillforgeProperties.class)
 public class SkillforgeApplication {
