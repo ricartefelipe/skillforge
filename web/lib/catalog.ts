@@ -2,6 +2,7 @@ export type LessonSummary = {
   id: string;
   title: string;
   kind: "markdown" | "pdf" | "video";
+  completed?: boolean;
 };
 
 export type Module = {
@@ -146,7 +147,14 @@ function summaryFrom(value: unknown): LessonSummary | null {
   if (id === null || title === null || !isKind(kind)) {
     return null;
   }
-  return { id, title, kind };
+  if (!("completed" in value)) {
+    return { id, title, kind };
+  }
+  const completed = (value as Record<string, unknown>).completed;
+  if (typeof completed !== "boolean") {
+    return null;
+  }
+  return { id, title, kind, completed };
 }
 
 function text(value: object, key: string): string | null {

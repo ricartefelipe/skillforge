@@ -63,6 +63,13 @@ class CatalogWhenDatabaseIsDownTest {
                         .claim("preferred_username", "administracao")
                         .claim("realm_access", Map.of("roles", List.of("administracao"))))))
                 .andExpect(status().isServiceUnavailable());
+
+        String missing = "00000000-0000-0000-0000-000000000000";
+        mvc.perform(post("/cohorts/" + missing + "/lessons/" + missing + "/completion")
+                        .with(jwt().jwt(token -> token
+                                .claim("preferred_username", "aluno")
+                                .claim("realm_access", Map.of("roles", List.of("aluno"))))))
+                .andExpect(status().isServiceUnavailable());
     }
 
 }

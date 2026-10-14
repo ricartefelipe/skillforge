@@ -33,7 +33,9 @@ describe("cohort", () => {
       },
     ];
 
-    expect(cohortsFromBody(true, body)).toEqual([{ ...body[0], students: null }]);
+    expect(cohortsFromBody(true, body)).toEqual([
+      { ...body[0], students: null, completed: null, total: null },
+    ]);
     expect(cohortsFromBody(false, body)).toBeNull();
     expect(cohortsFromBody(true, [{ id: "t1", name: "Manhã" }])).toBeNull();
   });
@@ -57,9 +59,19 @@ describe("cohort", () => {
         name: "Manhã",
         teacher: "docente",
         course,
-        students: ["aluno"],
+        students: [{ student: "aluno", completed: 1, total: 3 }],
+        completed: 1,
+        total: 3,
       }),
-    ).toEqual({ id: "t1", name: "Manhã", teacher: "docente", course, students: ["aluno"] });
+    ).toEqual({
+      id: "t1",
+      name: "Manhã",
+      teacher: "docente",
+      course,
+      students: [{ student: "aluno", completed: 1, total: 3 }],
+      completed: 1,
+      total: 3,
+    });
 
     expect(
       cohortDetailFromBody(true, {

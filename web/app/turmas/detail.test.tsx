@@ -15,11 +15,13 @@ const cohort: CohortDetail = {
       {
         id: "m1",
         name: "Fundamentos",
-        lessons: [{ id: "l1", title: "O que é", kind: "markdown" }],
+        lessons: [{ id: "l1", title: "O que é", kind: "markdown", completed: false }],
       },
     ],
   },
   students: null,
+  completed: 0,
+  total: 1,
 };
 
 const noop = () => undefined;
@@ -27,22 +29,24 @@ const noop = () => undefined;
 afterEach(cleanup);
 
 describe("CohortDetailView", () => {
-  it("shows the lesson to the enrolled student and does not offer completion", () => {
-    render(<CohortDetailView cohort={cohort} role="aluno" notice={null} enrollStudent={noop} />);
+  it("lets the enrolled student finish a lesson and shows the count", () => {
+    render(<CohortDetailView cohort={cohort} role="aluno" notice={null} enrollStudent={noop} completeLesson={noop} />);
 
     expect(screen.getByRole("link", { name: "O que é" })).toHaveAttribute("href", "/catalogo/aulas/l1");
+    expect(screen.getByRole("button", { name: "Concluir" })).toBeInTheDocument();
+    expect(screen.getByText("0 de 1 aulas")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Matricular" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /conclu/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Alunos" })).not.toBeInTheDocument();
   });
 
   it("lets administration enroll a student", () => {
     render(
       <CohortDetailView
-        cohort={{ ...cohort, students: [] }}
+        cohort={{ ...cohort, students: [], completed: null, total: null }}
         role="administracao"
         notice="Esse aluno já está na turma."
         enrollStudent={noop}
+        completeLesson={noop}
       />,
     );
 

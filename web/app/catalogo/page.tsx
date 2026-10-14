@@ -4,6 +4,7 @@ import { loadSession } from "../../lib/access";
 import { canCompose, catalogNotice, coursesFromBody } from "../../lib/catalog";
 import { ACCESS_COOKIE } from "../../lib/cookies";
 import { apiUrl } from "../../lib/openid";
+import { Shell } from "../shell";
 import { createCourse, createLesson, createModule } from "./actions";
 import { CatalogView } from "./catalog";
 
@@ -13,25 +14,27 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
   const session = access ? await loadSession(access, apiUrl()) : null;
   if (!session) {
     return (
-      <main className="floor catalog">
-        <p className="mark">Skillforge</p>
-        <h1>Catálogo</h1>
-        <p>Entre com a sua conta.</p>
-        <a href="/login">Entrar</a>
-      </main>
+      <Shell session={null}>
+        <div className="page">
+          <h1>Catálogo</h1>
+          <p>Entre com a sua conta.</p>
+        </div>
+      </Shell>
     );
   }
 
   const params = await searchParams;
   return (
-    <CatalogView
-      courses={await loadCourses(access ?? "")}
-      canCompose={canCompose(session.role)}
-      notice={catalogNotice(params.erro ?? null)}
-      createCourse={createCourse}
-      createModule={createModule}
-      createLesson={createLesson}
-    />
+    <Shell session={session}>
+      <CatalogView
+        courses={await loadCourses(access ?? "")}
+        canCompose={canCompose(session.role)}
+        notice={catalogNotice(params.erro ?? null)}
+        createCourse={createCourse}
+        createModule={createModule}
+        createLesson={createLesson}
+      />
+    </Shell>
   );
 }
 

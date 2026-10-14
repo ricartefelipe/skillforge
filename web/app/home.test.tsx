@@ -84,7 +84,8 @@ describe("SkillforgeHome", () => {
 
     render(<SkillforgeHome session={null} />);
 
-    expect(screen.getByRole("link", { name: "Entrar" })).toBeInTheDocument();
+    const nav = screen.getByRole("navigation", { name: "Principal" });
+    expect(within(nav).getByRole("link", { name: "Entrar" })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Sair" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Catálogo" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Turmas" })).not.toBeInTheDocument();
@@ -100,11 +101,12 @@ describe("SkillforgeHome", () => {
     render(<SkillforgeHome session={{ name: "Conta", role, label }} />);
 
     const access = screen.getByRole("region", { name: "Acesso" });
+    const nav = screen.getByRole("navigation", { name: "Principal" });
     expect(within(access).getByText("Conta")).toBeInTheDocument();
     expect(within(access).getByText(label)).toBeInTheDocument();
-    expect(within(access).getByRole("link", { name: "Sair" })).toBeInTheDocument();
-    expect(within(access).getByRole("link", { name: "Catálogo" })).toBeInTheDocument();
-    expect(within(access).getByRole("link", { name: "Turmas" })).toBeInTheDocument();
+    expect(within(nav).getByRole("link", { name: "Sair" })).toBeInTheDocument();
+    expect(within(nav).getByRole("link", { name: "Catálogo" })).toBeInTheDocument();
+    expect(within(nav).getByRole("link", { name: "Turmas" })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Entrar" })).not.toBeInTheDocument();
   });
 });

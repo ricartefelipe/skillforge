@@ -5,6 +5,7 @@ import { coursesFromBody } from "../../lib/catalog";
 import { canManageCohorts, cohortNotice, cohortsFromBody } from "../../lib/cohort";
 import { ACCESS_COOKIE } from "../../lib/cookies";
 import { apiUrl } from "../../lib/openid";
+import { Shell } from "../shell";
 import { openCohort } from "./actions";
 import { RosterView } from "./roster";
 
@@ -14,25 +15,27 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
   const session = access ? await loadSession(access, apiUrl()) : null;
   if (!session || !access) {
     return (
-      <main className="floor catalog">
-        <p className="mark">Skillforge</p>
-        <h1>Turmas</h1>
-        <p>Entre com a sua conta.</p>
-        <a href="/login">Entrar</a>
-      </main>
+      <Shell session={null}>
+        <div className="page">
+          <h1>Turmas</h1>
+          <p>Entre com a sua conta.</p>
+        </div>
+      </Shell>
     );
   }
 
   const params = await searchParams;
   const courses = canManageCohorts(session.role) ? await loadCourses(access) : null;
   return (
-    <RosterView
-      cohorts={await loadCohorts(access)}
-      courses={courses}
-      role={session.role}
-      notice={cohortNotice(params.erro ?? null)}
-      openCohort={openCohort}
-    />
+    <Shell session={session}>
+      <RosterView
+        cohorts={await loadCohorts(access)}
+        courses={courses}
+        role={session.role}
+        notice={cohortNotice(params.erro ?? null)}
+        openCohort={openCohort}
+      />
+    </Shell>
   );
 }
 
