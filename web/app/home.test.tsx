@@ -87,8 +87,10 @@ describe("SkillforgeHome", () => {
     const nav = screen.getByRole("navigation", { name: "Principal" });
     expect(within(nav).getByRole("link", { name: "Entrar" })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Sair" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Catálogo" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Cursos" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Aulas" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Turmas" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Boletim" })).not.toBeInTheDocument();
   });
 
   it.each([
@@ -105,8 +107,15 @@ describe("SkillforgeHome", () => {
     expect(within(access).getByText("Conta")).toBeInTheDocument();
     expect(within(access).getByText(label)).toBeInTheDocument();
     expect(within(nav).getByRole("link", { name: "Sair" })).toBeInTheDocument();
-    expect(within(nav).getByRole("link", { name: "Catálogo" })).toBeInTheDocument();
+    expect(within(nav).getByRole("link", { name: "Cursos" })).toBeInTheDocument();
+    expect(within(nav).getByRole("link", { name: "Aulas" })).toBeInTheDocument();
     expect(within(nav).getByRole("link", { name: "Turmas" })).toBeInTheDocument();
+    expect(within(nav).getByRole("link", { name: "Boletim" })).toBeInTheDocument();
+    if (role === "aluno") {
+      expect(within(nav).queryByRole("link", { name: "Docente" })).not.toBeInTheDocument();
+    } else {
+      expect(within(nav).getByRole("link", { name: "Docente" })).toBeInTheDocument();
+    }
     expect(screen.queryByRole("link", { name: "Entrar" })).not.toBeInTheDocument();
   });
 });

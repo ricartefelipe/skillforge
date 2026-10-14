@@ -76,6 +76,28 @@ CREATE TABLE IF NOT EXISTS submission (
     PRIMARY KEY (practice_id, student)
 );
 
+ALTER TABLE submission ADD COLUMN IF NOT EXISTS grade smallint;
+
+CREATE TABLE IF NOT EXISTS doubt (
+    id uuid PRIMARY KEY,
+    lesson_id uuid NOT NULL REFERENCES lesson (id),
+    author text NOT NULL,
+    title text NOT NULL,
+    body text NOT NULL,
+    CONSTRAINT doubt_author_not_blank CHECK (length(btrim(author)) > 0),
+    CONSTRAINT doubt_title_not_blank CHECK (length(btrim(title)) > 0),
+    CONSTRAINT doubt_body_not_blank CHECK (length(btrim(body)) > 0)
+);
+
+CREATE TABLE IF NOT EXISTS reply (
+    id uuid PRIMARY KEY,
+    doubt_id uuid NOT NULL REFERENCES doubt (id),
+    author text NOT NULL,
+    body text NOT NULL,
+    CONSTRAINT reply_author_not_blank CHECK (length(btrim(author)) > 0),
+    CONSTRAINT reply_body_not_blank CHECK (length(btrim(body)) > 0)
+);
+
 CREATE TABLE IF NOT EXISTS completion (
     cohort_id uuid NOT NULL REFERENCES cohort (id),
     lesson_id uuid NOT NULL REFERENCES lesson (id),

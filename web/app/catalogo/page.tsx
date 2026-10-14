@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { loadSession } from "../../lib/access";
 import { canCompose, catalogNotice, coursesFromBody } from "../../lib/catalog";
 import { ACCESS_COOKIE } from "../../lib/cookies";
+import { readIds, readJson } from "../../lib/api-read";
 import { apiUrl } from "../../lib/openid";
 import { Shell } from "../shell";
 import { createCourse, createLesson, createModule } from "./actions";
@@ -17,8 +18,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
       <Shell session={null}>
         <div className="page">
           <header className="intro">
-            <p className="kicker">Oficina</p>
-            <h1>Catálogo</h1>
+            <p className="kicker">Disponíveis</p>
+            <h1>Cursos</h1>
           </header>
           <p className="empty">Entre com a sua conta.</p>
         </div>
@@ -32,6 +33,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
       <CatalogView
         courses={await loadCourses(access ?? "")}
         canCompose={canCompose(session.role)}
+        writableCourseIds={canCompose(session.role) ? [] : await readIds(access ?? "", "/courses/teaching")}
         notice={catalogNotice(params.erro ?? null)}
         createCourse={createCourse}
         createModule={createModule}
@@ -42,14 +44,9 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
 }
 
 async function loadCourses(token: string) {
-  try {
-    const response = await fetch(`${apiUrl()}/courses`, {
-      headers: { authorization: `Bearer ${token}` },
-      cache: "no-store",
-    });
-    const body: unknown = await response.json();
-    return coursesFromBody(response.ok, body);
-  } catch {
+  const read = await readJson(token, "/courses");
+  if (read === null) {
     return null;
   }
+  return coursesFromBody(read.ok, read.body);
 }

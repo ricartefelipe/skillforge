@@ -52,7 +52,7 @@ export async function returnPractice(formData: FormData) {
   const page = `/turmas/${cohortId}`;
   await post(
     `/cohorts/${cohortId}/practices/${practiceId}/feedback`,
-    { student: field(formData, "student"), text: field(formData, "text") },
+    { student: field(formData, "student"), text: field(formData, "text"), grade: Number(field(formData, "grade")) },
     page,
   );
   redirect(page);
@@ -72,7 +72,7 @@ function field(formData: FormData, name: string): string {
 
 async function post(
   path: string,
-  payload: Record<string, string>,
+  payload: Record<string, string | number>,
   failurePage: string,
 ): Promise<string | null> {
   const token = (await cookies()).get(ACCESS_COOKIE)?.value;

@@ -26,6 +26,7 @@ describe("CatalogView", () => {
       <CatalogView
         courses={[course]}
         canCompose
+        writableCourseIds={[]}
         notice="Já existe um curso com esse nome."
         createCourse={noop}
         createModule={noop}
@@ -42,7 +43,7 @@ describe("CatalogView", () => {
 
   it("hides compose forms from a student and does not call an empty catalog missing", () => {
     render(
-      <CatalogView courses={[]} canCompose={false} notice={null} createCourse={noop} createModule={noop} createLesson={noop} />,
+      <CatalogView courses={[]} canCompose={false} writableCourseIds={[]} notice={null} createCourse={noop} createModule={noop} createLesson={noop} />,
     );
 
     expect(screen.getByText("Nenhum curso ainda.")).toBeInTheDocument();
@@ -52,7 +53,7 @@ describe("CatalogView", () => {
 
   it("does not pretend the catalog is empty when it cannot be read", () => {
     render(
-      <CatalogView courses={null} canCompose={false} notice={null} createCourse={noop} createModule={noop} createLesson={noop} />,
+      <CatalogView courses={null} canCompose={false} writableCourseIds={[]} notice={null} createCourse={noop} createModule={noop} createLesson={noop} />,
     );
 
     expect(screen.getByText("O catálogo não responde.")).toBeInTheDocument();
@@ -64,6 +65,7 @@ describe("CatalogView", () => {
       <CatalogView
         courses={[course]}
         canCompose
+        writableCourseIds={[]}
         notice={null}
         createCourse={noop}
         createModule={noop}

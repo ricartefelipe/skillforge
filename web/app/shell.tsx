@@ -19,8 +19,13 @@ export function Shell({ session, children }: { session: Session | null; children
           <nav aria-label="Principal">
             {session ? (
               <>
-                <Link href="/catalogo">Catálogo</Link>
+                <Link href="/catalogo">Cursos</Link>
+                <Link href="/aulas">Aulas</Link>
                 <Link href="/turmas">Turmas</Link>
+                <Link href="/boletim">Boletim</Link>
+                {session.role === "docente" || session.role === "administracao" ? (
+                  <Link href="/docente">Docente</Link>
+                ) : null}
                 <span className="session">
                   <span className="who">{session.name}</span>
                   {session.name.localeCompare(session.label, "pt-BR", { sensitivity: "accent" }) === 0 ? null : (

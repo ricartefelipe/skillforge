@@ -17,23 +17,30 @@ function kindLabel(kind: LessonSummary["kind"]): string {
 export function CatalogView({
   courses,
   canCompose,
+  writableCourseIds,
   notice,
   createCourse,
   createModule,
   createLesson,
+  heading = "Cursos",
+  kicker = "Disponíveis",
 }: {
   courses: Course[] | null;
   canCompose: boolean;
+  writableCourseIds: string[];
   notice: string | null;
   createCourse: (formData: FormData) => void;
   createModule: (formData: FormData) => void;
   createLesson: (formData: FormData) => void;
+  heading?: string;
+  kicker?: string;
 }) {
+  const writes = (courseId: string) => canCompose || writableCourseIds.includes(courseId);
   return (
     <div className="page">
       <header className="intro">
-        <p className="kicker">Oficina</p>
-        <h1>Catálogo</h1>
+        <p className="kicker">{kicker}</p>
+        <h1>{heading}</h1>
       </header>
       {notice ? <p role="alert">{notice}</p> : null}
       {canCompose ? (
@@ -50,7 +57,7 @@ export function CatalogView({
       {courses?.map((course) => (
         <section className="tree" key={course.id} aria-label={course.name}>
           <h2>{course.name}</h2>
-          {canCompose ? (
+          {writes(course.id) ? (
             <form className="compose" action={createModule} aria-label={`Novo módulo em ${course.name}`}>
               <input type="hidden" name="courseId" value={course.id} />
               <label>
@@ -72,7 +79,7 @@ export function CatalogView({
                   </li>
                 ))}
               </ul>
-              {canCompose ? <LessonForm moduleId={module.id} action={createLesson} /> : null}
+              {writes(course.id) ? <LessonForm moduleId={module.id} action={createLesson} /> : null}
             </section>
           ))}
         </section>
