@@ -1,12 +1,13 @@
 import { readJson } from "./api-read";
-import type { Practice } from "./cohort";
-import { practicesFromObject } from "./cohort";
+import type { ClassExam, Practice } from "./cohort";
+import { examsFromObject, practicesFromObject } from "./cohort";
 
 export type Report = {
   cohortId: string;
   cohortName: string;
   courseName: string;
   practices: Practice[];
+  exams: ClassExam[];
 };
 
 export async function loadReports(token: string): Promise<Report[] | null> {
@@ -30,10 +31,11 @@ export function reportsFromBody(httpOk: boolean, body: unknown): Report[] | null
     const cohortName = text(item, "cohortName");
     const courseName = text(item, "courseName");
     const practices = practicesFromObject(item);
-    if (cohortId === null || cohortName === null || courseName === null || practices === null) {
+    const exams = examsFromObject(item);
+    if (cohortId === null || cohortName === null || courseName === null || practices === null || exams === null) {
       return null;
     }
-    reports.push({ cohortId, cohortName, courseName, practices });
+    reports.push({ cohortId, cohortName, courseName, practices, exams });
   }
   return reports;
 }

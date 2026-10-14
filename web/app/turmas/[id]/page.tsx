@@ -5,7 +5,7 @@ import { cohortDetailFromBody, cohortNotice } from "../../../lib/cohort";
 import { ACCESS_COOKIE } from "../../../lib/cookies";
 import { apiUrl } from "../../../lib/openid";
 import { Shell } from "../../shell";
-import { completeLesson, enrollStudent, openPractice, returnPractice, submitPractice } from "../actions";
+import { completeLesson, enrollStudent, openExam, openPractice, returnPractice, submitPractice, takeExam } from "../actions";
 import { CohortDetailView } from "../detail";
 
 export default async function Page({
@@ -60,6 +60,8 @@ export default async function Page({
         openPractice={openPractice}
         submitPractice={submitPractice}
         returnPractice={returnPractice}
+        openExam={openExam}
+        takeExam={takeExam}
       />
     </Shell>
   );

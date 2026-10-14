@@ -22,8 +22,14 @@ public enum Failure {
     DUPLICATE_COHORT("duplicate-cohort", Kind.CONFLICT),
     ALREADY_ENROLLED("already-enrolled", Kind.CONFLICT),
     DUPLICATE_PRACTICE("duplicate-practice", Kind.CONFLICT),
+    DUPLICATE_EXAM("duplicate-exam", Kind.CONFLICT),
+    ALREADY_TAKEN("already-taken", Kind.CONFLICT),
     ALREADY_RETURNED("already-returned", Kind.CONFLICT),
     INVALID_GRADE("invalid-grade", Kind.BAD_REQUEST),
+    BLANK_EXAM("blank-exam", Kind.BAD_REQUEST),
+    BLANK_QUESTION("blank-question", Kind.BAD_REQUEST),
+    BLANK_CHOICE("blank-choice", Kind.BAD_REQUEST),
+    INVALID_EXAM("invalid-exam", Kind.BAD_REQUEST),
     NOT_FOUND("not-found", Kind.NOT_FOUND),
     FORBIDDEN("forbidden", Kind.FORBIDDEN);
 

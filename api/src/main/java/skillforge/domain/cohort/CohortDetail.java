@@ -18,21 +18,28 @@ public sealed interface CohortDetail {
             int total,
             Course course,
             Set<UUID> finished,
-            List<Practice> practices) implements CohortDetail {
+            List<Practice> practices,
+            List<Exam> exams) implements CohortDetail {
 
         public Student {
             finished = Set.copyOf(finished);
             practices = List.copyOf(practices);
+            exams = List.copyOf(exams);
         }
 
     }
 
-    record Staff(CohortSummary summary, List<Progress> students, Course course, List<Practice> practices)
-            implements CohortDetail {
+    record Staff(
+            CohortSummary summary,
+            List<Progress> students,
+            Course course,
+            List<Practice> practices,
+            List<Exam> exams) implements CohortDetail {
 
         public Staff {
             students = List.copyOf(students);
             practices = List.copyOf(practices);
+            exams = List.copyOf(exams);
         }
 
     }

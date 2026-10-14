@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { canLeadPractices, canManageCohorts, progressLabel, type CohortDetail, type Practice } from "../../lib/cohort";
 import type { LessonSummary } from "../../lib/catalog";
+import { ExamForm } from "../exam-form";
 import { ProgressMeter } from "../meter";
 
 function kindLabel(kind: LessonSummary["kind"]): string {
@@ -28,6 +29,8 @@ export function CohortDetailView({
   openPractice,
   submitPractice,
   returnPractice,
+  openExam,
+  takeExam,
 }: {
   cohort: CohortDetail;
   role: string;
@@ -37,6 +40,8 @@ export function CohortDetailView({
   openPractice: (formData: FormData) => void;
   submitPractice: (formData: FormData) => void;
   returnPractice: (formData: FormData) => void;
+  openExam: (formData: FormData) => void;
+  takeExam: (formData: FormData) => void;
 }) {
   return (
     <div className="page">
@@ -95,6 +100,45 @@ export function CohortDetailView({
             )}
           </>
         ) : null}
+        <h3>Provas</h3>
+        {cohort.exams.length === 0 ? <p className="empty">Nenhuma prova ainda.</p> : null}
+        {cohort.exams.map((exam) => {
+          const own = role === "aluno" ? (exam.scores[0] ?? null) : null;
+          return (
+            <section className="module" key={exam.id} aria-label={exam.title}>
+              <h3>{exam.title}</h3>
+              {role === "aluno" && own === null ? (
+                <form className="compose" action={takeExam} aria-label={`Fazer ${exam.title}`}>
+                  <input type="hidden" name="cohortId" value={cohort.id} />
+                  <input type="hidden" name="examId" value={exam.id} />
+                  {exam.questions.map((question) => (
+                    <fieldset key={question.id}>
+                      <legend>{question.prompt}</legend>
+                      {question.choices.map((choice) => (
+                        <label key={choice.id}>
+                          <input type="radio" name={question.id} value={choice.id} required /> {choice.label}
+                        </label>
+                      ))}
+                    </fieldset>
+                  ))}
+                  <button type="submit">Entregar prova</button>
+                </form>
+              ) : null}
+              {role === "aluno" && own !== null ? <p className="tally">Nota {own.grade}</p> : null}
+              {canLeadPractices(role)
+                ? exam.scores.map((score) => (
+                    <p key={score.student} className="tally">
+                      {score.student} {score.grade}
+                    </p>
+                  ))
+                : null}
+              {canLeadPractices(role) && exam.scores.length === 0 ? (
+                <p className="meta">Ninguém fez esta prova.</p>
+              ) : null}
+            </section>
+          );
+        })}
+        {canLeadPractices(role) ? <ExamForm cohortId={cohort.id} action={openExam} /> : null}
         <h3>Práticas</h3>
         {cohort.practices.length === 0 ? <p className="empty">Nenhuma prática ainda.</p> : null}
         {cohort.practices.map((practice) => (

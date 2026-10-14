@@ -81,6 +81,15 @@ O ambiente cobre a rotina de um AVA: cursos disponíveis, a grade cursada, a ban
 - Na aula, quem está no curso abre uma dúvida e os outros respondem. Quem está fora recebe `404`.
 - Com o Postgres fechado, essas rotas respondem `503` e a vida continua `200`.
 
+## Incremento 7
+
+A área do docente publica a prova da turma. O gabarito não sai para o aluno. A tentativa é única e a nota entra no boletim.
+
+- Só quem ministra, ou a administração, abre a prova.
+- Cada questão tem ao menos duas alternativas e uma só correta.
+- O aluno de fora da turma não vê a prova.
+- A nota é 0 a 10, na proporção das questões certas.
+
 ## Arranque
 
 É preciso Java 21, Node.js 22, Docker e curl.
