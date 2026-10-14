@@ -71,6 +71,16 @@ A turma tem práticas. O docente abre o enunciado, o aluno entrega um texto e o 
 - O aluno vê só a própria entrega. O docente vê as entregas da turma.
 - Com o Postgres fechado, a prática responde `503` e a vida continua `200`.
 
+## Incremento 6
+
+O ambiente cobre a rotina de um AVA: cursos disponíveis, a grade cursada, a bancada do docente, nota, boletim e o fórum da aula.
+
+- Quem ministra publica módulo, material e videoaula no curso da própria turma. Quem não ministra continua sem esse poder.
+- Aulas lista só a grade de quem está na turma ou a ministra. A administração vê o catálogo inteiro.
+- A devolutiva da prática traz nota de 0 a 10. O boletim mostra a média.
+- Na aula, quem está no curso abre uma dúvida e os outros respondem. Quem está fora recebe `404`.
+- Com o Postgres fechado, essas rotas respondem `503` e a vida continua `200`.
+
 ## Arranque
 
 É preciso Java 21, Node.js 22, Docker e curl.

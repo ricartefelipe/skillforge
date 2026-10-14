@@ -17,8 +17,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
       <Shell session={null}>
         <div className="page">
           <header className="intro">
-            <p className="kicker">Oficina</p>
-            <h1>Catálogo</h1>
+            <p className="kicker">Disponíveis</p>
+            <h1>Cursos</h1>
           </header>
           <p className="empty">Entre com a sua conta.</p>
         </div>
@@ -32,6 +32,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
       <CatalogView
         courses={await loadCourses(access ?? "")}
         canCompose={canCompose(session.role)}
+        writableCourseIds={canCompose(session.role) ? [] : await loadTeaching(access ?? "")}
         notice={catalogNotice(params.erro ?? null)}
         createCourse={createCourse}
         createModule={createModule}
@@ -39,6 +40,22 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
       />
     </Shell>
   );
+}
+
+async function loadTeaching(token: string): Promise<string[]> {
+  try {
+    const response = await fetch(`${apiUrl()}/courses/teaching`, {
+      headers: { authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+    const body: unknown = await response.json();
+    if (!response.ok || !Array.isArray(body)) {
+      return [];
+    }
+    return body.filter((item): item is string => typeof item === "string");
+  } catch {
+    return [];
+  }
 }
 
 async function loadCourses(token: string) {

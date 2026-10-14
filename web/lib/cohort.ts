@@ -21,6 +21,7 @@ export type Delivery = {
   student: string;
   text: string;
   feedback: string | null;
+  grade: number | null;
 };
 
 export type Practice = {
@@ -79,6 +80,8 @@ export function cohortNotice(code: string | null): string | null {
       return "Já existe uma prática com esse título nesta turma.";
     case "already-returned":
       return "O docente já devolveu esta entrega.";
+    case "invalid-grade":
+      return "A nota vai de 0 a 10.";
     case "too-large":
       return "Passa do limite.";
     case "not-found":
@@ -242,6 +245,10 @@ function count(value: object, key: string): number | null {
   return found;
 }
 
+export function practicesFromObject(value: object): Practice[] | null {
+  return practicesFrom(value);
+}
+
 function practicesFrom(value: object): Practice[] | null {
   if (!("practices" in value)) {
     return [];
@@ -294,14 +301,26 @@ function deliveryFrom(value: unknown): Delivery | null {
   if (student === null || body === null) {
     return null;
   }
-  if (!("feedback" in value)) {
-    return { student, text: body, feedback: null };
-  }
-  const feedback = text(value, "feedback");
-  if (feedback === null) {
+  const feedback = "feedback" in value ? text(value, "feedback") : null;
+  if ("feedback" in value && feedback === null) {
     return null;
   }
-  return { student, text: body, feedback };
+  const grade = gradeFrom(value);
+  if (grade === undefined) {
+    return null;
+  }
+  return { student, text: body, feedback, grade };
+}
+
+function gradeFrom(value: object): number | null | undefined {
+  if (!("grade" in value)) {
+    return null;
+  }
+  const found = (value as Record<string, unknown>).grade;
+  if (typeof found !== "number" || !Number.isInteger(found) || found < 0 || found > 10) {
+    return undefined;
+  }
+  return found;
 }
 
 function text(value: object, key: string): string | null {

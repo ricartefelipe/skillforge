@@ -170,6 +170,7 @@ function PracticeCard({
         <>
           <p>{own.text}</p>
           {own.feedback === null ? <p className="meta">Aguardando devolutiva.</p> : <p>{own.feedback}</p>}
+          {own.grade !== null ? <p className="tally">Nota {own.grade}</p> : null}
           {waiting ? (
             <form className="compose" action={submitPractice} aria-label="Entrega">
               <input type="hidden" name="cohortId" value={cohortId} />
@@ -196,6 +197,16 @@ function PracticeCard({
                   <label>
                     Devolutiva
                     <textarea name="text" required />
+                  </label>
+                  <label>
+                    Nota
+                    <select name="grade" required defaultValue="10">
+                      {Array.from({ length: 11 }, (_, mark) => (
+                        <option key={mark} value={mark}>
+                          {mark}
+                        </option>
+                      ))}
+                    </select>
                   </label>
                   <button type="submit">Devolver</button>
                 </form>

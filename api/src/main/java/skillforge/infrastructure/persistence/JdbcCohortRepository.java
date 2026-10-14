@@ -27,6 +27,7 @@ import skillforge.domain.cohort.CohortSummary;
 import skillforge.domain.cohort.Delivery;
 import skillforge.domain.cohort.Practice;
 import skillforge.domain.cohort.Progress;
+import skillforge.domain.cohort.Report;
 import skillforge.domain.identity.Actor;
 import skillforge.domain.identity.Role;
 import skillforge.domain.shared.Failure;
@@ -206,7 +207,7 @@ class JdbcCohortRepository implements CohortRepository {
     }
 
     @Override
-    public void feedback(UUID cohortId, UUID practiceId, Actor actor, String student, String text) {
+    public void feedback(UUID cohortId, UUID practiceId, Actor actor, String student, String text, int grade) {
         schema.ensure();
         try {
             requireLead(cohortId, actor);
@@ -214,13 +215,74 @@ class JdbcCohortRepository implements CohortRepository {
                 throw new Rejection(Failure.NOT_FOUND);
             }
             int updated = jdbc.update(
-                    "UPDATE submission SET feedback = ? WHERE practice_id = ? AND student = ?",
+                    "UPDATE submission SET feedback = ?, grade = ? WHERE practice_id = ? AND student = ?",
                     text,
+                    grade,
                     practiceId,
                     student);
             if (updated == 0) {
                 throw new Rejection(Failure.NOT_FOUND);
             }
+        }
+        catch (DataAccessResourceFailureException ex) {
+            throw new Unavailable(ex);
+        }
+    }
+
+    @Override
+    public boolean teaches(String teacher, UUID courseId) {
+        schema.ensure();
+        try {
+            Integer count = jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM cohort WHERE course_id = ? AND teacher = ?",
+                    Integer.class,
+                    courseId,
+                    teacher);
+            return count != null && count > 0;
+        }
+        catch (DataAccessResourceFailureException ex) {
+            throw new Unavailable(ex);
+        }
+    }
+
+    @Override
+    public java.util.Set<UUID> courseIds(Actor actor) {
+        schema.ensure();
+        try {
+            String sql = switch (actor.role()) {
+                case ADMINISTRACAO -> "SELECT id FROM course";
+                case DOCENTE -> "SELECT DISTINCT course_id FROM cohort WHERE teacher = ?";
+                case ALUNO -> """
+                        SELECT DISTINCT cohort.course_id
+                        FROM cohort
+                        JOIN enrollment ON enrollment.cohort_id = cohort.id
+                        WHERE enrollment.student = ?
+                        """;
+            };
+            if (actor.role() == Role.ADMINISTRACAO) {
+                return new java.util.LinkedHashSet<>(jdbc.query(sql, (rs, row) -> rs.getObject("id", UUID.class)));
+            }
+            return new java.util.LinkedHashSet<>(
+                    jdbc.query(sql, (rs, row) -> rs.getObject(1, UUID.class), actor.username()));
+        }
+        catch (DataAccessResourceFailureException ex) {
+            throw new Unavailable(ex);
+        }
+    }
+
+    @Override
+    public List<Report> report(Actor actor) {
+        schema.ensure();
+        try {
+            List<Report> reports = new java.util.ArrayList<>();
+            for (CohortListing listing : visible(actor)) {
+                reports.add(new Report(
+                        listing.summary().id(),
+                        listing.summary().name(),
+                        listing.summary().courseName(),
+                        practicesOf(listing.summary().id(), actor)));
+            }
+            return List.copyOf(reports);
         }
         catch (DataAccessResourceFailureException ex) {
             throw new Unavailable(ex);
@@ -313,7 +375,8 @@ class JdbcCohortRepository implements CohortRepository {
 
     private void loadDeliveries(Map<UUID, List<Delivery>> deliveries, UUID cohortId, String student) {
         String sql = """
-                SELECT submission.practice_id, submission.student, submission.body, submission.feedback
+                SELECT submission.practice_id, submission.student, submission.body,
+                       submission.feedback, submission.grade
                 FROM submission
                 JOIN practice ON practice.id = submission.practice_id
                 WHERE practice.cohort_id = ?
@@ -333,7 +396,8 @@ class JdbcCohortRepository implements CohortRepository {
         UUID practiceId = rs.getObject("practice_id", UUID.class);
         List<Delivery> found = deliveries.get(practiceId);
         if (found != null) {
-            found.add(new Delivery(rs.getString("student"), rs.getString("body"), rs.getString("feedback")));
+            Integer grade = rs.getObject("grade", Integer.class);
+            found.add(new Delivery(rs.getString("student"), rs.getString("body"), rs.getString("feedback"), grade));
         }
         return null;
     }

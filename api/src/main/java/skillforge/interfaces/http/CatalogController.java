@@ -39,6 +39,16 @@ class CatalogController {
         return catalog.list(RequestActor.from(authentication)).stream().map(CourseBody::from).toList();
     }
 
+    @GetMapping("/courses/curriculum")
+    List<CourseBody> curriculum(Authentication authentication) {
+        return catalog.curriculum(RequestActor.from(authentication)).stream().map(CourseBody::from).toList();
+    }
+
+    @GetMapping("/courses/teaching")
+    List<UUID> teaching(Authentication authentication) {
+        return catalog.teaching(RequestActor.from(authentication)).stream().toList();
+    }
+
     @PostMapping("/courses")
     ResponseEntity<IdName> createCourse(Authentication authentication, @RequestBody NameBody body) {
         CatalogApplication.Created created = catalog.createCourse(

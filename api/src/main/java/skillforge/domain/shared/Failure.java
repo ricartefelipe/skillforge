@@ -23,6 +23,7 @@ public enum Failure {
     ALREADY_ENROLLED("already-enrolled", Kind.CONFLICT),
     DUPLICATE_PRACTICE("duplicate-practice", Kind.CONFLICT),
     ALREADY_RETURNED("already-returned", Kind.CONFLICT),
+    INVALID_GRADE("invalid-grade", Kind.BAD_REQUEST),
     NOT_FOUND("not-found", Kind.NOT_FOUND),
     FORBIDDEN("forbidden", Kind.FORBIDDEN);
 

@@ -20,4 +20,6 @@ public interface CourseRepository {
 
     Optional<LessonFile> media(UUID id);
 
+    Optional<UUID> courseOfModule(UUID moduleId);
+
 }
