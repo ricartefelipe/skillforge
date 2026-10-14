@@ -11,6 +11,7 @@ describe("cohort", () => {
 
   it("names the refusal in Portuguese", () => {
     expect(cohortNotice("blank-teacher")).toBe("A turma precisa de um docente.");
+    expect(cohortNotice("past-due")).toBe("O prazo desta atividade já fechou.");
     expect(cohortNotice("already-enrolled")).toBe("Esse aluno já está na turma.");
     expect(cohortNotice(null)).toBeNull();
     expect(cohortNotice("nope")).toBe("Não foi possível guardar.");

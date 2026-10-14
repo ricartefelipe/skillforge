@@ -6,32 +6,24 @@ import { ACCESS_COOKIE } from "../../../../lib/cookies";
 import { apiUrl } from "../../../../lib/openid";
 import { Shell } from "../../../shell";
 
-export default async function Page({
-  params,
-  searchParams,
-}: {
+type CertificateQuery = {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ erro?: string }>;
-}) {
-  const { id } = await params;
-  const jar = await cookies();
-  const access = jar.get(ACCESS_COOKIE)?.value;
-  const session = access ? await loadSession(access, apiUrl()) : null;
-  if (!session || !access) {
+};
+
+export default async function Page({ params, searchParams }: Readonly<CertificateQuery>) {
+  const [{ id }, query, opened] = await Promise.all([params, searchParams, currentAccess()]);
+  if (opened === null) {
     return (
       <Shell session={null}>
-        <div className="page">
-          <h1>Certificado</h1>
-          <p className="empty">Entre com a sua conta.</p>
-        </div>
+        <p className="empty">Entre para ver o certificado.</p>
       </Shell>
     );
   }
 
-  const query = await searchParams;
-  const certificate = await loadCertificate(access, id);
+  const certificate = await loadCertificate(opened.access, id);
   return (
-    <Shell session={session}>
+    <Shell session={opened.session}>
       <div className="page">
         <header className="intro">
           <p className="kicker">Conclusão</p>
@@ -52,6 +44,18 @@ export default async function Page({
       </div>
     </Shell>
   );
+}
+
+async function currentAccess() {
+  const access = (await cookies()).get(ACCESS_COOKIE)?.value;
+  if (access === undefined) {
+    return null;
+  }
+  const session = await loadSession(access, apiUrl());
+  if (session === null) {
+    return null;
+  }
+  return { access, session };
 }
 
 async function loadCertificate(token: string, id: string) {

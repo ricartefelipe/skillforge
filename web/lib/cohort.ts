@@ -95,7 +95,17 @@ export function canLeadPractices(role: string): boolean {
   return role === "docente" || role === "administracao";
 }
 
+const laterNotices: Record<string, string> = {
+  "past-due": "O prazo desta atividade já fechou.",
+  "duplicate-day": "Já existe chamada neste dia.",
+  rubric: "A nota tem de seguir a rubrica.",
+  "not-certified": "Ainda não há certificado: é preciso média 7 e, se houver chamada, 75% de presença.",
+};
+
 export function cohortNotice(code: string | null): string | null {
+  if (code !== null && laterNotices[code] !== undefined) {
+    return laterNotices[code];
+  }
   switch (code) {
     case "blank-cohort":
       return "A turma precisa de um nome.";
@@ -133,14 +143,6 @@ export function cohortNotice(code: string | null): string | null {
       return "Já existe uma prova com esse título nesta turma.";
     case "already-taken":
       return "Esta prova já foi feita.";
-    case "past-due":
-      return "O prazo desta atividade já fechou.";
-    case "duplicate-day":
-      return "Já existe chamada neste dia.";
-    case "rubric":
-      return "A nota tem de seguir a rubrica.";
-    case "not-certified":
-      return "Ainda não há certificado: é preciso média 7 e, se houver chamada, 75% de presença.";
     case "too-large":
       return "Passa do limite.";
     case "not-found":
