@@ -5,7 +5,8 @@ import { loadSession } from "../../lib/access";
 import { cohortsFromBody } from "../../lib/cohort";
 import { ACCESS_COOKIE } from "../../lib/cookies";
 import { apiUrl } from "../../lib/openid";
-import { reportsFromBody } from "../../lib/report";
+import { readJson } from "../../lib/api-read";
+import { loadReports } from "../../lib/report";
 import { Shell } from "../shell";
 
 export default async function Page() {
@@ -79,27 +80,9 @@ export default async function Page() {
 }
 
 async function loadCohorts(token: string) {
-  try {
-    const response = await fetch(`${apiUrl()}/cohorts`, {
-      headers: { authorization: `Bearer ${token}` },
-      cache: "no-store",
-    });
-    const body: unknown = await response.json();
-    return cohortsFromBody(response.ok, body);
-  } catch {
+  const read = await readJson(token, "/cohorts");
+  if (read === null) {
     return null;
   }
-}
-
-async function loadReports(token: string) {
-  try {
-    const response = await fetch(`${apiUrl()}/grades`, {
-      headers: { authorization: `Bearer ${token}` },
-      cache: "no-store",
-    });
-    const body: unknown = await response.json();
-    return reportsFromBody(response.ok, body);
-  } catch {
-    return null;
-  }
+  return cohortsFromBody(read.ok, read.body);
 }

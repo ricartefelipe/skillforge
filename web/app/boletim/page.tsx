@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { loadSession } from "../../lib/access";
 import { ACCESS_COOKIE } from "../../lib/cookies";
 import { apiUrl } from "../../lib/openid";
-import { reportsFromBody } from "../../lib/report";
+import { loadReports } from "../../lib/report";
 import { Shell } from "../shell";
 
 export default async function Page() {
@@ -75,15 +75,3 @@ export default async function Page() {
   );
 }
 
-async function loadReports(token: string) {
-  try {
-    const response = await fetch(`${apiUrl()}/grades`, {
-      headers: { authorization: `Bearer ${token}` },
-      cache: "no-store",
-    });
-    const body: unknown = await response.json();
-    return reportsFromBody(response.ok, body);
-  } catch {
-    return null;
-  }
-}

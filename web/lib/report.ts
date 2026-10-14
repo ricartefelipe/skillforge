@@ -1,3 +1,4 @@
+import { readJson } from "./api-read";
 import type { Practice } from "./cohort";
 import { practicesFromObject } from "./cohort";
 
@@ -7,6 +8,14 @@ export type Report = {
   courseName: string;
   practices: Practice[];
 };
+
+export async function loadReports(token: string): Promise<Report[] | null> {
+  const read = await readJson(token, "/grades");
+  if (read === null) {
+    return null;
+  }
+  return reportsFromBody(read.ok, read.body);
+}
 
 export function reportsFromBody(httpOk: boolean, body: unknown): Report[] | null {
   if (!httpOk || !Array.isArray(body)) {

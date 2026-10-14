@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { loadSession } from "../../lib/access";
 import { canCompose, catalogNotice, coursesFromBody } from "../../lib/catalog";
 import { ACCESS_COOKIE } from "../../lib/cookies";
+import { readIds, readJson } from "../../lib/api-read";
 import { apiUrl } from "../../lib/openid";
 import { Shell } from "../shell";
 import { createCourse, createLesson, createModule } from "./actions";
@@ -32,7 +33,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
       <CatalogView
         courses={await loadCourses(access ?? "")}
         canCompose={canCompose(session.role)}
-        writableCourseIds={canCompose(session.role) ? [] : await loadTeaching(access ?? "")}
+        writableCourseIds={canCompose(session.role) ? [] : await readIds(access ?? "", "/courses/teaching")}
         notice={catalogNotice(params.erro ?? null)}
         createCourse={createCourse}
         createModule={createModule}
@@ -42,31 +43,10 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
   );
 }
 
-async function loadTeaching(token: string): Promise<string[]> {
-  try {
-    const response = await fetch(`${apiUrl()}/courses/teaching`, {
-      headers: { authorization: `Bearer ${token}` },
-      cache: "no-store",
-    });
-    const body: unknown = await response.json();
-    if (!response.ok || !Array.isArray(body)) {
-      return [];
-    }
-    return body.filter((item): item is string => typeof item === "string");
-  } catch {
-    return [];
-  }
-}
-
 async function loadCourses(token: string) {
-  try {
-    const response = await fetch(`${apiUrl()}/courses`, {
-      headers: { authorization: `Bearer ${token}` },
-      cache: "no-store",
-    });
-    const body: unknown = await response.json();
-    return coursesFromBody(response.ok, body);
-  } catch {
+  const read = await readJson(token, "/courses");
+  if (read === null) {
     return null;
   }
+  return coursesFromBody(read.ok, read.body);
 }
