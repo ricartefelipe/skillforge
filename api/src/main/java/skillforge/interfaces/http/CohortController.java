@@ -21,6 +21,8 @@ import skillforge.domain.catalog.Module;
 import skillforge.domain.cohort.CohortDetail;
 import skillforge.domain.cohort.CohortListing;
 import skillforge.domain.cohort.CohortSummary;
+import skillforge.domain.cohort.Delivery;
+import skillforge.domain.cohort.Practice;
 import skillforge.domain.cohort.Progress;
 import skillforge.domain.identity.Actor;
 
@@ -70,8 +72,8 @@ class CohortController {
     private static CohortBody listing(CohortListing listing) {
         return switch (listing) {
             case CohortListing.Student student -> body(
-                    student.summary(), null, student.completed(), student.total(), null);
-            case CohortListing.Staff staff -> body(staff.summary(), staff.students(), null, null, null);
+                    student.summary(), null, student.completed(), student.total(), null, null);
+            case CohortListing.Staff staff -> body(staff.summary(), staff.students(), null, null, null, null);
         };
     }
 
@@ -82,9 +84,15 @@ class CohortController {
                     null,
                     student.completed(),
                     student.total(),
-                    course(student.course(), student.finished()));
+                    course(student.course(), student.finished()),
+                    practices(student.practices()));
             case CohortDetail.Staff staff -> body(
-                    staff.summary(), staff.students(), null, null, course(staff.course(), null));
+                    staff.summary(),
+                    staff.students(),
+                    null,
+                    null,
+                    course(staff.course(), null),
+                    practices(staff.practices()));
         };
     }
 
@@ -93,7 +101,8 @@ class CohortController {
             List<Progress> students,
             Integer completed,
             Integer total,
-            CourseBody course) {
+            CourseBody course,
+            List<PracticeBody> practices) {
         List<ProgressBody> roster = students == null
                 ? null
                 : students.stream().map(ProgressBody::from).toList();
@@ -106,7 +115,8 @@ class CohortController {
                 roster,
                 completed,
                 total,
-                course);
+                course,
+                practices);
     }
 
     private static CourseBody course(Course course, Set<UUID> finished) {
@@ -127,7 +137,55 @@ class CohortController {
                         finished == null ? null : finished.contains(lesson.id()))).toList());
     }
 
+    @PostMapping("/cohorts/{id}/practices")
+    ResponseEntity<IdName> openPractice(
+            Authentication authentication,
+            @PathVariable UUID id,
+            @RequestBody PracticeRequest body) {
+        PracticeRequest request = body == null ? new PracticeRequest(null, null) : body;
+        CohortApplication.Opened opened = cohorts.openPractice(
+                RequestActor.from(authentication),
+                id,
+                request.title(),
+                request.prompt());
+        return ResponseEntity.status(HttpStatus.CREATED).body(new IdName(opened.id(), opened.name()));
+    }
+
+    @PostMapping("/cohorts/{id}/practices/{practiceId}/submission")
+    ResponseEntity<Void> submit(
+            Authentication authentication,
+            @PathVariable UUID id,
+            @PathVariable UUID practiceId,
+            @RequestBody TextRequest body) {
+        cohorts.submit(RequestActor.from(authentication), id, practiceId, body == null ? null : body.text());
+        return ResponseEntity.status(HttpStatus.CREATED).build();
+    }
+
+    @PostMapping("/cohorts/{id}/practices/{practiceId}/feedback")
+    ResponseEntity<Void> feedback(
+            Authentication authentication,
+            @PathVariable UUID id,
+            @PathVariable UUID practiceId,
+            @RequestBody FeedbackRequest body) {
+        FeedbackRequest request = body == null ? new FeedbackRequest(null, null) : body;
+        cohorts.feedback(RequestActor.from(authentication), id, practiceId, request.student(), request.text());
+        return ResponseEntity.noContent().build();
+    }
+
+    private static List<PracticeBody> practices(List<Practice> practices) {
+        return practices.stream().map(PracticeBody::from).toList();
+    }
+
     record OpenBody(String name, UUID courseId, String teacher) {
+    }
+
+    record PracticeRequest(String title, String prompt) {
+    }
+
+    record TextRequest(String text) {
+    }
+
+    record FeedbackRequest(String student, String text) {
     }
 
     record IdName(UUID id, String name) {
@@ -164,7 +222,29 @@ class CohortController {
             List<ProgressBody> students,
             Integer completed,
             Integer total,
-            CourseBody course) {
+            CourseBody course,
+            List<PracticeBody> practices) {
+    }
+
+    record PracticeBody(UUID id, String title, String prompt, List<DeliveryBody> deliveries) {
+
+        static PracticeBody from(Practice practice) {
+            return new PracticeBody(
+                    practice.id(),
+                    practice.title(),
+                    practice.prompt(),
+                    practice.deliveries().stream().map(DeliveryBody::from).toList());
+        }
+
+    }
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    record DeliveryBody(String student, String text, String feedback) {
+
+        static DeliveryBody from(Delivery delivery) {
+            return new DeliveryBody(delivery.student(), delivery.text(), delivery.feedback());
+        }
+
     }
 
 }

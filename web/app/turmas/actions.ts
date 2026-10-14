@@ -27,6 +27,37 @@ export async function completeLesson(formData: FormData) {
   redirect(page);
 }
 
+export async function openPractice(formData: FormData) {
+  const cohortId = field(formData, "cohortId");
+  const page = `/turmas/${cohortId}`;
+  await post(
+    `/cohorts/${cohortId}/practices`,
+    { title: field(formData, "title"), prompt: field(formData, "prompt") },
+    page,
+  );
+  redirect(page);
+}
+
+export async function submitPractice(formData: FormData) {
+  const cohortId = field(formData, "cohortId");
+  const practiceId = field(formData, "practiceId");
+  const page = `/turmas/${cohortId}`;
+  await post(`/cohorts/${cohortId}/practices/${practiceId}/submission`, { text: field(formData, "text") }, page);
+  redirect(page);
+}
+
+export async function returnPractice(formData: FormData) {
+  const cohortId = field(formData, "cohortId");
+  const practiceId = field(formData, "practiceId");
+  const page = `/turmas/${cohortId}`;
+  await post(
+    `/cohorts/${cohortId}/practices/${practiceId}/feedback`,
+    { student: field(formData, "student"), text: field(formData, "text") },
+    page,
+  );
+  redirect(page);
+}
+
 export async function enrollStudent(formData: FormData) {
   const cohortId = field(formData, "cohortId");
   const page = `/turmas/${cohortId}`;

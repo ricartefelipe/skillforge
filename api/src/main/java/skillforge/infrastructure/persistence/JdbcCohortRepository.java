@@ -1,5 +1,7 @@
 package skillforge.infrastructure.persistence;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -22,8 +24,11 @@ import skillforge.domain.cohort.CohortDetail;
 import skillforge.domain.cohort.CohortListing;
 import skillforge.domain.cohort.CohortRepository;
 import skillforge.domain.cohort.CohortSummary;
+import skillforge.domain.cohort.Delivery;
+import skillforge.domain.cohort.Practice;
 import skillforge.domain.cohort.Progress;
 import skillforge.domain.identity.Actor;
+import skillforge.domain.identity.Role;
 import skillforge.domain.shared.Failure;
 import skillforge.domain.shared.Rejection;
 
@@ -136,10 +141,86 @@ class JdbcCohortRepository implements CohortRepository {
                             mine.completed(),
                             mine.total(),
                             course,
-                            completedLessons(id, actor.username())));
+                            completedLessons(id, actor.username()),
+                            practicesOf(id, actor)));
                 }
-                case DOCENTE, ADMINISTRACAO -> Optional.of(new CohortDetail.Staff(row, membersOf(row), course));
+                case DOCENTE, ADMINISTRACAO -> Optional.of(
+                        new CohortDetail.Staff(row, membersOf(row), course, practicesOf(id, actor)));
             };
+        }
+        catch (DataAccessResourceFailureException ex) {
+            throw new Unavailable(ex);
+        }
+    }
+
+    @Override
+    public UUID openPractice(UUID cohortId, Actor actor, String title, String prompt) {
+        schema.ensure();
+        UUID id = UUID.randomUUID();
+        try {
+            CohortSummary cohort = requireLead(cohortId, actor);
+            jdbc.update(
+                    "INSERT INTO practice (id, cohort_id, title, prompt) VALUES (?, ?, ?, ?)",
+                    id,
+                    cohort.id(),
+                    title,
+                    prompt);
+        }
+        catch (DuplicateKeyException ex) {
+            throw new Rejection(Failure.DUPLICATE_PRACTICE);
+        }
+        catch (DataAccessResourceFailureException ex) {
+            throw new Unavailable(ex);
+        }
+        return id;
+    }
+
+    @Override
+    public void submit(UUID cohortId, UUID practiceId, Actor actor, String text) {
+        schema.ensure();
+        try {
+            if (!enrolled(cohortId, actor.username()) || !practiceInCohort(cohortId, practiceId)) {
+                throw new Rejection(Failure.NOT_FOUND);
+            }
+            String feedback = currentFeedback(practiceId, actor.username());
+            if (feedback == null && !submissionExists(practiceId, actor.username())) {
+                jdbc.update(
+                        "INSERT INTO submission (practice_id, student, body) VALUES (?, ?, ?)",
+                        practiceId,
+                        actor.username(),
+                        text);
+                return;
+            }
+            if (feedback != null) {
+                throw new Rejection(Failure.ALREADY_RETURNED);
+            }
+            jdbc.update(
+                    "UPDATE submission SET body = ? WHERE practice_id = ? AND student = ?",
+                    text,
+                    practiceId,
+                    actor.username());
+        }
+        catch (DataAccessResourceFailureException ex) {
+            throw new Unavailable(ex);
+        }
+    }
+
+    @Override
+    public void feedback(UUID cohortId, UUID practiceId, Actor actor, String student, String text) {
+        schema.ensure();
+        try {
+            requireLead(cohortId, actor);
+            if (!practiceInCohort(cohortId, practiceId)) {
+                throw new Rejection(Failure.NOT_FOUND);
+            }
+            int updated = jdbc.update(
+                    "UPDATE submission SET feedback = ? WHERE practice_id = ? AND student = ?",
+                    text,
+                    practiceId,
+                    student);
+            if (updated == 0) {
+                throw new Rejection(Failure.NOT_FOUND);
+            }
         }
         catch (DataAccessResourceFailureException ex) {
             throw new Unavailable(ex);
@@ -162,6 +243,99 @@ class JdbcCohortRepository implements CohortRepository {
         catch (DataAccessResourceFailureException ex) {
             throw new Unavailable(ex);
         }
+    }
+
+    private CohortSummary requireLead(UUID cohortId, Actor actor) {
+        List<CohortSummary> rows = query(LIST + " WHERE cohort.id = ?", cohortId);
+        if (rows.isEmpty() || !CohortAccess.canLead(actor.role(), rows.get(0).teacher(), actor.username())) {
+            throw new Rejection(Failure.NOT_FOUND);
+        }
+        return rows.get(0);
+    }
+
+    private boolean practiceInCohort(UUID cohortId, UUID practiceId) {
+        Integer count = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM practice WHERE id = ? AND cohort_id = ?",
+                Integer.class,
+                practiceId,
+                cohortId);
+        return count != null && count > 0;
+    }
+
+    private boolean submissionExists(UUID practiceId, String student) {
+        Integer count = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM submission WHERE practice_id = ? AND student = ?",
+                Integer.class,
+                practiceId,
+                student);
+        return count != null && count > 0;
+    }
+
+    private String currentFeedback(UUID practiceId, String student) {
+        List<String> rows = jdbc.query(
+                "SELECT feedback FROM submission WHERE practice_id = ? AND student = ?",
+                (rs, row) -> rs.getString("feedback"),
+                practiceId,
+                student);
+        if (rows.isEmpty()) {
+            return null;
+        }
+        return rows.get(0);
+    }
+
+    private List<Practice> practicesOf(UUID cohortId, Actor actor) {
+        List<PracticeSeed> seeds = jdbc.query(
+                "SELECT id, title, prompt FROM practice WHERE cohort_id = ? ORDER BY title",
+                (rs, row) -> new PracticeSeed(
+                        rs.getObject("id", UUID.class),
+                        rs.getString("title"),
+                        rs.getString("prompt")),
+                cohortId);
+        Map<UUID, List<Delivery>> deliveries = new LinkedHashMap<>();
+        for (PracticeSeed seed : seeds) {
+            deliveries.put(seed.id(), new ArrayList<>());
+        }
+        if (seeds.isEmpty()) {
+            return List.of();
+        }
+        if (actor.role() == Role.ALUNO) {
+            loadDeliveries(deliveries, cohortId, actor.username());
+        }
+        else {
+            loadDeliveries(deliveries, cohortId, null);
+        }
+        List<Practice> practices = new ArrayList<>();
+        for (PracticeSeed seed : seeds) {
+            practices.add(new Practice(seed.id(), seed.title(), seed.prompt(), deliveries.get(seed.id())));
+        }
+        return List.copyOf(practices);
+    }
+
+    private void loadDeliveries(Map<UUID, List<Delivery>> deliveries, UUID cohortId, String student) {
+        String sql = """
+                SELECT submission.practice_id, submission.student, submission.body, submission.feedback
+                FROM submission
+                JOIN practice ON practice.id = submission.practice_id
+                WHERE practice.cohort_id = ?
+                """;
+        if (student == null) {
+            jdbc.query(sql + " ORDER BY submission.student", (rs, row) -> keep(deliveries, rs), cohortId);
+            return;
+        }
+        jdbc.query(
+                sql + " AND submission.student = ? ORDER BY submission.student",
+                (rs, row) -> keep(deliveries, rs),
+                cohortId,
+                student);
+    }
+
+    private static Object keep(Map<UUID, List<Delivery>> deliveries, ResultSet rs) throws SQLException {
+        UUID practiceId = rs.getObject("practice_id", UUID.class);
+        List<Delivery> found = deliveries.get(practiceId);
+        if (found != null) {
+            found.add(new Delivery(rs.getString("student"), rs.getString("body"), rs.getString("feedback")));
+        }
+        return null;
     }
 
     private boolean allowed(CohortSummary row, Actor actor) {
@@ -297,6 +471,9 @@ class JdbcCohortRepository implements CohortRepository {
                     return null;
                 }, cohortId);
         return counts;
+    }
+
+    private record PracticeSeed(UUID id, String title, String prompt) {
     }
 
     private List<CohortSummary> query(String sql, Object... args) {

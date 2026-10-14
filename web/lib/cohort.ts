@@ -17,6 +17,19 @@ export type CohortSummary = {
   total: number | null;
 };
 
+export type Delivery = {
+  student: string;
+  text: string;
+  feedback: string | null;
+};
+
+export type Practice = {
+  id: string;
+  title: string;
+  prompt: string;
+  deliveries: Delivery[];
+};
+
 export type CohortDetail = {
   id: string;
   name: string;
@@ -25,6 +38,7 @@ export type CohortDetail = {
   students: StudentProgress[] | null;
   completed: number | null;
   total: number | null;
+  practices: Practice[];
 };
 
 type Roster = { present: false } | { present: true; students: StudentProgress[] };
@@ -35,6 +49,10 @@ export function progressLabel(completed: number, total: number): string {
 
 export function canManageCohorts(role: string): boolean {
   return role === "administracao";
+}
+
+export function canLeadPractices(role: string): boolean {
+  return role === "docente" || role === "administracao";
 }
 
 export function cohortNotice(code: string | null): string | null {
@@ -49,6 +67,18 @@ export function cohortNotice(code: string | null): string | null {
       return "Já existe uma turma com esse nome neste curso.";
     case "already-enrolled":
       return "Esse aluno já está na turma.";
+    case "blank-practice":
+      return "A prática precisa de um título.";
+    case "blank-prompt":
+      return "A prática precisa de um enunciado.";
+    case "blank-submission":
+      return "A entrega precisa de um texto.";
+    case "blank-feedback":
+      return "A devolutiva precisa de um texto.";
+    case "duplicate-practice":
+      return "Já existe uma prática com esse título nesta turma.";
+    case "already-returned":
+      return "O docente já devolveu esta entrega.";
     case "too-large":
       return "Passa do limite.";
     case "not-found":
@@ -102,7 +132,16 @@ export function cohortDetailFromBody(httpOk: boolean, body: unknown): CohortDeta
   const course = courseFrom(courseValue);
   const roster = rosterFrom(body);
   const tally = tallyFrom(body);
-  if (id === null || name === null || teacher === null || course === null || roster === null || tally === null) {
+  const practices = practicesFrom(body);
+  if (
+    id === null ||
+    name === null ||
+    teacher === null ||
+    course === null ||
+    roster === null ||
+    tally === null ||
+    practices === null
+  ) {
     return null;
   }
   return {
@@ -113,6 +152,7 @@ export function cohortDetailFromBody(httpOk: boolean, body: unknown): CohortDeta
     students: roster.present ? roster.students : null,
     completed: tally === undefined ? null : tally.completed,
     total: tally === undefined ? null : tally.total,
+    practices,
   };
 }
 
@@ -200,6 +240,68 @@ function count(value: object, key: string): number | null {
     return null;
   }
   return found;
+}
+
+function practicesFrom(value: object): Practice[] | null {
+  if (!("practices" in value)) {
+    return [];
+  }
+  const found = (value as Record<string, unknown>).practices;
+  if (!Array.isArray(found)) {
+    return null;
+  }
+  const practices: Practice[] = [];
+  for (const item of found) {
+    const practice = practiceFrom(item);
+    if (practice === null) {
+      return null;
+    }
+    practices.push(practice);
+  }
+  return practices;
+}
+
+function practiceFrom(value: unknown): Practice | null {
+  if (value === null || typeof value !== "object") {
+    return null;
+  }
+  const id = text(value, "id");
+  const title = text(value, "title");
+  const prompt = text(value, "prompt");
+  if (!("deliveries" in value) || !Array.isArray((value as Record<string, unknown>).deliveries)) {
+    return null;
+  }
+  const deliveries: Delivery[] = [];
+  for (const item of (value as Record<string, unknown>).deliveries as unknown[]) {
+    const delivery = deliveryFrom(item);
+    if (delivery === null) {
+      return null;
+    }
+    deliveries.push(delivery);
+  }
+  if (id === null || title === null || prompt === null) {
+    return null;
+  }
+  return { id, title, prompt, deliveries };
+}
+
+function deliveryFrom(value: unknown): Delivery | null {
+  if (value === null || typeof value !== "object") {
+    return null;
+  }
+  const student = text(value, "student");
+  const body = text(value, "text");
+  if (student === null || body === null) {
+    return null;
+  }
+  if (!("feedback" in value)) {
+    return { student, text: body, feedback: null };
+  }
+  const feedback = text(value, "feedback");
+  if (feedback === null) {
+    return null;
+  }
+  return { student, text: body, feedback };
 }
 
 function text(value: object, key: string): string | null {

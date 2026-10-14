@@ -18,4 +18,10 @@ public interface CohortRepository {
 
     void complete(UUID cohortId, UUID lessonId, String student);
 
+    UUID openPractice(UUID cohortId, Actor actor, String title, String prompt);
+
+    void submit(UUID cohortId, UUID practiceId, Actor actor, String text);
+
+    void feedback(UUID cohortId, UUID practiceId, Actor actor, String student, String text);
+
 }

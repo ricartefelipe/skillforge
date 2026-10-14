@@ -61,6 +61,16 @@ O aluno marca a aula da turma como concluída. A marca permanece depois de sair 
 - Marcar de novo não muda a conta. Não há nota.
 - Com o Postgres fechado, a conclusão responde `503` e a vida continua `200`.
 
+## Incremento 5
+
+A turma tem práticas. O docente abre o enunciado, o aluno entrega um texto e o docente devolve um comentário. Não há nota.
+
+- O aluno não abre prática. Quem não ministra a turma não a vê.
+- Título repetido na mesma turma, texto em branco ou acima do limite são recusados.
+- Depois da devolutiva, a entrega não muda.
+- O aluno vê só a própria entrega. O docente vê as entregas da turma.
+- Com o Postgres fechado, a prática responde `503` e a vida continua `200`.
+
 ## Arranque
 
 É preciso Java 21, Node.js 22, Docker e curl.

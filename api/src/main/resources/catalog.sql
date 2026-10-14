@@ -54,6 +54,28 @@ CREATE TABLE IF NOT EXISTS enrollment (
 
 CREATE UNIQUE INDEX IF NOT EXISTS enrollment_student_ci ON enrollment (cohort_id, lower(student));
 
+CREATE TABLE IF NOT EXISTS practice (
+    id uuid PRIMARY KEY,
+    cohort_id uuid NOT NULL REFERENCES cohort (id),
+    title text NOT NULL,
+    prompt text NOT NULL,
+    CONSTRAINT practice_title_not_blank CHECK (length(btrim(title)) > 0),
+    CONSTRAINT practice_prompt_not_blank CHECK (length(btrim(prompt)) > 0)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS practice_cohort_title_unique ON practice (cohort_id, lower(title));
+
+CREATE TABLE IF NOT EXISTS submission (
+    practice_id uuid NOT NULL REFERENCES practice (id),
+    student text NOT NULL,
+    body text NOT NULL,
+    feedback text,
+    CONSTRAINT submission_student_not_blank CHECK (length(btrim(student)) > 0),
+    CONSTRAINT submission_body_not_blank CHECK (length(btrim(body)) > 0),
+    CONSTRAINT submission_feedback_not_blank CHECK (feedback IS NULL OR length(btrim(feedback)) > 0),
+    PRIMARY KEY (practice_id, student)
+);
+
 CREATE TABLE IF NOT EXISTS completion (
     cohort_id uuid NOT NULL REFERENCES cohort (id),
     lesson_id uuid NOT NULL REFERENCES lesson (id),
