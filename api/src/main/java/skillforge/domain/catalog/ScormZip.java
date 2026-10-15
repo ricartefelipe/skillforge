@@ -23,7 +23,10 @@ public final class ScormZip {
     public record Entry(String path, byte[] bytes, String mediaType) {
     }
 
-    public record Unpacked(String launchPath, List<Entry> files) {
+    public record Item(String title, String path) {
+    }
+
+    public record Unpacked(String launchPath, List<Item> items, List<Entry> files) {
     }
 
     private ScormZip() {
@@ -47,38 +50,72 @@ public final class ScormZip {
         catch (IOException ex) {
             throw new Rejection(Failure.NOT_PACKAGE);
         }
-        String manifest = files.keySet().stream().filter(path -> path.endsWith("imsmanifest.xml")).findFirst()
+        String manifestPath = files.keySet().stream().filter(path -> path.endsWith("imsmanifest.xml")).findFirst()
                 .orElseThrow(() -> new Rejection(Failure.NOT_PACKAGE));
-        String href = href(files.get(manifest));
-        String launch = join(parent(manifest), href);
-        if (!files.containsKey(launch)) {
+        Outline outline = outline(files.get(manifestPath), parent(manifestPath));
+        if (!files.containsKey(outline.launch())) {
             throw new Rejection(Failure.NOT_PACKAGE);
         }
         List<Entry> stored = new ArrayList<>();
         for (Map.Entry<String, byte[]> file : files.entrySet()) {
             stored.add(new Entry(file.getKey(), file.getValue(), type(file.getKey())));
         }
-        return new Unpacked(launch, List.copyOf(stored));
+        List<Item> items = outline.items().isEmpty()
+                ? List.of(new Item("Aula", outline.launch()))
+                : outline.items();
+        return new Unpacked(outline.launch(), items, List.copyOf(stored));
     }
 
-    private static String href(byte[] manifest) {
+    private record Outline(String launch, List<Item> items) {
+    }
+
+    private static Outline outline(byte[] manifest, String base) {
         try {
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
             factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
             factory.setExpandEntityReferences(false);
             Document document = factory.newDocumentBuilder().parse(new ByteArrayInputStream(manifest));
-            NodeList resources = document.getElementsByTagName("resource");
-            for (int index = 0; index < resources.getLength(); index++) {
-                String href = ((Element) resources.item(index)).getAttribute("href");
-                if (!href.isBlank()) {
-                    return href;
+            Map<String, String> resources = new LinkedHashMap<>();
+            NodeList resourceNodes = document.getElementsByTagName("resource");
+            String first = null;
+            for (int index = 0; index < resourceNodes.getLength(); index++) {
+                Element resource = (Element) resourceNodes.item(index);
+                String href = resource.getAttribute("href");
+                if (href.isBlank()) {
+                    continue;
+                }
+                String path = join(base, href);
+                resources.put(resource.getAttribute("identifier"), path);
+                if (first == null) {
+                    first = path;
                 }
             }
+            if (first == null) {
+                throw new Rejection(Failure.NOT_PACKAGE);
+            }
+            List<Item> items = new ArrayList<>();
+            NodeList itemNodes = document.getElementsByTagName("item");
+            for (int index = 0; index < itemNodes.getLength(); index++) {
+                Element item = (Element) itemNodes.item(index);
+                String path = resources.get(item.getAttribute("identifierref"));
+                if (path == null) {
+                    continue;
+                }
+                String title = "Item";
+                NodeList titles = item.getElementsByTagName("title");
+                if (titles.getLength() > 0 && titles.item(0).getTextContent() != null) {
+                    String text = titles.item(0).getTextContent().trim();
+                    if (!text.isBlank()) {
+                        title = text;
+                    }
+                }
+                items.add(new Item(title, path));
+            }
+            return new Outline(items.isEmpty() ? first : items.get(0).path(), items);
         }
         catch (Exception ex) {
             throw new Rejection(Failure.NOT_PACKAGE);
         }
-        throw new Rejection(Failure.NOT_PACKAGE);
     }
 
     public static String normalize(String raw) {

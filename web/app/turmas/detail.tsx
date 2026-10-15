@@ -245,8 +245,23 @@ export function CohortDetailView({
                           <input name={`choice:${question.id}/${choice.id}`} defaultValue={choice.label} required />
                         </label>
                       ))}
+                      <label>
+                        <input type="checkbox" name="retire" value={question.id} /> Retirar questão
+                      </label>
                     </fieldset>
                   ))}
+                  <label>
+                    Nova questão
+                    <input name="newPrompt" />
+                  </label>
+                  <label>
+                    Alternativa correta
+                    <input name="newRight" />
+                  </label>
+                  <label>
+                    Alternativa errada
+                    <input name="newWrong" />
+                  </label>
                   <button type="submit">Guardar questões</button>
                 </form>
               ) : null}

@@ -11,9 +11,9 @@ import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
-import skillforge.domain.catalog.Doubt;
-import skillforge.domain.catalog.ForumRepository;
-import skillforge.domain.catalog.Reply;
+import skillforge.domain.forum.Doubt;
+import skillforge.domain.forum.ForumRepository;
+import skillforge.domain.forum.Reply;
 
 @Component
 class JdbcForumRepository implements ForumRepository {

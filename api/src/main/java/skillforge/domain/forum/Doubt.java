@@ -1,4 +1,4 @@
-package skillforge.domain.catalog;
+package skillforge.domain.forum;
 
 import java.util.List;
 import java.util.Objects;

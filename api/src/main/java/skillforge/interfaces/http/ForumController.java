@@ -13,8 +13,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import skillforge.application.catalog.ForumApplication;
-import skillforge.domain.catalog.Doubt;
-import skillforge.domain.catalog.Reply;
+import skillforge.domain.forum.Doubt;
+import skillforge.domain.forum.Reply;
 
 @RestController
 class ForumController {

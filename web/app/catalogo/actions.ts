@@ -87,6 +87,10 @@ export async function createLesson(formData: FormData) {
   if (secret.length > 0) {
     body.set("secret", secret);
   }
+  const authLogin = field(formData, "authLogin");
+  if (authLogin.length > 0) {
+    body.set("authLogin", authLogin);
+  }
   await send(`/modules/${moduleId}/lessons`, body, {}, back(formData));
 }
 

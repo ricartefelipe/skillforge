@@ -21,6 +21,7 @@ import skillforge.domain.catalog.LessonContent;
 import skillforge.domain.catalog.LessonFile;
 import skillforge.domain.catalog.LessonKind;
 import skillforge.domain.catalog.ModuleOrder;
+import skillforge.domain.catalog.ScormOutline;
 import skillforge.domain.catalog.ScormZip;
 import skillforge.domain.catalog.LessonText;
 import skillforge.domain.catalog.Module;
@@ -104,6 +105,8 @@ class JdbcCourseRepository implements CourseRepository {
             jdbc.update("DELETE FROM doubt WHERE lesson_id = ?", lessonId);
             jdbc.update("DELETE FROM completion WHERE lesson_id = ?", lessonId);
             jdbc.update("DELETE FROM lesson_asset WHERE lesson_id = ?", lessonId);
+            jdbc.update("DELETE FROM scorm_item_track WHERE lesson_id = ?", lessonId);
+            jdbc.update("DELETE FROM scorm_item WHERE lesson_id = ?", lessonId);
             jdbc.update("DELETE FROM scorm_track WHERE lesson_id = ?", lessonId);
             jdbc.update("DELETE FROM scorm_file WHERE lesson_id = ?", lessonId);
             jdbc.update("DELETE FROM lesson_tool WHERE lesson_id = ?", lessonId);
@@ -274,6 +277,16 @@ class JdbcCourseRepository implements CourseRepository {
                 "__launch__",
                 unpacked.launchPath().getBytes(java.nio.charset.StandardCharsets.UTF_8),
                 "text/plain");
+        int position = 1;
+        for (ScormZip.Item item : unpacked.items()) {
+            jdbc.update(
+                    "INSERT INTO scorm_item (lesson_id, position, title, path) VALUES (?, ?, ?, ?)",
+                    id,
+                    position,
+                    item.title(),
+                    item.path());
+            position++;
+        }
         return id;
     }
 
@@ -293,13 +306,57 @@ class JdbcCourseRepository implements CourseRepository {
     }
 
     @Override
-    public Optional<String> scormLaunch(UUID lessonId) {
+    public ScormOutline scormOutline(UUID lessonId, String student) {
         schema.ensure();
-        List<String> rows = jdbc.query(
-                "SELECT media FROM scorm_file WHERE lesson_id = ? AND path = '__launch__'",
-                (rs, row) -> new String(rs.getBytes("media"), java.nio.charset.StandardCharsets.UTF_8),
+        List<ScormOutline.Step> steps = new java.util.ArrayList<>();
+        jdbc.query(
+                "SELECT position, title, path FROM scorm_item WHERE lesson_id = ? ORDER BY position",
+                (rs, row) -> {
+                    steps.add(new ScormOutline.Step(
+                            rs.getInt("position"),
+                            rs.getString("title"),
+                            rs.getString("path"),
+                            false));
+                    return null;
+                },
                 lessonId);
-        return rows.stream().findFirst();
+        java.util.Set<Integer> done = new java.util.HashSet<>();
+        jdbc.query(
+                """
+                SELECT position FROM scorm_item_track
+                WHERE lesson_id = ? AND student = ? AND status IN ('completed', 'passed')
+                """,
+                (rs, row) -> done.add(rs.getInt("position")),
+                lessonId,
+                student);
+        if (steps.isEmpty()) {
+            List<String> launch = jdbc.query(
+                    "SELECT media FROM scorm_file WHERE lesson_id = ? AND path = '__launch__'",
+                    (rs, row) -> new String(rs.getBytes("media"), java.nio.charset.StandardCharsets.UTF_8),
+                    lessonId);
+            if (launch.isEmpty()) {
+                return new ScormOutline("", List.of());
+            }
+            return new ScormOutline(launch.get(0), List.of(new ScormOutline.Step(1, "Aula", launch.get(0), true)));
+        }
+        List<ScormOutline.Step> open = new java.util.ArrayList<>();
+        String current = steps.get(0).path();
+        boolean previousDone = true;
+        for (ScormOutline.Step step : steps) {
+            boolean unlocked = previousDone;
+            open.add(new ScormOutline.Step(step.position(), step.title(), step.path(), unlocked));
+            if (unlocked && !done.contains(step.position()) && current.equals(steps.get(0).path())) {
+                current = step.path();
+            }
+            previousDone = done.contains(step.position());
+        }
+        for (ScormOutline.Step step : open) {
+            if (step.open() && !done.contains(step.position())) {
+                current = step.path();
+                break;
+            }
+        }
+        return new ScormOutline(current, open);
     }
 
     @Override
@@ -318,13 +375,26 @@ class JdbcCourseRepository implements CourseRepository {
     }
 
     @Override
-    public void trackScorm(UUID lessonId, String student, String status, Integer score) {
+    public void trackScorm(UUID lessonId, String student, String status, Integer score, int position) {
         schema.ensure();
         jdbc.update("""
                 INSERT INTO scorm_track (lesson_id, student, status, score) VALUES (?, ?, ?, ?)
                 ON CONFLICT (lesson_id, student) DO UPDATE SET status = EXCLUDED.status, score = EXCLUDED.score
                 """, lessonId, student, status, score);
-        if ("completed".equals(status) || "passed".equals(status)) {
+        jdbc.update("""
+                INSERT INTO scorm_item_track (lesson_id, position, student, status) VALUES (?, ?, ?, ?)
+                ON CONFLICT (lesson_id, position, student) DO UPDATE SET status = EXCLUDED.status
+                """, lessonId, position, student, status);
+        Integer items = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM scorm_item WHERE lesson_id = ?",
+                Integer.class,
+                lessonId);
+        Integer finished = jdbc.queryForObject("""
+                SELECT COUNT(*) FROM scorm_item_track
+                WHERE lesson_id = ? AND student = ? AND status IN ('completed', 'passed')
+                """, Integer.class, lessonId, student);
+        boolean whole = items == null || items == 0 || (finished != null && finished >= items);
+        if (whole && ("completed".equals(status) || "passed".equals(status))) {
             jdbc.update("""
                     INSERT INTO completion (cohort_id, lesson_id, student)
                     SELECT cohort.id, lesson.id, enrollment.student
@@ -336,6 +406,98 @@ class JdbcCourseRepository implements CourseRepository {
                     ON CONFLICT DO NOTHING
                     """, student, lessonId);
         }
+    }
+
+    @Override
+    public void modernTool(UUID lessonId, String authLogin) {
+        schema.ensure();
+        jdbc.update(
+                "UPDATE lesson_tool SET auth_login = ?, client_id = 'skillforge' WHERE lesson_id = ?",
+                authLogin,
+                lessonId);
+    }
+
+    @Override
+    public java.util.Optional<String> toolAuth(UUID lessonId) {
+        schema.ensure();
+        java.util.List<String> rows = jdbc.query(
+                "SELECT auth_login FROM lesson_tool WHERE lesson_id = ? AND auth_login IS NOT NULL",
+                (rs, row) -> rs.getString("auth_login"),
+                lessonId);
+        return rows.stream().findFirst();
+    }
+
+    @Override
+    public void rememberHint(UUID token, String username, UUID lessonId, String nonce) {
+        schema.ensure();
+        jdbc.update(
+                """
+                INSERT INTO lti_hint (token, username, lesson_id, nonce, expires_at)
+                VALUES (?, ?, ?, ?, now() + interval '10 minutes')
+                """,
+                token,
+                username,
+                lessonId,
+                nonce);
+    }
+
+    @Override
+    public java.util.Optional<String> takeHint(UUID token) {
+        schema.ensure();
+        java.util.List<String> rows = jdbc.query(
+                """
+                DELETE FROM lti_hint
+                WHERE token = ? AND expires_at > now()
+                RETURNING username || '|' || lesson_id::text || '|' || nonce
+                """,
+                (rs, row) -> rs.getString(1),
+                token);
+        return rows.stream().findFirst();
+    }
+
+    @Override
+    public String platformKid() {
+        ensurePlatformKey();
+        return jdbc.queryForObject("SELECT kid FROM lti_key LIMIT 1", String.class);
+    }
+
+    @Override
+    public String platformPrivate() {
+        ensurePlatformKey();
+        return jdbc.queryForObject("SELECT private_pem FROM lti_key LIMIT 1", String.class);
+    }
+
+    @Override
+    public String platformPublic() {
+        ensurePlatformKey();
+        return jdbc.queryForObject("SELECT public_pem FROM lti_key LIMIT 1", String.class);
+    }
+
+    private void ensurePlatformKey() {
+        schema.ensure();
+        Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM lti_key", Integer.class);
+        if (count != null && count > 0) {
+            return;
+        }
+        try {
+            java.security.KeyPairGenerator generator = java.security.KeyPairGenerator.getInstance("RSA");
+            generator.initialize(2048);
+            java.security.KeyPair pair = generator.generateKeyPair();
+            String kid = UUID.randomUUID().toString();
+            jdbc.update(
+                    "INSERT INTO lti_key (kid, private_pem, public_pem) VALUES (?, ?, ?)",
+                    kid,
+                    pem("PRIVATE KEY", pair.getPrivate().getEncoded()),
+                    pem("PUBLIC KEY", pair.getPublic().getEncoded()));
+        }
+        catch (Exception ex) {
+            throw new IllegalStateException("key");
+        }
+    }
+
+    private static String pem(String kind, byte[] encoded) {
+        String body = java.util.Base64.getMimeEncoder(64, "\n".getBytes()).encodeToString(encoded);
+        return "-----BEGIN " + kind + "-----\n" + body + "\n-----END " + kind + "-----";
     }
 
     @Override
