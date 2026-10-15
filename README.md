@@ -194,6 +194,14 @@ A visão noturna e o fechamento do que ainda estava pela metade.
 - O fórum saiu do pacote do catálogo.
 - Sem servidor de correio, a mensagem enviada aparece em Recados.
 
+## Incremento 12
+
+A gravação da turma deixou de ficar numa classe só.
+
+- A turma guarda abertura, matrícula, conclusão e boletim.
+- A prática, a prova e a sala têm cada uma o próprio adaptador.
+- O repositório da turma não reúne mais esses três contratos.
+
 ## Arranque
 
 É preciso Java 21, Node.js 22, Docker e curl.

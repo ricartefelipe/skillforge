@@ -1,5 +1,6 @@
 package skillforge.domain.cohort;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -14,5 +15,7 @@ public interface ExamRepository {
     void takeExam(UUID cohortId, UUID examId, Actor actor, Map<UUID, UUID> answers);
 
     void removeExam(UUID cohortId, Actor actor, UUID examId);
+
+    List<Exam> inCohort(UUID cohortId, Actor actor);
 
 }
