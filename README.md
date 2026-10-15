@@ -215,6 +215,17 @@ A pasta do editor fica de fora do repositório.
 
 - `.idea/` não entra no Git.
 
+## Incremento 15
+
+A aula fica legível para quem estuda.
+
+- A playlist mostra o tipo e a conclusão, e a próxima aula fica logo abaixo do material.
+- Continuar segue o curso já começado.
+- O prazo sai em dia e hora. PDF e ebook têm nomes distintos.
+- O certificado só aparece quando a média e a presença autorizam.
+- O e-mail gravado volta para Recados.
+- A média do boletim é a mesma conta do certificado.
+
 ## Arranque
 
 É preciso Java 21, Node.js 22, Docker e curl.

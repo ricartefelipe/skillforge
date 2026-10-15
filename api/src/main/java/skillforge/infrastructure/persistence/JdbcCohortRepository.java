@@ -20,6 +20,7 @@ import skillforge.domain.cohort.CohortListing;
 import skillforge.domain.cohort.CohortRepository;
 import skillforge.domain.cohort.CohortSummary;
 import skillforge.domain.cohort.ExamRepository;
+import skillforge.domain.cohort.GradeAverage;
 import skillforge.domain.cohort.PracticeRepository;
 import skillforge.domain.cohort.Progress;
 import skillforge.domain.cohort.Report;
@@ -199,14 +200,32 @@ class JdbcCohortRepository implements CohortRepository {
             for (CohortListing listing : visible(actor)) {
                 UUID cohortId = listing.summary().id();
                 int[] weight = gate.weights(cohortId);
+                List<skillforge.domain.cohort.Practice> cohortPractices = practices.inCohort(cohortId, actor);
+                List<skillforge.domain.cohort.Exam> cohortExams = exams.inCohort(cohortId, actor);
+                java.util.OptionalInt tenths = GradeAverage.tenths(
+                        practiceGrades(cohortPractices),
+                        examGrades(cohortExams),
+                        weight[0],
+                        weight[1]);
+                int days = actor.role() == Role.ALUNO ? counted(
+                        "SELECT COUNT(*) FROM class_day WHERE cohort_id = ?",
+                        cohortId) : 0;
+                int present = actor.role() == Role.ALUNO ? counted("""
+                        SELECT COUNT(*) FROM presence
+                        JOIN class_day ON class_day.id = presence.class_day_id
+                        WHERE class_day.cohort_id = ? AND presence.student = ? AND presence.present
+                        """, cohortId, actor.username()) : 0;
                 reports.add(new Report(
                         cohortId,
                         listing.summary().name(),
                         listing.summary().courseName(),
-                        practices.inCohort(cohortId, actor),
-                        exams.inCohort(cohortId, actor),
+                        cohortPractices,
+                        cohortExams,
                         weight[0],
-                        weight[1]));
+                        weight[1],
+                        tenths.isPresent() ? GradeAverage.format(tenths.getAsInt()) : null,
+                        tenths.isPresent() && actor.role() == Role.ALUNO
+                                && GradeAverage.earnsCertificate(tenths.getAsInt(), days, present)));
             }
             return List.copyOf(reports);
         }
@@ -332,6 +351,33 @@ class JdbcCohortRepository implements CohortRepository {
                     return null;
                 }, cohortId);
         return counts;
+    }
+
+    private int counted(String sql, Object... args) {
+        Integer count = gate.jdbc.queryForObject(sql, Integer.class, args);
+        return count == null ? 0 : count;
+    }
+
+    private static List<Integer> practiceGrades(List<skillforge.domain.cohort.Practice> cohortPractices) {
+        List<Integer> grades = new ArrayList<>();
+        for (skillforge.domain.cohort.Practice practice : cohortPractices) {
+            for (skillforge.domain.cohort.Delivery delivery : practice.deliveries()) {
+                if (delivery.grade() != null) {
+                    grades.add(delivery.grade());
+                }
+            }
+        }
+        return grades;
+    }
+
+    private static List<Integer> examGrades(List<skillforge.domain.cohort.Exam> cohortExams) {
+        List<Integer> grades = new ArrayList<>();
+        for (skillforge.domain.cohort.Exam exam : cohortExams) {
+            for (skillforge.domain.cohort.ExamScore score : exam.scores()) {
+                grades.add(score.grade());
+            }
+        }
+        return grades;
     }
 
 }

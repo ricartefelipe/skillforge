@@ -15,6 +15,7 @@ import skillforge.domain.cohort.Announcement;
 import skillforge.domain.cohort.Certificate;
 import skillforge.domain.cohort.ClassroomRepository;
 import skillforge.domain.cohort.CohortSummary;
+import skillforge.domain.cohort.GradeAverage;
 import skillforge.domain.cohort.Presence;
 import skillforge.domain.cohort.Roll;
 import skillforge.domain.identity.Actor;
@@ -168,8 +169,8 @@ class JdbcClassroomRepository implements ClassroomRepository {
             if (!existing.isEmpty()) {
                 return Optional.of(existing.get(0));
             }
-            int tenths = averageTenths(cohortId, actor.username());
-            if (tenths < 70 || !attendanceAllows(cohortId, actor.username())) {
+            int tenths = averageTenths(cohortId, actor.username()).orElse(0);
+            if (!GradeAverage.earnsCertificate(tenths, classDays(cohortId), daysPresent(cohortId, actor.username()))) {
                 throw new Rejection(Failure.NOT_CERTIFIED);
             }
             java.time.LocalDate today = java.time.LocalDate.now();
@@ -184,7 +185,7 @@ class JdbcClassroomRepository implements ClassroomRepository {
                     actor.username(),
                     cohort.courseName(),
                     cohort.name(),
-                    formatAverage(tenths),
+                    GradeAverage.format(tenths),
                     today));
         }
         catch (DataAccessResourceFailureException ex) {
@@ -192,7 +193,7 @@ class JdbcClassroomRepository implements ClassroomRepository {
         }
     }
 
-    private int averageTenths(UUID cohortId, String student) {
+    private java.util.OptionalInt averageTenths(UUID cohortId, String student) {
         List<Integer> practices = new ArrayList<>();
         gate.jdbc.query("""
                 SELECT submission.grade FROM submission
@@ -206,36 +207,24 @@ class JdbcClassroomRepository implements ClassroomRepository {
                 WHERE exam.cohort_id = ? AND attempt.student = ?
                 """, (rs, row) -> exams.add(rs.getInt("grade")), cohortId, student);
         int[] weight = gate.weights(cohortId);
-        if (weight[0] == 1 && weight[1] == 1) {
-            List<Integer> grades = new ArrayList<>();
-            grades.addAll(practices);
-            grades.addAll(exams);
-            return meanTenths(grades);
-        }
-        if (practices.isEmpty()) {
-            return meanTenths(exams);
-        }
-        if (exams.isEmpty()) {
-            return meanTenths(practices);
-        }
-        double mixed = (mean(practices) * weight[0] + mean(exams) * weight[1]) / (weight[0] + weight[1]);
-        return (int) Math.round(mixed * 10);
+        return GradeAverage.tenths(practices, exams, weight[0], weight[1]);
     }
 
-    private boolean attendanceAllows(UUID cohortId, String student) {
+    private int classDays(UUID cohortId) {
         Integer days = gate.jdbc.queryForObject(
                 "SELECT COUNT(*) FROM class_day WHERE cohort_id = ?",
                 Integer.class,
                 cohortId);
-        if (days == null || days == 0) {
-            return true;
-        }
+        return days == null ? 0 : days;
+    }
+
+    private int daysPresent(UUID cohortId, String student) {
         Integer present = gate.jdbc.queryForObject("""
                 SELECT COUNT(*) FROM presence
                 JOIN class_day ON class_day.id = presence.class_day_id
                 WHERE class_day.cohort_id = ? AND presence.student = ? AND presence.present
                 """, Integer.class, cohortId, student);
-        return present != null && present * 100 >= days * 75;
+        return present == null ? 0 : present;
     }
 
     private static Certificate toCertificate(ResultSet rs) throws SQLException {
@@ -243,27 +232,8 @@ class JdbcClassroomRepository implements ClassroomRepository {
                 rs.getString("student"),
                 rs.getString(2),
                 rs.getString(3),
-                formatAverage(rs.getInt("average_tenths")),
+                GradeAverage.format(rs.getInt("average_tenths")),
                 rs.getDate("issued_on").toLocalDate());
-    }
-
-    private static String formatAverage(int tenths) {
-        return tenths / 10 + "." + Math.floorMod(tenths, 10);
-    }
-
-    private static int meanTenths(List<Integer> grades) {
-        if (grades.isEmpty()) {
-            return 0;
-        }
-        return (int) Math.round(mean(grades) * 10);
-    }
-
-    private static double mean(List<Integer> grades) {
-        int sum = 0;
-        for (int grade : grades) {
-            sum += grade;
-        }
-        return sum / (double) grades.size();
     }
 
 }

@@ -11,7 +11,9 @@ public record Report(
         List<Practice> practices,
         List<Exam> exams,
         int practiceWeight,
-        int examWeight) {
+        int examWeight,
+        String average,
+        boolean certified) {
 
     public Report {
         Objects.requireNonNull(cohortId, "cohortId");

@@ -53,6 +53,36 @@ export function narrowCourses(courses: Course[] | null, query: string): Course[]
     .filter((course) => course.name.toLocaleLowerCase("pt-BR").includes(needle) || course.modules.length > 0);
 }
 
+export function kindLabel(kind: LessonSummary["kind"]): string {
+  switch (kind) {
+    case "markdown":
+      return "Página";
+    case "pdf":
+      return "PDF";
+    case "ebook":
+      return "Ebook";
+    case "video":
+      return "Vídeo";
+    case "scorm":
+      return "Pacote";
+    case "lti":
+      return "Ferramenta";
+    default: {
+      const uncovered: never = kind;
+      return uncovered;
+    }
+  }
+}
+
+export function nextInTrail(course: Course, lessonId: string): LessonSummary | null {
+  const lessons = course.modules.flatMap((module) => module.lessons);
+  const index = lessons.findIndex((lesson) => lesson.id === lessonId);
+  if (index < 0 || index + 1 >= lessons.length) {
+    return null;
+  }
+  return lessons[index + 1];
+}
+
 export function canCompose(role: string): boolean {
   return role === "administracao";
 }

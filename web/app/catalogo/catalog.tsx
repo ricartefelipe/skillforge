@@ -1,23 +1,7 @@
 import Link from "next/link";
 
-import type { Course, LessonSummary } from "../../lib/catalog";
+import { kindLabel, type Course } from "../../lib/catalog";
 import { LessonForm } from "./lesson-form";
-
-function kindLabel(kind: LessonSummary["kind"]): string {
-  switch (kind) {
-    case "pdf":
-    case "ebook":
-      return "Ebook";
-    case "video":
-      return "Vídeo";
-    case "scorm":
-      return "Pacote";
-    case "lti":
-      return "Ferramenta";
-    case "markdown":
-      return "Página";
-  }
-}
 
 export function CatalogView({
   courses,

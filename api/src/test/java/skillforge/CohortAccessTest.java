@@ -519,6 +519,9 @@ class CohortAccessTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.average").value("8.0"))
                 .andExpect(jsonPath("$.courseName").value("Oficina"));
+        mvc.perform(get("/grades").with(as("aluno", "aluno")))
+                .andExpect(jsonPath("$[0].average").value("8.0"))
+                .andExpect(jsonPath("$[0].certified").value(true));
     }
 
     @Test
@@ -635,6 +638,28 @@ class CohortAccessTest {
     }
 
     @Test
+    void resumeStaysInTheCourseAlreadyStarted() throws Exception {
+        String waiting = createCourse("Alfa");
+        String waitingModule = createModule(waiting, "Unidade");
+        createMarkdown(waitingModule, "Ainda não");
+        String started = createCourse("Beta");
+        String startedModule = createModule(started, "Unidade");
+        String done = createMarkdown(startedModule, "Feita");
+        String next = createMarkdown(startedModule, "Seguinte");
+        String waitingCohort = openCohort("Turma alfa", waiting, "docente");
+        String startedCohort = openCohort("Turma beta", started, "docente");
+        enroll(waitingCohort, "aluno");
+        enroll(startedCohort, "aluno");
+
+        mvc.perform(post("/cohorts/" + startedCohort + "/lessons/" + done + "/completion").with(as("aluno", "aluno")))
+                .andExpect(status().isNoContent());
+
+        mvc.perform(get("/resume").with(as("aluno", "aluno")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.lessonId").value(next));
+    }
+
+    @Test
     void searchPackageToolAndQuestionTextStayAfterAnAttempt() throws Exception {
         String courseId = createCourse("Acervo");
         String moduleId = createModule(courseId, "Unidade");
@@ -686,6 +711,9 @@ class CohortAccessTest {
                         .content("{\"email\":\"aluno@example.com\"}")
                         .with(as("aluno", "aluno")))
                 .andExpect(status().isNoContent());
+        mvc.perform(get("/me/email").with(as("aluno", "aluno")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value("aluno@example.com"));
 
         String examId = openExam(cohortId);
         String page = mvc.perform(get("/cohorts/" + cohortId).with(as("docente", "docente")))

@@ -450,7 +450,9 @@ class CohortController {
             int practiceWeight,
             int examWeight,
             List<PracticeBody> practices,
-            List<ExamBody> exams) {
+            List<ExamBody> exams,
+            String average,
+            boolean certified) {
 
         static ReportBody from(Report report) {
             return new ReportBody(
@@ -460,7 +462,9 @@ class CohortController {
                     report.practiceWeight(),
                     report.examWeight(),
                     report.practices().stream().map(PracticeBody::from).toList(),
-                    report.exams().stream().map(exam -> ExamBody.from(exam, true)).toList());
+                    report.exams().stream().map(exam -> ExamBody.from(exam, true)).toList(),
+                    report.average(),
+                    report.certified());
         }
 
     }

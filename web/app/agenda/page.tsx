@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { loadSession } from "../../lib/access";
 import { ACCESS_COOKIE } from "../../lib/cookies";
 import { apiUrl } from "../../lib/openid";
+import { deadlineDay, formatDeadline } from "../../lib/deadline";
 import { loadReports } from "../../lib/report";
 import { Shell } from "../shell";
 
@@ -45,7 +46,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ m
         {reports === null ? <p className="empty">A agenda não responde.</p> : null}
         <div className="month" aria-label="Calendário">
           {daysOf(month).map((day) => {
-            const due = items.filter((item) => item.when.slice(0, 10) === day);
+            const due = items.filter((item) => deadlineDay(item.when) === day);
             if (due.length === 0) {
               return <span key={day}>{Number(day.slice(8))}</span>;
             }
@@ -63,7 +64,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ m
             <li key={item.id}>
               <Link href={`/turmas/${item.cohortId}`}>{item.title}</Link>
               <span className="kind">{item.kind}</span>
-              <span className="meta">{item.when}</span>
+              <span className="meta">{formatDeadline(item.when)}</span>
               <span className="course-name">{item.cohortName}</span>
             </li>
           ))}
