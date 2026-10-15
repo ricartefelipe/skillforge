@@ -3,8 +3,8 @@ package skillforge.application.catalog;
 import java.util.List;
 import java.util.UUID;
 
-import skillforge.domain.catalog.Doubt;
-import skillforge.domain.catalog.ForumRepository;
+import skillforge.domain.forum.Doubt;
+import skillforge.domain.forum.ForumRepository;
 import skillforge.domain.cohort.CohortRepository;
 import skillforge.domain.identity.Actor;
 import skillforge.domain.identity.Role;

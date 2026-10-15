@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import type { Session } from "../lib/access";
+import { ThemeToggle } from "./theme";
 
 export function Shell({ session, children }: { session: Session | null; children: ReactNode }) {
   return (
@@ -14,6 +15,7 @@ export function Shell({ session, children }: { session: Session | null; children
             <small>oficina</small>
           </span>
         </Link>
+        <ThemeToggle />
         <nav aria-label="Principal">
           {session ? (
             <>

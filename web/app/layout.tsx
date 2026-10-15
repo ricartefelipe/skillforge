@@ -30,6 +30,13 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <html lang="pt-BR" className={`${display.variable} ${literata.variable} ${grotesk.variable}`}>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: "try{if(localStorage.getItem('skillforge-theme')==='night')document.documentElement.dataset.theme='night'}catch(e){}",
+          }}
+        />
+      </head>
       <body>{children}</body>
     </html>
   );

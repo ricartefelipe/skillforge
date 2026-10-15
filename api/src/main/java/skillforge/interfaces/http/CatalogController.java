@@ -82,7 +82,8 @@ class CatalogController {
             @RequestParam(required = false) String markdown,
             @RequestParam(required = false) MultipartFile file,
             @RequestParam(required = false) String launchUrl,
-            @RequestParam(required = false) String secret) throws IOException {
+            @RequestParam(required = false) String secret,
+            @RequestParam(required = false) String authLogin) throws IOException {
         byte[] media = file == null || file.isEmpty() ? null : file.getBytes();
         Lesson lesson = catalog.createLesson(
                 RequestActor.from(authentication),
@@ -92,7 +93,8 @@ class CatalogController {
                 markdown,
                 media,
                 launchUrl,
-                secret);
+                secret,
+                authLogin);
         return ResponseEntity.status(HttpStatus.CREATED).body(LessonBody.from(lesson));
     }
 
@@ -157,8 +159,8 @@ class CatalogController {
     }
 
     @GetMapping("/lessons/{id}/scorm")
-    LaunchPath scorm(Authentication authentication, @PathVariable UUID id) {
-        return new LaunchPath(catalog.scormLaunch(RequestActor.from(authentication), id));
+    skillforge.domain.catalog.ScormOutline scorm(Authentication authentication, @PathVariable UUID id) {
+        return catalog.scormLaunch(RequestActor.from(authentication), id);
     }
 
     @GetMapping("/lessons/{id}/scorm/file")
@@ -175,14 +177,43 @@ class CatalogController {
             Authentication authentication,
             @PathVariable UUID id,
             @RequestBody TrackBody body) {
-        TrackBody request = body == null ? new TrackBody(null, null) : body;
-        catalog.trackScorm(RequestActor.from(authentication), id, request.status(), request.score());
+        TrackBody request = body == null ? new TrackBody(null, null, null) : body;
+        catalog.trackScorm(
+                RequestActor.from(authentication),
+                id,
+                request.status(),
+                request.score(),
+                request.position() == null ? 1 : request.position());
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/lessons/{id}/launch")
-    skillforge.domain.catalog.SignedLaunch launch(Authentication authentication, @PathVariable UUID id) {
-        return catalog.launch(RequestActor.from(authentication), id);
+    skillforge.domain.catalog.SignedLaunch launch(
+            Authentication authentication,
+            @PathVariable UUID id,
+            jakarta.servlet.http.HttpServletRequest request) {
+        String iss = request.getScheme() + "://" + request.getServerName();
+        if (request.getServerPort() != 80 && request.getServerPort() != 443) {
+            iss = iss + ":" + request.getServerPort();
+        }
+        return catalog.launch(RequestActor.from(authentication), id, iss);
+    }
+
+    @GetMapping(value = "/lti/jwks", produces = MediaType.APPLICATION_JSON_VALUE)
+    String jwks() {
+        return catalog.jwks();
+    }
+
+    @GetMapping(value = "/lti/auth", produces = MediaType.TEXT_HTML_VALUE)
+    String authorize(
+            @RequestParam java.util.UUID lti_message_hint,
+            @RequestParam String target_link_uri,
+            jakarta.servlet.http.HttpServletRequest request) {
+        String iss = request.getScheme() + "://" + request.getServerName();
+        if (request.getServerPort() != 80 && request.getServerPort() != 443) {
+            iss = iss + ":" + request.getServerPort();
+        }
+        return catalog.authorize(lti_message_hint, target_link_uri, iss);
     }
 
     @PutMapping("/courses/{courseId}/order")
@@ -214,7 +245,7 @@ class CatalogController {
     record LaunchPath(String path) {
     }
 
-    record TrackBody(String status, Integer score) {
+    record TrackBody(String status, Integer score, Integer position) {
     }
 
     record OrderBody(java.util.List<ModuleOrderBody> modules) {

@@ -695,29 +695,45 @@ class JdbcStudioRepository implements StudioRepository {
                 FROM lesson
                 JOIN module ON module.id = lesson.module_id
                 JOIN course ON course.id = module.course_id
-                WHERE lesson.title ILIKE ? ESCAPE '\\'
+                WHERE (lesson.title ILIKE ? ESCAPE '\\' OR COALESCE(lesson.markdown, '') ILIKE ? ESCAPE '\\')
                 """ + visibleCourse() + """
                 ORDER BY lesson.title
                 LIMIT 20
-                """, (rs, row) -> new Hit("aula", rs.getString(1), rs.getString(2)), needle, role, name, name));
+                """, (rs, row) -> new Hit("aula", rs.getString(1), rs.getString(2)), needle, needle, role, name, name));
         hits.addAll(jdbc.query("""
                 SELECT practice.title, '/turmas/' || cohort.id::text
                 FROM practice
                 JOIN cohort ON cohort.id = practice.cohort_id
-                WHERE practice.title ILIKE ? ESCAPE '\\'
+                WHERE (practice.title ILIKE ? ESCAPE '\\' OR practice.prompt ILIKE ? ESCAPE '\\')
                 """ + visibleCohort() + """
                 ORDER BY practice.title
                 LIMIT 20
-                """, (rs, row) -> new Hit("pratica", rs.getString(1), rs.getString(2)), needle, role, name, name));
+                """, (rs, row) -> new Hit("pratica", rs.getString(1), rs.getString(2)),
+                needle,
+                needle,
+                role,
+                name,
+                name));
         hits.addAll(jdbc.query("""
                 SELECT exam.title, '/turmas/' || cohort.id::text
                 FROM exam
                 JOIN cohort ON cohort.id = exam.cohort_id
-                WHERE exam.title ILIKE ? ESCAPE '\\'
+                WHERE (
+                    exam.title ILIKE ? ESCAPE '\\'
+                    OR EXISTS (
+                        SELECT 1 FROM question
+                        WHERE question.exam_id = exam.id AND question.prompt ILIKE ? ESCAPE '\\'
+                    )
+                )
                 """ + visibleCohort() + """
                 ORDER BY exam.title
                 LIMIT 20
-                """, (rs, row) -> new Hit("prova", rs.getString(1), rs.getString(2)), needle, role, name, name));
+                """, (rs, row) -> new Hit("prova", rs.getString(1), rs.getString(2)),
+                needle,
+                needle,
+                role,
+                name,
+                name));
         return List.copyOf(hits);
     }
 
@@ -731,6 +747,15 @@ class JdbcStudioRepository implements StudioRepository {
     }
 
     @Override
+    public List<String> mail(String account) {
+        schema.ensure();
+        return jdbc.query(
+                "SELECT body FROM mail_outbox WHERE account = ? ORDER BY created_at DESC LIMIT 20",
+                (rs, row) -> rs.getString("body"),
+                account);
+    }
+
+    @Override
     @Transactional
     public void reviseQuestions(UUID cohortId, Actor actor, UUID examId, List<QuestionText> questions) {
         schema.ensure();
@@ -738,25 +763,73 @@ class JdbcStudioRepository implements StudioRepository {
         if (!examInCohort(cohortId, examId)) {
             throw new Rejection(Failure.NOT_FOUND);
         }
+        java.util.Set<UUID> kept = new java.util.HashSet<>();
         for (QuestionText question : questions) {
-            int updated = jdbc.update(
-                    "UPDATE question SET prompt = ? WHERE id = ? AND exam_id = ?",
-                    question.prompt(),
-                    question.id(),
-                    examId);
-            if (updated == 0) {
-                throw new Rejection(Failure.NOT_FOUND);
+            UUID questionId = question.id() == null ? UUID.randomUUID() : question.id();
+            if (question.id() == null) {
+                Integer position = jdbc.queryForObject(
+                        "SELECT COALESCE(MAX(position), 0) + 1 FROM question WHERE exam_id = ?",
+                        Integer.class,
+                        examId);
+                jdbc.update(
+                        "INSERT INTO question (id, exam_id, position, prompt, retired) VALUES (?, ?, ?, ?, false)",
+                        questionId,
+                        examId,
+                        position,
+                        question.prompt());
             }
-            for (QuestionText.ChoiceText choice : question.choices()) {
-                int label = jdbc.update(
-                        "UPDATE choice SET label = ? WHERE id = ? AND question_id = ?",
-                        choice.label(),
-                        choice.id(),
-                        question.id());
-                if (label == 0) {
+            else {
+                int updated = jdbc.update(
+                        "UPDATE question SET prompt = ?, retired = false WHERE id = ? AND exam_id = ?",
+                        question.prompt(),
+                        questionId,
+                        examId);
+                if (updated == 0) {
                     throw new Rejection(Failure.NOT_FOUND);
                 }
             }
+            kept.add(questionId);
+            boolean first = question.id() == null;
+            java.util.Set<UUID> keptChoices = new java.util.HashSet<>();
+            for (QuestionText.ChoiceText choice : question.choices()) {
+                if (choice.id() == null) {
+                    UUID choiceId = UUID.randomUUID();
+                    jdbc.update(
+                            "INSERT INTO choice (id, question_id, label, correct, retired) VALUES (?, ?, ?, ?, false)",
+                            choiceId,
+                            questionId,
+                            choice.label(),
+                            first);
+                    first = false;
+                    keptChoices.add(choiceId);
+                }
+                else {
+                    int label = jdbc.update(
+                            "UPDATE choice SET label = ?, retired = false WHERE id = ? AND question_id = ?",
+                            choice.label(),
+                            choice.id(),
+                            questionId);
+                    if (label == 0) {
+                        throw new Rejection(Failure.NOT_FOUND);
+                    }
+                    keptChoices.add(choice.id());
+                }
+            }
+            jdbc.update("UPDATE choice SET retired = true WHERE question_id = ?", questionId);
+            for (UUID choiceId : keptChoices) {
+                jdbc.update("UPDATE choice SET retired = false WHERE id = ?", choiceId);
+            }
+            Integer correct = jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM choice WHERE question_id = ? AND correct AND retired IS NOT TRUE",
+                    Integer.class,
+                    questionId);
+            if (correct == null || correct != 1) {
+                throw new Rejection(Failure.INVALID_EXAM);
+            }
+        }
+        jdbc.update("UPDATE question SET retired = true WHERE exam_id = ?", examId);
+        for (UUID questionId : kept) {
+            jdbc.update("UPDATE question SET retired = false WHERE id = ?", questionId);
         }
     }
 

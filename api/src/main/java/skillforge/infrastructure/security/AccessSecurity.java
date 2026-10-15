@@ -21,7 +21,7 @@ class AccessSecurity {
         http.httpBasic(AbstractHttpConfigurer::disable);
         http.formLogin(AbstractHttpConfigurer::disable);
         http.authorizeHttpRequests(auth -> auth
-                .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
+                .requestMatchers("/actuator/health", "/actuator/health/**", "/lti/**").permitAll()
                 .requestMatchers("/me").authenticated()
                 .requestMatchers("/courses", "/courses/**", "/modules/**", "/lessons/**").authenticated()
                 .requestMatchers("/cohorts", "/cohorts/**").authenticated()

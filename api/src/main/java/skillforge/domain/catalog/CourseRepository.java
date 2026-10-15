@@ -16,11 +16,25 @@ public interface CourseRepository {
 
     void saveTool(UUID lessonId, String url, String secret);
 
-    Optional<String> scormLaunch(UUID lessonId);
+    ScormOutline scormOutline(UUID lessonId, String student);
 
     Optional<LessonFile> scormFile(UUID lessonId, String path);
 
-    void trackScorm(UUID lessonId, String student, String status, Integer score);
+    void trackScorm(UUID lessonId, String student, String status, Integer score, int position);
+
+    void modernTool(UUID lessonId, String authLogin);
+
+    java.util.Optional<String> toolAuth(UUID lessonId);
+
+    void rememberHint(UUID token, String username, UUID lessonId, String nonce);
+
+    java.util.Optional<String> takeHint(UUID token);
+
+    String platformKid();
+
+    String platformPrivate();
+
+    String platformPublic();
 
     Optional<String> toolUrl(UUID lessonId);
 

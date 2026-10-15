@@ -182,6 +182,18 @@ A busca, o mês, a ordem da grade, o pacote e a ferramenta externa fecham o que 
 - O material pode ser um zip SCORM, com `imsmanifest.xml`. A conclusão do pacote marca a aula.
 - A ferramenta externa abre por um lançamento assinado. O segredo não sai para o navegador.
 
+## Incremento 11
+
+A visão noturna e o fechamento do que ainda estava pela metade.
+
+- O sol liga a visão clara. A lua liga a visão noturna. A escolha fica no navegador.
+- A busca também olha o texto da aula, o enunciado da prática e o enunciado da questão.
+- Depois da prova, quem ministra inclui questão nova e retira questão. A nota já dada permanece. A questão retirada sai da prova seguinte.
+- O pacote SCORM segue a ordem dos itens do manifesto. O próximo item abre quando o anterior foi concluído. O status do SCORM 2004 também conta.
+- A ferramenta pode usar o login moderno: a plataforma publica a chave em `/lti/jwks` e devolve um token assinado.
+- O fórum saiu do pacote do catálogo.
+- Sem servidor de correio, a mensagem enviada aparece em Recados.
+
 ## Arranque
 
 É preciso Java 21, Node.js 22, Docker e curl.

@@ -139,6 +139,9 @@ CREATE TABLE IF NOT EXISTS choice (
     CONSTRAINT choice_label_not_blank CHECK (length(btrim(label)) > 0)
 );
 
+ALTER TABLE question ADD COLUMN IF NOT EXISTS retired boolean DEFAULT false;
+ALTER TABLE choice ADD COLUMN IF NOT EXISTS retired boolean DEFAULT false;
+
 CREATE TABLE IF NOT EXISTS attempt (
     exam_id uuid NOT NULL REFERENCES exam (id),
     student text NOT NULL,
@@ -318,6 +321,22 @@ CREATE TABLE IF NOT EXISTS lesson_asset (
     CONSTRAINT lesson_asset_name_not_blank CHECK (length(btrim(name)) > 0)
 );
 
+CREATE TABLE IF NOT EXISTS scorm_item (
+    lesson_id uuid NOT NULL REFERENCES lesson (id),
+    position integer NOT NULL,
+    title text NOT NULL,
+    path text NOT NULL,
+    PRIMARY KEY (lesson_id, position)
+);
+
+CREATE TABLE IF NOT EXISTS scorm_item_track (
+    lesson_id uuid NOT NULL REFERENCES lesson (id),
+    position integer NOT NULL,
+    student text NOT NULL,
+    status text NOT NULL,
+    PRIMARY KEY (lesson_id, position, student)
+);
+
 CREATE TABLE IF NOT EXISTS scorm_file (
     lesson_id uuid NOT NULL REFERENCES lesson (id),
     path text NOT NULL,
@@ -336,6 +355,20 @@ CREATE TABLE IF NOT EXISTS scorm_track (
     CONSTRAINT scorm_score CHECK (score IS NULL OR score BETWEEN 0 AND 100)
 );
 
+CREATE TABLE IF NOT EXISTS lti_key (
+    kid text PRIMARY KEY,
+    private_pem text NOT NULL,
+    public_pem text NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS lti_hint (
+    token uuid PRIMARY KEY,
+    username text NOT NULL,
+    lesson_id uuid NOT NULL,
+    nonce text NOT NULL,
+    expires_at timestamptz NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS lesson_tool (
     lesson_id uuid PRIMARY KEY REFERENCES lesson (id),
     launch_url text NOT NULL,
@@ -343,6 +376,9 @@ CREATE TABLE IF NOT EXISTS lesson_tool (
     CONSTRAINT lesson_tool_url CHECK (launch_url LIKE 'http://%' OR launch_url LIKE 'https://%'),
     CONSTRAINT lesson_tool_secret CHECK (length(shared_secret) >= 8)
 );
+
+ALTER TABLE lesson_tool ADD COLUMN IF NOT EXISTS auth_login text;
+ALTER TABLE lesson_tool ADD COLUMN IF NOT EXISTS client_id text;
 
 CREATE TABLE IF NOT EXISTS account_mail (
     account text PRIMARY KEY,
