@@ -71,6 +71,14 @@ set +a
 : "${DOCENTE_PASSWORD:?}"
 : "${ADMINISTRACAO_PASSWORD:?}"
 
+if curl -fsS "${API_URL}/actuator/health/liveness" >/dev/null \
+	&& curl -fsS "${WEB_URL}" >/dev/null \
+	&& curl -fsS "${KEYCLOAK_ISSUER}/.well-known/openid-configuration" >/dev/null; then
+	echo "Skillforge já está no ar."
+	echo "Interface: ${WEB_URL}"
+	exit 0
+fi
+
 docker compose up -d --wait postgres
 
 database_exists="$(docker compose exec -T postgres psql -U "$POSTGRES_USER" -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname = 'keycloak'")"

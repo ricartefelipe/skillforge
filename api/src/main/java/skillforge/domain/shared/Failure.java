@@ -16,6 +16,7 @@ public enum Failure {
     UNKNOWN_KIND("unknown-kind", Kind.BAD_REQUEST),
     MARKDOWN_ONLY("markdown-only", Kind.BAD_REQUEST),
     NOT_PDF("not-pdf", Kind.BAD_REQUEST),
+    NOT_EBOOK("not-ebook", Kind.BAD_REQUEST),
     NOT_VIDEO("not-video", Kind.BAD_REQUEST),
     FILE_ONLY("file-only", Kind.BAD_REQUEST),
     DUPLICATE_COURSE("duplicate-course", Kind.CONFLICT),

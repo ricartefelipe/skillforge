@@ -1,7 +1,7 @@
 export type LessonSummary = {
   id: string;
   title: string;
-  kind: "markdown" | "pdf" | "video";
+  kind: "markdown" | "pdf" | "ebook" | "video";
   completed?: boolean;
 };
 
@@ -20,11 +20,11 @@ export type Course = {
 export type LessonDetail = {
   id: string;
   title: string;
-  kind: "markdown" | "pdf" | "video";
+  kind: "markdown" | "pdf" | "ebook" | "video";
   markdown?: string;
 };
 
-const KINDS = new Set(["markdown", "pdf", "video"]);
+const KINDS = new Set(["markdown", "pdf", "ebook", "video"]);
 
 export function canCompose(role: string): boolean {
   return role === "administracao";
@@ -45,13 +45,15 @@ export function catalogNotice(code: string | null): string | null {
     case "markdown-only":
       return "A aula em markdown precisa do texto, e só dele.";
     case "file-only":
-      return "O PDF ou o vídeo entra só como arquivo.";
+      return "O ebook ou o vídeo entra só como arquivo.";
     case "not-pdf":
       return "O arquivo não é um PDF.";
+    case "not-ebook":
+      return "O ebook precisa ser um PDF ou um EPUB.";
     case "not-video":
-      return "O arquivo não é um vídeo.";
+      return "O vídeo precisa ser MP4, MOV ou WebM.";
     case "too-large":
-      return "Passa do limite.";
+      return "O arquivo passa de 8 MB.";
     case "not-found":
       return "Não encontrei esse item.";
     case "unavailable":

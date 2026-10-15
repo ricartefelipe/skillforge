@@ -16,11 +16,12 @@ import { ProgressMeter } from "../meter";
 function kindLabel(kind: LessonSummary["kind"]): string {
   switch (kind) {
     case "pdf":
-      return "PDF";
+    case "ebook":
+      return "Ebook";
     case "video":
       return "Vídeo";
     case "markdown":
-      return "Markdown";
+      return "Página";
     default: {
       const uncovered: never = kind;
       return uncovered;

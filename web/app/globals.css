@@ -383,6 +383,15 @@ h1 {
   border-left: 1px solid var(--line);
 }
 
+.unit {
+  margin: 0;
+  padding: 1rem 1.1rem 1.15rem;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--ink);
+  border-radius: 16px;
+}
+
 .compose,
 form.sheet {
   display: grid;
