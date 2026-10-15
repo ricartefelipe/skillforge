@@ -22,6 +22,7 @@ export function Shell({ session, children }: { session: Session | null; children
               <Link href="/turmas">Turmas</Link>
               <Link href="/boletim">Boletim</Link>
               <Link href="/agenda">Agenda</Link>
+              <Link href="/recados">Recados</Link>
               {session.role === "docente" || session.role === "administracao" ? (
                 <Link href="/docente">Docente</Link>
               ) : null}

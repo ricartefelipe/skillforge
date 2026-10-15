@@ -25,7 +25,7 @@ class AccessSecurity {
                 .requestMatchers("/me").authenticated()
                 .requestMatchers("/courses", "/courses/**", "/modules/**", "/lessons/**").authenticated()
                 .requestMatchers("/cohorts", "/cohorts/**").authenticated()
-                .requestMatchers("/grades").authenticated()
+                .requestMatchers("/grades", "/resume", "/inbox", "/inbox/**").authenticated()
                 .anyRequest().denyAll());
         http.oauth2ResourceServer(oauth -> oauth.jwt(Customizer.withDefaults()));
         return http.build();

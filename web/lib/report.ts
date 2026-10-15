@@ -6,6 +6,8 @@ export type Report = {
   cohortId: string;
   cohortName: string;
   courseName: string;
+  practiceWeight: number;
+  examWeight: number;
   practices: Practice[];
   exams: ClassExam[];
 };
@@ -35,9 +37,19 @@ export function reportsFromBody(httpOk: boolean, body: unknown): Report[] | null
     if (cohortId === null || cohortName === null || courseName === null || practices === null || exams === null) {
       return null;
     }
-    reports.push({ cohortId, cohortName, courseName, practices, exams });
+    const practiceWeight = count(item, "practiceWeight") ?? 1;
+    const examWeight = count(item, "examWeight") ?? 1;
+    reports.push({ cohortId, cohortName, courseName, practiceWeight, examWeight, practices, exams });
   }
   return reports;
+}
+
+function count(value: object, key: string): number | null {
+  const found = (value as Record<string, unknown>)[key];
+  if (typeof found !== "number" || !Number.isInteger(found)) {
+    return null;
+  }
+  return found;
 }
 
 function text(value: object, key: string): string | null {

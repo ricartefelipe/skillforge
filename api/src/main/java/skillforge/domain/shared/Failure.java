@@ -35,6 +35,12 @@ public enum Failure {
     RUBRIC("rubric", Kind.BAD_REQUEST),
     PAST_DUE("past-due", Kind.FORBIDDEN),
     NOT_CERTIFIED("not-certified", Kind.FORBIDDEN),
+    LOCKED("locked", Kind.CONFLICT),
+    NOT_STARTED("not-started", Kind.BAD_REQUEST),
+    DUPLICATE_GROUP("duplicate-group", Kind.CONFLICT),
+    GROUPED("grouped", Kind.CONFLICT),
+    ALREADY_REVIEWED("already-reviewed", Kind.CONFLICT),
+    WEIGHT("weight", Kind.BAD_REQUEST),
     NOT_FOUND("not-found", Kind.NOT_FOUND),
     FORBIDDEN("forbidden", Kind.FORBIDDEN);
 

@@ -3,7 +3,12 @@ package skillforge.domain.cohort;
 import java.time.Instant;
 import java.util.List;
 
-public record ExamDraft(String title, Instant dueAt, List<QuestionDraft> questions) {
+public record ExamDraft(
+        String title,
+        Instant dueAt,
+        Integer minutes,
+        int attemptsAllowed,
+        List<QuestionDraft> questions) {
 
     public ExamDraft {
         questions = List.copyOf(questions);

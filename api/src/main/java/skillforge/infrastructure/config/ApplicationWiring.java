@@ -9,6 +9,7 @@ import skillforge.application.cohort.ClassroomApplication;
 import skillforge.application.cohort.CohortApplication;
 import skillforge.application.cohort.ExamApplication;
 import skillforge.application.cohort.PracticeApplication;
+import skillforge.application.studio.StudioApplication;
 import skillforge.domain.cohort.ClassroomRepository;
 import skillforge.domain.cohort.ExamRepository;
 import skillforge.domain.cohort.PracticeRepository;
@@ -16,6 +17,7 @@ import skillforge.domain.catalog.CourseRepository;
 import skillforge.domain.catalog.ForumRepository;
 import skillforge.domain.catalog.LessonBounds;
 import skillforge.domain.cohort.CohortRepository;
+import skillforge.domain.studio.StudioRepository;
 
 @Configuration
 class ApplicationWiring {
@@ -36,18 +38,26 @@ class ApplicationWiring {
     }
 
     @Bean
-    PracticeApplication practiceApplication(PracticeRepository practices) {
-        return new PracticeApplication(practices);
+    StudioApplication studioApplication(StudioRepository studio) {
+        return new StudioApplication(studio);
     }
 
     @Bean
-    ExamApplication examApplication(ExamRepository exams) {
-        return new ExamApplication(exams);
+    PracticeApplication practiceApplication(PracticeRepository practices, StudioApplication studio) {
+        return new PracticeApplication(practices, studio);
     }
 
     @Bean
-    ClassroomApplication classroomApplication(CohortRepository cohorts, ClassroomRepository classroom) {
-        return new ClassroomApplication(cohorts, classroom);
+    ExamApplication examApplication(ExamRepository exams, StudioApplication studio) {
+        return new ExamApplication(exams, studio);
+    }
+
+    @Bean
+    ClassroomApplication classroomApplication(
+            CohortRepository cohorts,
+            ClassroomRepository classroom,
+            StudioApplication studio) {
+        return new ClassroomApplication(cohorts, classroom, studio);
     }
 
 }

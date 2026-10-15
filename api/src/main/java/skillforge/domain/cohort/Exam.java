@@ -5,7 +5,15 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
-public record Exam(UUID id, String title, Instant dueAt, List<Question> questions, List<ExamScore> scores) {
+public record Exam(
+        UUID id,
+        String title,
+        Instant dueAt,
+        Integer minutes,
+        int attemptsAllowed,
+        int taken,
+        List<Question> questions,
+        List<ExamScore> scores) {
 
     public Exam {
         Objects.requireNonNull(id, "id");

@@ -285,6 +285,7 @@ class JdbcCohortRepository implements CohortRepository {
                     "DELETE FROM criterion_mark WHERE criterion_id IN (SELECT id FROM criterion WHERE practice_id = ?)",
                     practiceId);
             jdbc.update("DELETE FROM criterion WHERE practice_id = ?", practiceId);
+            jdbc.update("DELETE FROM peer_review WHERE practice_id = ?", practiceId);
             jdbc.update("DELETE FROM submission WHERE practice_id = ?", practiceId);
             jdbc.update("DELETE FROM practice WHERE id = ?", practiceId);
         }
@@ -340,12 +341,15 @@ class JdbcCohortRepository implements CohortRepository {
         try {
             List<Report> reports = new java.util.ArrayList<>();
             for (CohortListing listing : visible(actor)) {
+                int[] weight = weights(listing.summary().id());
                 reports.add(new Report(
                         listing.summary().id(),
                         listing.summary().name(),
                         listing.summary().courseName(),
                         practicesOf(listing.summary().id(), actor),
-                        examsOf(listing.summary().id(), actor)));
+                        examsOf(listing.summary().id(), actor),
+                        weight[0],
+                        weight[1]));
             }
             return List.copyOf(reports);
         }
@@ -380,11 +384,16 @@ class JdbcCohortRepository implements CohortRepository {
             CohortSummary cohort = requireLead(cohortId, actor);
             UUID examId = UUID.randomUUID();
             jdbc.update(
-                    "INSERT INTO exam (id, cohort_id, title, due_at) VALUES (?, ?, ?, ?)",
+                    """
+                    INSERT INTO exam (id, cohort_id, title, due_at, minutes, attempts_allowed)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    """,
                     examId,
                     cohort.id(),
                     draft.title(),
-                    draft.dueAt() == null ? null : java.sql.Timestamp.from(draft.dueAt()));
+                    draft.dueAt() == null ? null : java.sql.Timestamp.from(draft.dueAt()),
+                    draft.minutes(),
+                    draft.attemptsAllowed());
             int position = 1;
             for (ExamDraft.QuestionDraft question : draft.questions()) {
                 UUID questionId = UUID.randomUUID();
@@ -427,29 +436,141 @@ class JdbcCohortRepository implements CohortRepository {
                     .filter(item -> item.id().equals(examId))
                     .findFirst()
                     .orElseThrow(() -> new Rejection(Failure.NOT_FOUND));
-            if (!exam.scores().isEmpty()) {
+            int used = sittings(examId, actor.username());
+            if (used >= exam.attemptsAllowed()) {
                 throw new Rejection(Failure.ALREADY_TAKEN);
             }
-            int grade = ExamGrade.of(exam, answers);
-            jdbc.update(
-                    "INSERT INTO attempt (exam_id, student, grade) VALUES (?, ?, ?)",
-                    examId,
-                    actor.username(),
-                    grade);
-            for (Map.Entry<UUID, UUID> answer : answers.entrySet()) {
-                jdbc.update(
-                        "INSERT INTO attempt_answer (exam_id, student, question_id, choice_id) VALUES (?, ?, ?, ?)",
-                        examId,
-                        actor.username(),
-                        answer.getKey(),
-                        answer.getValue());
-            }
+            int ordinal = used + 1;
+            int grade = gradeOf(exam, examId, actor.username(), ordinal, answers);
+            recordSitting(exam, examId, actor.username(), ordinal, grade, answers);
         }
         catch (DuplicateKeyException ex) {
             throw new Rejection(Failure.ALREADY_TAKEN);
         }
         catch (DataAccessResourceFailureException ex) {
             throw new Unavailable(ex);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void startExam(UUID cohortId, UUID examId, Actor actor) {
+        schema.ensure();
+        try {
+            if (!enrolled(cohortId, actor.username()) || !examInCohort(cohortId, examId)) {
+                throw new Rejection(Failure.NOT_FOUND);
+            }
+            refuseIfClosed(examDue(examId));
+            Integer minutes = jdbc.queryForObject("SELECT minutes FROM exam WHERE id = ?", Integer.class, examId);
+            if (minutes == null) {
+                return;
+            }
+            int used = sittings(examId, actor.username());
+            Integer allowed = jdbc.queryForObject(
+                    "SELECT attempts_allowed FROM exam WHERE id = ?",
+                    Integer.class,
+                    examId);
+            if (used >= (allowed == null ? 1 : allowed)) {
+                throw new Rejection(Failure.ALREADY_TAKEN);
+            }
+            jdbc.update("""
+                    INSERT INTO exam_clock (exam_id, student, ordinal, started_at)
+                    VALUES (?, ?, ?, ?)
+                    ON CONFLICT DO NOTHING
+                    """, examId, actor.username(), used + 1, java.sql.Timestamp.from(java.time.Instant.now()));
+        }
+        catch (DataAccessResourceFailureException ex) {
+            throw new Unavailable(ex);
+        }
+    }
+
+    private int sittings(UUID examId, String student) {
+        Integer count = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM sitting WHERE exam_id = ? AND student = ?",
+                Integer.class,
+                examId,
+                student);
+        if (count != null && count > 0) {
+            return count;
+        }
+        Integer legacy = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM attempt WHERE exam_id = ? AND student = ?",
+                Integer.class,
+                examId,
+                student);
+        return legacy == null ? 0 : legacy;
+    }
+
+    private int gradeOf(Exam exam, UUID examId, String student, int ordinal, Map<UUID, UUID> answers) {
+        if (exam.minutes() == null) {
+            return ExamGrade.of(exam, answers);
+        }
+        List<java.sql.Timestamp> clocks = jdbc.query(
+                "SELECT started_at FROM exam_clock WHERE exam_id = ? AND student = ? AND ordinal = ?",
+                (rs, row) -> rs.getTimestamp("started_at"),
+                examId,
+                student,
+                ordinal);
+        if (clocks.isEmpty()) {
+            throw new Rejection(Failure.NOT_STARTED);
+        }
+        java.time.Instant deadline = clocks.get(0).toInstant().plusSeconds(exam.minutes() * 60L);
+        if (!java.time.Instant.now().isBefore(deadline)) {
+            return 0;
+        }
+        return ExamGrade.of(exam, answers);
+    }
+
+    private void recordSitting(
+            Exam exam,
+            UUID examId,
+            String student,
+            int ordinal,
+            int grade,
+            Map<UUID, UUID> answers) {
+        jdbc.update(
+                "INSERT INTO sitting (id, exam_id, student, ordinal, grade, started_at) VALUES (?, ?, ?, ?, ?, ?)",
+                UUID.randomUUID(),
+                examId,
+                student,
+                ordinal,
+                grade,
+                java.sql.Timestamp.from(java.time.Instant.now()));
+        List<Integer> previous = jdbc.query(
+                "SELECT grade FROM attempt WHERE exam_id = ? AND student = ?",
+                (rs, row) -> rs.getInt("grade"),
+                examId,
+                student);
+        boolean keepAnswers = grade > 0 || exam.minutes() == null;
+        if (previous.isEmpty()) {
+            jdbc.update("INSERT INTO attempt (exam_id, student, grade) VALUES (?, ?, ?)", examId, student, grade);
+            if (keepAnswers) {
+                writeAnswers(examId, student, answers);
+            }
+            return;
+        }
+        if (grade < previous.get(0)) {
+            return;
+        }
+        jdbc.update(
+                "UPDATE attempt SET grade = ? WHERE exam_id = ? AND student = ?",
+                grade,
+                examId,
+                student);
+        if (keepAnswers) {
+            jdbc.update("DELETE FROM attempt_answer WHERE exam_id = ? AND student = ?", examId, student);
+            writeAnswers(examId, student, answers);
+        }
+    }
+
+    private void writeAnswers(UUID examId, String student, Map<UUID, UUID> answers) {
+        for (Map.Entry<UUID, UUID> answer : answers.entrySet()) {
+            jdbc.update(
+                    "INSERT INTO attempt_answer (exam_id, student, question_id, choice_id) VALUES (?, ?, ?, ?)",
+                    examId,
+                    student,
+                    answer.getKey(),
+                    answer.getValue());
         }
     }
 
@@ -462,6 +583,8 @@ class JdbcCohortRepository implements CohortRepository {
             if (!examInCohort(cohortId, examId)) {
                 throw new Rejection(Failure.NOT_FOUND);
             }
+            jdbc.update("DELETE FROM exam_clock WHERE exam_id = ?", examId);
+            jdbc.update("DELETE FROM sitting WHERE exam_id = ?", examId);
             jdbc.update("DELETE FROM attempt_answer WHERE exam_id = ?", examId);
             jdbc.update("DELETE FROM attempt WHERE exam_id = ?", examId);
             jdbc.update(
@@ -486,11 +609,13 @@ class JdbcCohortRepository implements CohortRepository {
 
     private List<Exam> examsOf(UUID cohortId, Actor actor) {
         List<IdTitle> exams = jdbc.query(
-                "SELECT id, title, due_at FROM exam WHERE cohort_id = ? ORDER BY title",
+                "SELECT id, title, due_at, minutes, attempts_allowed FROM exam WHERE cohort_id = ? ORDER BY title",
                 (rs, row) -> new IdTitle(
                         rs.getObject("id", UUID.class),
                         rs.getString("title"),
-                        instant(rs.getTimestamp("due_at"))),
+                        instant(rs.getTimestamp("due_at")),
+                        (Integer) rs.getObject("minutes"),
+                        rs.getObject("attempts_allowed") == null ? 1 : rs.getInt("attempts_allowed")),
                 cohortId);
         if (exams.isEmpty()) {
             return List.of();
@@ -552,7 +677,16 @@ class JdbcCohortRepository implements CohortRepository {
                         question.prompt(),
                         choices.getOrDefault(question.id(), List.of())));
             }
-            assembled.add(new Exam(exam.id(), exam.title(), exam.dueAt(), examQuestions, scores.get(exam.id())));
+            int taken = actor.role() == Role.ALUNO ? sittings(exam.id(), actor.username()) : 0;
+            assembled.add(new Exam(
+                    exam.id(),
+                    exam.title(),
+                    exam.dueAt(),
+                    exam.minutes(),
+                    exam.attemptsAllowed(),
+                    taken,
+                    examQuestions,
+                    scores.get(exam.id())));
         }
         return List.copyOf(assembled);
     }
@@ -1031,25 +1165,58 @@ class JdbcCohortRepository implements CohortRepository {
     }
 
     private int averageTenths(UUID cohortId, String student) {
-        List<Integer> grades = new ArrayList<>();
+        List<Integer> practices = new ArrayList<>();
         jdbc.query("""
                 SELECT submission.grade FROM submission
                 JOIN practice ON practice.id = submission.practice_id
                 WHERE practice.cohort_id = ? AND submission.student = ? AND submission.grade IS NOT NULL
-                """, (rs, row) -> grades.add(rs.getInt("grade")), cohortId, student);
+                """, (rs, row) -> practices.add(rs.getInt("grade")), cohortId, student);
+        List<Integer> exams = new ArrayList<>();
         jdbc.query("""
                 SELECT attempt.grade FROM attempt
                 JOIN exam ON exam.id = attempt.exam_id
                 WHERE exam.cohort_id = ? AND attempt.student = ?
-                """, (rs, row) -> grades.add(rs.getInt("grade")), cohortId, student);
+                """, (rs, row) -> exams.add(rs.getInt("grade")), cohortId, student);
+        int[] weight = weights(cohortId);
+        if (weight[0] == 1 && weight[1] == 1) {
+            List<Integer> grades = new ArrayList<>();
+            grades.addAll(practices);
+            grades.addAll(exams);
+            return meanTenths(grades);
+        }
+        if (practices.isEmpty()) {
+            return meanTenths(exams);
+        }
+        if (exams.isEmpty()) {
+            return meanTenths(practices);
+        }
+        double mixed = (mean(practices) * weight[0] + mean(exams) * weight[1]) / (weight[0] + weight[1]);
+        return (int) Math.round(mixed * 10);
+    }
+
+    private int[] weights(UUID cohortId) {
+        return jdbc.queryForObject(
+                "SELECT practice_weight, exam_weight FROM cohort WHERE id = ?",
+                (rs, row) -> new int[] {
+                        rs.getObject("practice_weight") == null ? 1 : rs.getInt("practice_weight"),
+                        rs.getObject("exam_weight") == null ? 1 : rs.getInt("exam_weight")
+                },
+                cohortId);
+    }
+
+    private static int meanTenths(List<Integer> grades) {
         if (grades.isEmpty()) {
             return 0;
         }
+        return (int) Math.round(mean(grades) * 10);
+    }
+
+    private static double mean(List<Integer> grades) {
         int sum = 0;
         for (int grade : grades) {
             sum += grade;
         }
-        return (int) Math.round(sum * 10.0 / grades.size());
+        return sum / (double) grades.size();
     }
 
     private boolean attendanceAllows(UUID cohortId, String student) {
@@ -1084,7 +1251,12 @@ class JdbcCohortRepository implements CohortRepository {
     private record PracticeSeed(UUID id, String title, String prompt, java.time.Instant dueAt) {
     }
 
-    private record IdTitle(UUID id, String title, java.time.Instant dueAt) {
+    private record IdTitle(
+            UUID id,
+            String title,
+            java.time.Instant dueAt,
+            Integer minutes,
+            int attemptsAllowed) {
     }
 
     private record QuestionRow(UUID id, String prompt) {

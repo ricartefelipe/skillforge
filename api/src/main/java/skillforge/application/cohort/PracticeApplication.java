@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import skillforge.application.studio.StudioApplication;
 import skillforge.domain.cohort.CriterionDraft;
 import skillforge.domain.cohort.CriterionMark;
 import skillforge.domain.cohort.PracticeRepository;
@@ -20,8 +21,11 @@ public class PracticeApplication {
 
     private final PracticeRepository practices;
 
-    public PracticeApplication(PracticeRepository practices) {
+    private final StudioApplication studio;
+
+    public PracticeApplication(PracticeRepository practices, StudioApplication studio) {
         this.practices = practices;
+        this.studio = studio;
     }
 
     public Opened open(
@@ -87,6 +91,7 @@ public class PracticeApplication {
                 Texts.require(rawText, Failure.BLANK_FEEDBACK),
                 grade,
                 clean);
+        studio.tell(student, "A devolutiva da prática foi publicada.");
     }
 
 }

@@ -14,6 +14,16 @@ public interface CourseRepository {
 
     void removeLesson(UUID lessonId);
 
+    void reviseLesson(UUID lessonId, String title, String markdown);
+
+    UUID addAsset(UUID lessonId, String name, byte[] media, String mediaType);
+
+    List<LessonAsset> assets(UUID lessonId);
+
+    Optional<LessonFile> asset(UUID lessonId, UUID assetId);
+
+    void removeAsset(UUID lessonId, UUID assetId);
+
     Optional<UUID> courseOfLesson(UUID lessonId);
 
     List<Course> list();

@@ -38,6 +38,34 @@ export async function removeLesson(formData: FormData) {
   redirect(page);
 }
 
+export async function reviseLesson(formData: FormData) {
+  const lessonId = field(formData, "lessonId");
+  const page = `/catalogo/aulas/${lessonId}`;
+  const markdown = field(formData, "markdown");
+  await send(
+    `/lessons/${lessonId}`,
+    JSON.stringify({
+      title: field(formData, "title"),
+      markdown: markdown.length === 0 ? null : markdown,
+    }),
+    { "content-type": "application/json" },
+    page,
+    "PUT",
+  );
+}
+
+export async function addAsset(formData: FormData) {
+  const lessonId = field(formData, "lessonId");
+  const body = new FormData();
+  body.set("name", field(formData, "name"));
+  body.set("kind", field(formData, "kind"));
+  const file = formData.get("file");
+  if (file instanceof File && file.size > 0) {
+    body.set("file", file);
+  }
+  await send(`/lessons/${lessonId}/assets`, body, {}, `/catalogo/aulas/${lessonId}`);
+}
+
 export async function createLesson(formData: FormData) {
   const moduleId = field(formData, "moduleId");
   const body = new FormData();
@@ -74,7 +102,13 @@ async function sendJson(path: string, payload: { name: string }, page: string) {
   await send(path, JSON.stringify(payload), { "content-type": "application/json" }, page);
 }
 
-async function send(path: string, body: BodyInit, headers: Record<string, string> = {}, page = "/catalogo") {
+async function send(
+  path: string,
+  body: BodyInit,
+  headers: Record<string, string> = {},
+  page = "/catalogo",
+  method: "POST" | "PUT" = "POST",
+) {
   const token = (await cookies()).get(ACCESS_COOKIE)?.value;
   if (!token) {
     redirect("/login");
@@ -82,7 +116,7 @@ async function send(path: string, body: BodyInit, headers: Record<string, string
   let response: Response;
   try {
     response = await fetch(`${apiUrl()}${path}`, {
-      method: "POST",
+      method,
       headers: { authorization: `Bearer ${token}`, ...headers },
       body,
       cache: "no-store",

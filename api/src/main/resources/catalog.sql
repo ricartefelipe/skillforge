@@ -204,3 +204,104 @@ CREATE TABLE IF NOT EXISTS completion (
     CONSTRAINT completion_student_not_blank CHECK (length(btrim(student)) > 0),
     PRIMARY KEY (cohort_id, lesson_id, student)
 );
+
+ALTER TABLE exam ADD COLUMN IF NOT EXISTS minutes integer;
+ALTER TABLE exam ADD COLUMN IF NOT EXISTS attempts_allowed smallint DEFAULT 1;
+UPDATE exam SET attempts_allowed = 1 WHERE attempts_allowed IS NULL;
+ALTER TABLE exam DROP CONSTRAINT IF EXISTS exam_attempts;
+ALTER TABLE exam ADD CONSTRAINT exam_attempts CHECK (attempts_allowed BETWEEN 1 AND 5);
+ALTER TABLE exam DROP CONSTRAINT IF EXISTS exam_minutes;
+ALTER TABLE exam ADD CONSTRAINT exam_minutes CHECK (minutes IS NULL OR minutes BETWEEN 5 AND 180);
+
+ALTER TABLE cohort ADD COLUMN IF NOT EXISTS practice_weight smallint DEFAULT 1;
+ALTER TABLE cohort ADD COLUMN IF NOT EXISTS exam_weight smallint DEFAULT 1;
+UPDATE cohort SET practice_weight = 1 WHERE practice_weight IS NULL;
+UPDATE cohort SET exam_weight = 1 WHERE exam_weight IS NULL;
+ALTER TABLE cohort DROP CONSTRAINT IF EXISTS cohort_weights;
+ALTER TABLE cohort ADD CONSTRAINT cohort_weights CHECK (
+    practice_weight BETWEEN 1 AND 5 AND exam_weight BETWEEN 1 AND 5
+);
+
+CREATE TABLE IF NOT EXISTS sitting (
+    id uuid PRIMARY KEY,
+    exam_id uuid NOT NULL REFERENCES exam (id),
+    student text NOT NULL,
+    ordinal smallint NOT NULL,
+    grade smallint NOT NULL,
+    started_at timestamptz NOT NULL,
+    CONSTRAINT sitting_student_not_blank CHECK (length(btrim(student)) > 0),
+    CONSTRAINT sitting_grade_range CHECK (grade BETWEEN 0 AND 10),
+    CONSTRAINT sitting_ordinal CHECK (ordinal >= 1),
+    UNIQUE (exam_id, student, ordinal)
+);
+
+CREATE TABLE IF NOT EXISTS exam_clock (
+    exam_id uuid NOT NULL REFERENCES exam (id),
+    student text NOT NULL,
+    ordinal smallint NOT NULL,
+    started_at timestamptz NOT NULL,
+    PRIMARY KEY (exam_id, student, ordinal)
+);
+
+CREATE TABLE IF NOT EXISTS bank_question (
+    id uuid PRIMARY KEY,
+    course_id uuid NOT NULL REFERENCES course (id),
+    prompt text NOT NULL,
+    CONSTRAINT bank_prompt_not_blank CHECK (length(btrim(prompt)) > 0)
+);
+
+CREATE TABLE IF NOT EXISTS bank_choice (
+    id uuid PRIMARY KEY,
+    question_id uuid NOT NULL REFERENCES bank_question (id),
+    label text NOT NULL,
+    correct boolean NOT NULL,
+    CONSTRAINT bank_choice_label_not_blank CHECK (length(btrim(label)) > 0)
+);
+
+CREATE TABLE IF NOT EXISTS study_group (
+    id uuid PRIMARY KEY,
+    cohort_id uuid NOT NULL REFERENCES cohort (id),
+    name text NOT NULL,
+    CONSTRAINT study_group_name_not_blank CHECK (length(btrim(name)) > 0)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS study_group_name_unique ON study_group (cohort_id, lower(name));
+
+CREATE TABLE IF NOT EXISTS study_member (
+    group_id uuid NOT NULL REFERENCES study_group (id),
+    student text NOT NULL,
+    PRIMARY KEY (group_id, student),
+    CONSTRAINT study_member_student_not_blank CHECK (length(btrim(student)) > 0)
+);
+
+CREATE TABLE IF NOT EXISTS peer_review (
+    practice_id uuid NOT NULL,
+    author text NOT NULL,
+    reviewer text NOT NULL,
+    comment text NOT NULL,
+    mark smallint NOT NULL,
+    PRIMARY KEY (practice_id, author, reviewer),
+    FOREIGN KEY (practice_id, author) REFERENCES submission (practice_id, student),
+    CONSTRAINT peer_mark CHECK (mark BETWEEN 0 AND 10),
+    CONSTRAINT peer_comment_not_blank CHECK (length(btrim(comment)) > 0),
+    CONSTRAINT peer_not_self CHECK (lower(author) <> lower(reviewer))
+);
+
+CREATE TABLE IF NOT EXISTS lesson_asset (
+    id uuid PRIMARY KEY,
+    lesson_id uuid NOT NULL REFERENCES lesson (id),
+    name text NOT NULL,
+    media bytea NOT NULL,
+    media_type text NOT NULL,
+    CONSTRAINT lesson_asset_name_not_blank CHECK (length(btrim(name)) > 0)
+);
+
+CREATE TABLE IF NOT EXISTS inbox (
+    id uuid PRIMARY KEY,
+    account text NOT NULL,
+    body text NOT NULL,
+    created_at timestamptz NOT NULL,
+    read_at timestamptz,
+    CONSTRAINT inbox_account_not_blank CHECK (length(btrim(account)) > 0),
+    CONSTRAINT inbox_body_not_blank CHECK (length(btrim(body)) > 0)
+);
