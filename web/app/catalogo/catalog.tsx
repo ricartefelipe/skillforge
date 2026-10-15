@@ -24,6 +24,8 @@ export function CatalogView({
   createLesson,
   heading = "Cursos",
   kicker = "Disponíveis",
+  returnTo = "/catalogo",
+  titleAs = "h1",
 }: {
   courses: Course[] | null;
   canCompose: boolean;
@@ -34,17 +36,21 @@ export function CatalogView({
   createLesson: (formData: FormData) => void;
   heading?: string;
   kicker?: string;
+  returnTo?: string;
+  titleAs?: "h1" | "h2";
 }) {
+  const Title = titleAs;
   const writes = (courseId: string) => canCompose || writableCourseIds.includes(courseId);
   return (
     <div className="page">
       <header className="intro">
         <p className="kicker">{kicker}</p>
-        <h1>{heading}</h1>
+        <Title>{heading}</Title>
       </header>
       {notice ? <p role="alert">{notice}</p> : null}
       {canCompose ? (
         <form className="sheet" action={createCourse} aria-label="Novo curso">
+          <input type="hidden" name="returnTo" value={returnTo} />
           <label>
             Nome do curso
             <input name="name" required />
@@ -60,6 +66,7 @@ export function CatalogView({
           {writes(course.id) ? (
             <form className="compose" action={createModule} aria-label={`Novo módulo em ${course.name}`}>
               <input type="hidden" name="courseId" value={course.id} />
+              <input type="hidden" name="returnTo" value={returnTo} />
               <label>
                 Nome do módulo
                 <input name="name" required />
@@ -79,7 +86,12 @@ export function CatalogView({
                   </li>
                 ))}
               </ul>
-              {writes(course.id) ? <LessonForm moduleId={module.id} action={createLesson} /> : null}
+              {writes(course.id) ? (
+                <>
+                  <p className="meta">Publicar aula neste módulo</p>
+                  <LessonForm moduleId={module.id} action={createLesson} returnTo={returnTo} />
+                </>
+              ) : null}
             </section>
           ))}
         </section>
