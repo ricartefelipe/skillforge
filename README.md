@@ -235,6 +235,14 @@ As regras da aula passam a ter teste unitário, sem subir o banco.
 - Quem vê e quem ministra a turma fica explícito.
 - O pacote recusa caminho que sai do zip. O lançamento assinado não leva o segredo.
 
+## Incremento 17
+
+A aplicação da turma, do fórum, da busca e do correio também tem teste unitário.
+
+- Publicar prova, prática, aviso e turma recusa quem não pode e avisa quem pode.
+- A busca curta não consulta o acervo. O e-mail sem endereço não grava.
+- Cada recusa da API vira o status HTTP correspondente.
+
 ## Arranque
 
 É preciso Java 21, Node.js 22, Docker e curl.
