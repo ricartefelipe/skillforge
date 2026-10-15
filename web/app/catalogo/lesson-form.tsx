@@ -60,9 +60,9 @@ function accept(kind: string): string {
 function hint(kind: string): string {
   switch (kind) {
     case "ebook":
-      return "PDF ou EPUB, até 8 MB.";
+      return "PDF ou EPUB, até 100 MB.";
     case "video":
-      return "MP4, MOV ou WebM, até 8 MB.";
+      return "MP4, MOV ou WebM, até 512 MB.";
     default:
       return "Texto da página, como uma aula escrita.";
   }
