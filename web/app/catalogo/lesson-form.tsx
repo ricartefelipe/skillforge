@@ -27,6 +27,8 @@ export function LessonForm({
           <option value="markdown">Página</option>
           <option value="ebook">Ebook (PDF ou EPUB)</option>
           <option value="video">Vídeo</option>
+          <option value="scorm">Pacote SCORM</option>
+          <option value="lti">Ferramenta externa</option>
         </select>
       </label>
       {kind === "markdown" ? (
@@ -34,12 +36,25 @@ export function LessonForm({
           Texto
           <textarea name="markdown" required />
         </label>
-      ) : (
+      ) : null}
+      {kind === "lti" ? (
+        <>
+          <label>
+            Endereço de abertura
+            <input name="launchUrl" type="url" required placeholder="https://" />
+          </label>
+          <label>
+            Segredo compartilhado
+            <input name="secret" required minLength={8} autoComplete="off" />
+          </label>
+        </>
+      ) : null}
+      {kind !== "markdown" && kind !== "lti" ? (
         <label>
           Arquivo
           <input name="file" type="file" required accept={accept(kind)} />
         </label>
-      )}
+      ) : null}
       <p className="meta">{hint(kind)}</p>
       <button type="submit">Publicar material</button>
     </form>
@@ -52,6 +67,8 @@ function accept(kind: string): string {
       return ".pdf,.epub,application/pdf,application/epub+zip";
     case "video":
       return ".mp4,.mov,.webm,video/mp4,video/quicktime,video/webm";
+    case "scorm":
+      return ".zip,application/zip";
     default:
       return "";
   }
@@ -63,6 +80,10 @@ function hint(kind: string): string {
       return "PDF ou EPUB, até 100 MB.";
     case "video":
       return "MP4, MOV ou WebM, até 512 MB.";
+    case "scorm":
+      return "Zip com imsmanifest.xml, até 100 MB.";
+    case "lti":
+      return "A turma abre a ferramenta com a conta de quem está na aula.";
     default:
       return "Texto da página, como uma aula escrita.";
   }

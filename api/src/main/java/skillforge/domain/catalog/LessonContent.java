@@ -69,6 +69,15 @@ public final class LessonContent {
             case PDF -> file(
                     markdown, media, limits.pdfMax(), "application/pdf", Failure.NOT_PDF, LessonContent::pdf, parsed);
             case EBOOK -> ebook(markdown, media, limits.pdfMax());
+            case SCORM -> file(
+                    markdown,
+                    media,
+                    limits.pdfMax(),
+                    "application/zip",
+                    Failure.NOT_PACKAGE,
+                    LessonContent::zip,
+                    parsed);
+            case LTI -> external(markdown, media);
             case VIDEO -> file(
                     markdown, media, limits.videoMax(), null, Failure.NOT_VIDEO, LessonContent::videoType, parsed);
         };
@@ -141,6 +150,21 @@ public final class LessonContent {
             return null;
         }
         return "application/epub+zip";
+    }
+
+    private static Decision external(String markdown, byte[] media) {
+        boolean hasFile = media != null && media.length > 0;
+        if (hasFile || markdown != null && !markdown.isBlank()) {
+            return new Rejected(Failure.FILE_ONLY);
+        }
+        return new Accepted(LessonKind.LTI, null, null, null);
+    }
+
+    private static String zip(byte[] media) {
+        if (media.length < 4 || media[0] != 'P' || media[1] != 'K' || media[2] != 3 || media[3] != 4) {
+            return null;
+        }
+        return "application/zip";
     }
 
     private static String videoType(byte[] media) {

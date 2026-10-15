@@ -27,7 +27,7 @@ A interface mostra Entrar, ou o nome e o papel com Sair. Com sessão, o menu tem
 
 A grade é o curso dividido em unidades. Cada unidade reúne os materiais, nesta ordem em que forem publicados: página, ebook e vídeo. O ebook é PDF ou EPUB, até 100 MB. O vídeo é MP4, MOV ou WebM, até 512 MB. A administração cria o curso. Quem ministra abre a unidade e publica o material no curso da própria turma.
 
-A administração abre a turma, indica a conta do docente e matricula pela conta. O aluno vê só as turmas em que está. O docente vê só as que ministra. A administração vê todas. Dentro da turma a classe fica em grade, atividades, avisos, pessoas e grupos. O material se publica na unidade da grade e pode receber outros arquivos. A prova e a prática ficam em atividades. A aula abre com a grade ao lado. A home continua na primeira aula ainda não concluída. A busca fica em Cursos e Aulas. A agenda lista os prazos. Os recados avisam prova, aviso e devolutiva. O boletim marca aprovado a partir da média 7. Com pesos diferentes de 1, a média separa práticas e provas. Quem ministra pode editar o que ainda não teve entrega e retirar aula, prática, prova e aviso.
+A administração abre a turma, indica a conta do docente e matricula pela conta. O aluno vê só as turmas em que está. O docente vê só as que ministra. A administração vê todas. Dentro da turma a classe fica em grade, atividades, avisos, pessoas e grupos. O material se publica na unidade da grade e pode receber outros arquivos. A prova e a prática ficam em atividades. A aula abre com a grade ao lado. A home continua na primeira aula ainda não concluída. A busca percorre aulas, práticas e provas. A agenda é o mês, com os prazos no dia. Os recados avisam prova, aviso e devolutiva, e também saem por e-mail quando o correio e o endereço da conta estão configurados. O boletim marca aprovado a partir da média 7. Com pesos diferentes de 1, a média separa práticas e provas. Quem ministra pode editar o que ainda não teve entrega, arrastar a ordem da grade, ajustar o texto das questões mesmo depois da prova, e retirar aula, prática, prova e aviso. A aula também aceita um pacote SCORM e uma ferramenta externa aberta com a conta de quem está nela.
 
 - O aluno marca a aula como concluída. A marca permanece. Marcar de novo não muda a conta.
 - A prática tem enunciado, prazo opcional e rubrica opcional. O aluno entrega um texto. O docente devolve um comentário e a nota de 0 a 10. Com rubrica, a nota é a soma dos critérios. Depois da devolutiva, a entrega não muda.
@@ -169,6 +169,18 @@ A sala de estudo fecha o que ainda faltava para a rotina da turma.
 - A aula aceita arquivos além do material principal.
 - Recados entram quando sai aviso, prova ou devolutiva.
 - Os pesos da média vão de 1 a 5. Iguais a 1, a média histórica permanece. Diferentes, práticas e provas pesam em separado.
+
+## Incremento 10
+
+A busca, o mês, a ordem da grade, o pacote e a ferramenta externa fecham o que ainda estava de fora.
+
+- `GET /search?q=` procura aula, prática e prova no que a conta pode ver.
+- A agenda desenha o mês. Cada dia com prazo abre a turma.
+- Quem ministra arrasta as aulas entre as unidades. A posição fica gravada.
+- O enunciado e o texto das alternativas podem mudar depois que alguém já fez a prova. A nota já dada permanece.
+- Cada conta guarda o próprio e-mail em Recados. Se `MAIL_HOST` estiver definido, o recado também é enviado. Sem correio, o recado continua na interface.
+- O material pode ser um zip SCORM, com `imsmanifest.xml`. A conclusão do pacote marca a aula.
+- A ferramenta externa abre por um lançamento assinado. O segredo não sai para o navegador.
 
 ## Arranque
 

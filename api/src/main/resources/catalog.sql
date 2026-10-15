@@ -35,7 +35,29 @@ CREATE TABLE IF NOT EXISTS lesson (
 );
 
 ALTER TABLE lesson DROP CONSTRAINT IF EXISTS lesson_kind;
-ALTER TABLE lesson ADD CONSTRAINT lesson_kind CHECK (kind IN ('markdown', 'pdf', 'ebook', 'video'));
+ALTER TABLE lesson ADD CONSTRAINT lesson_kind CHECK (kind IN ('markdown', 'pdf', 'ebook', 'video', 'scorm', 'lti'));
+ALTER TABLE lesson DROP CONSTRAINT IF EXISTS lesson_one_content;
+ALTER TABLE lesson ADD CONSTRAINT lesson_one_content CHECK (
+    (
+        kind = 'markdown'
+        AND markdown IS NOT NULL
+        AND length(btrim(markdown)) > 0
+        AND media IS NULL
+        AND media_type IS NULL
+    )
+    OR (
+        kind IN ('pdf', 'ebook', 'video', 'scorm')
+        AND markdown IS NULL
+        AND media IS NOT NULL
+        AND media_type IS NOT NULL
+    )
+    OR (
+        kind = 'lti'
+        AND markdown IS NULL
+        AND media IS NULL
+        AND media_type IS NULL
+    )
+);
 
 CREATE TABLE IF NOT EXISTS cohort (
     id uuid PRIMARY KEY,
@@ -294,6 +316,47 @@ CREATE TABLE IF NOT EXISTS lesson_asset (
     media bytea NOT NULL,
     media_type text NOT NULL,
     CONSTRAINT lesson_asset_name_not_blank CHECK (length(btrim(name)) > 0)
+);
+
+CREATE TABLE IF NOT EXISTS scorm_file (
+    lesson_id uuid NOT NULL REFERENCES lesson (id),
+    path text NOT NULL,
+    media bytea NOT NULL,
+    media_type text NOT NULL,
+    PRIMARY KEY (lesson_id, path)
+);
+
+CREATE TABLE IF NOT EXISTS scorm_track (
+    lesson_id uuid NOT NULL REFERENCES lesson (id),
+    student text NOT NULL,
+    status text NOT NULL,
+    score smallint,
+    PRIMARY KEY (lesson_id, student),
+    CONSTRAINT scorm_status CHECK (status IN ('completed', 'passed', 'failed', 'incomplete')),
+    CONSTRAINT scorm_score CHECK (score IS NULL OR score BETWEEN 0 AND 100)
+);
+
+CREATE TABLE IF NOT EXISTS lesson_tool (
+    lesson_id uuid PRIMARY KEY REFERENCES lesson (id),
+    launch_url text NOT NULL,
+    shared_secret text NOT NULL,
+    CONSTRAINT lesson_tool_url CHECK (launch_url LIKE 'http://%' OR launch_url LIKE 'https://%'),
+    CONSTRAINT lesson_tool_secret CHECK (length(shared_secret) >= 8)
+);
+
+CREATE TABLE IF NOT EXISTS account_mail (
+    account text PRIMARY KEY,
+    email text NOT NULL,
+    CONSTRAINT account_mail_email CHECK (position('@' IN email) > 1)
+);
+
+CREATE TABLE IF NOT EXISTS mail_outbox (
+    id uuid PRIMARY KEY,
+    account text NOT NULL,
+    email text NOT NULL,
+    body text NOT NULL,
+    created_at timestamptz NOT NULL,
+    sent_at timestamptz
 );
 
 CREATE TABLE IF NOT EXISTS inbox (

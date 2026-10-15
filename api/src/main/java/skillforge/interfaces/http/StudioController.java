@@ -12,12 +12,15 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import skillforge.application.studio.StudioApplication;
 import skillforge.domain.cohort.ExamDraft;
 import skillforge.domain.identity.Actor;
 import skillforge.domain.studio.BankQuestion;
+import skillforge.domain.studio.Hit;
+import skillforge.domain.studio.QuestionText;
 import skillforge.domain.studio.InboxNote;
 import skillforge.domain.studio.PeerWork;
 import skillforge.domain.studio.Resume;
@@ -30,6 +33,34 @@ class StudioController {
 
     StudioController(StudioApplication studio) {
         this.studio = studio;
+    }
+
+    @GetMapping("/search")
+    java.util.List<Hit> search(
+            Authentication authentication,
+            @RequestParam(name = "q", required = false) String query) {
+        return studio.search(actor(authentication), query);
+    }
+
+    @PutMapping("/me/email")
+    ResponseEntity<Void> saveMail(Authentication authentication, @RequestBody MailEdit body) {
+        MailEdit request = body == null ? new MailEdit(null) : body;
+        studio.saveMail(actor(authentication), request.email());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/cohorts/{id}/exams/{examId}/questions")
+    ResponseEntity<Void> reviseQuestions(
+            Authentication authentication,
+            @PathVariable UUID id,
+            @PathVariable UUID examId,
+            @RequestBody QuestionEdit body) {
+        studio.reviseQuestions(
+                actor(authentication),
+                id,
+                examId,
+                body == null || body.questions() == null ? java.util.List.of() : body.questions());
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/resume")
@@ -201,6 +232,12 @@ class StudioController {
     }
 
     record ReviewEdit(String author, String comment, int mark) {
+    }
+
+    record MailEdit(String email) {
+    }
+
+    record QuestionEdit(java.util.List<QuestionText> questions) {
     }
 
 }

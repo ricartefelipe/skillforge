@@ -10,6 +10,10 @@ function kindLabel(kind: LessonSummary["kind"]): string {
       return "Ebook";
     case "video":
       return "Vídeo";
+    case "scorm":
+      return "Pacote";
+    case "lti":
+      return "Ferramenta";
     case "markdown":
       return "Página";
   }
@@ -51,7 +55,7 @@ export function CatalogView({
         <Title>{heading}</Title>
       </header>
       {notice ? <p role="alert">{notice}</p> : null}
-      <form className="compose" action={returnTo} method="get" aria-label="Buscar">
+      <form className="compose" action="/busca" method="get" aria-label="Buscar">
         <label>
           Buscar
           <input name="q" defaultValue={query} placeholder="Curso, unidade ou aula" />

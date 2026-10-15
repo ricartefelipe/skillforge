@@ -1,7 +1,7 @@
 export type LessonSummary = {
   id: string;
   title: string;
-  kind: "markdown" | "pdf" | "ebook" | "video";
+  kind: "markdown" | "pdf" | "ebook" | "video" | "scorm" | "lti";
   completed?: boolean;
 };
 
@@ -20,11 +20,11 @@ export type Course = {
 export type LessonDetail = {
   id: string;
   title: string;
-  kind: "markdown" | "pdf" | "ebook" | "video";
+  kind: "markdown" | "pdf" | "ebook" | "video" | "scorm" | "lti";
   markdown?: string;
 };
 
-const KINDS = new Set(["markdown", "pdf", "ebook", "video"]);
+const KINDS = new Set(["markdown", "pdf", "ebook", "video", "scorm", "lti"]);
 
 export function narrowCourses(courses: Course[] | null, query: string): Course[] | null {
   if (courses === null) {
@@ -79,6 +79,12 @@ export function catalogNotice(code: string | null): string | null {
       return "O ebook precisa ser um PDF ou um EPUB.";
     case "not-video":
       return "O vídeo precisa ser MP4, MOV ou WebM.";
+    case "not-package":
+      return "O pacote precisa ser um zip com imsmanifest.xml.";
+    case "launch":
+      return "A ferramenta precisa de um endereço http e um segredo com pelo menos 8 caracteres.";
+    case "mail":
+      return "O e-mail não é válido.";
     case "too-large":
       return "O arquivo passa do limite: ebook até 100 MB, vídeo até 512 MB.";
     case "not-found":

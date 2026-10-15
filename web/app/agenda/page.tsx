@@ -7,7 +7,7 @@ import { apiUrl } from "../../lib/openid";
 import { loadReports } from "../../lib/report";
 import { Shell } from "../shell";
 
-export default async function Page() {
+export default async function Page({ searchParams }: { searchParams: Promise<{ mes?: string }> }) {
   const jar = await cookies();
   const access = jar.get(ACCESS_COOKIE)?.value;
   const session = access ? await loadSession(access, apiUrl()) : null;
@@ -27,15 +27,36 @@ export default async function Page() {
 
   const reports = await loadReports(access);
   const items = deadlines(reports);
+  const month = monthOf((await searchParams).mes);
   return (
     <Shell session={session}>
       <div className="page">
         <header className="intro">
           <p className="kicker">Prazos</p>
           <h1>Agenda</h1>
-          <p className="lede">Práticas e provas que fecham numa data.</p>
+          <p className="lede">
+            <Link href={`/agenda?mes=${shift(month, -1)}`}>Mês anterior</Link>
+            {" · "}
+            {monthLabel(month)}
+            {" · "}
+            <Link href={`/agenda?mes=${shift(month, 1)}`}>Próximo mês</Link>
+          </p>
         </header>
         {reports === null ? <p className="empty">A agenda não responde.</p> : null}
+        <div className="month" aria-label="Calendário">
+          {daysOf(month).map((day) => {
+            const due = items.filter((item) => item.when.slice(0, 10) === day);
+            if (due.length === 0) {
+              return <span key={day}>{Number(day.slice(8))}</span>;
+            }
+            return (
+              <Link key={day} href={`/turmas/${due[0].cohortId}`}>
+                {Number(day.slice(8))}
+                <small>{due.length}</small>
+              </Link>
+            );
+          })}
+        </div>
         {reports !== null && items.length === 0 ? <p className="empty">Nenhum prazo marcado.</p> : null}
         <ul>
           {items.map((item) => (
@@ -50,6 +71,40 @@ export default async function Page() {
       </div>
     </Shell>
   );
+}
+
+function monthOf(raw: string | undefined) {
+  if (raw && /^\d{4}-\d{2}$/.test(raw)) {
+    return raw;
+  }
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function shift(month: string, delta: number) {
+  const [year, index] = month.split("-").map(Number);
+  const date = new Date(Date.UTC(year, (index ?? 1) - 1 + delta, 1));
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+function monthLabel(month: string) {
+  const [year, index] = month.split("-").map(Number);
+  return new Date(Date.UTC(year, (index ?? 1) - 1, 1)).toLocaleDateString("pt-BR", {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+function daysOf(month: string) {
+  const [year, index] = month.split("-").map(Number);
+  const cursor = new Date(Date.UTC(year, (index ?? 1) - 1, 1));
+  const days: string[] = [];
+  while (cursor.getUTCMonth() === (index ?? 1) - 1) {
+    days.push(cursor.toISOString().slice(0, 10));
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+  return days;
 }
 
 function deadlines(reports: Awaited<ReturnType<typeof loadReports>>) {

@@ -15,6 +15,7 @@ import {
 import type { LessonSummary } from "../../lib/catalog";
 import { LessonForm } from "../catalogo/lesson-form";
 import { ExamForm } from "../exam-form";
+import { GradeOrder } from "./grade-order";
 import { ProgressMeter } from "../meter";
 
 function kindLabel(kind: LessonSummary["kind"]): string {
@@ -24,6 +25,10 @@ function kindLabel(kind: LessonSummary["kind"]): string {
       return "Ebook";
     case "video":
       return "Vídeo";
+    case "scorm":
+      return "Pacote";
+    case "lti":
+      return "Ferramenta";
     case "markdown":
       return "Página";
     default: {
@@ -63,6 +68,8 @@ export function CohortDetailView({
   openGroup,
   reviewPeer,
   saveQuestion,
+  reorderGrade,
+  reviseQuestions,
 }: {
   cohort: CohortDetail;
   role: string;
@@ -93,6 +100,8 @@ export function CohortDetailView({
   openGroup?: (formData: FormData) => void;
   reviewPeer?: (formData: FormData) => void;
   saveQuestion?: (formData: FormData) => void;
+  reorderGrade?: (formData: FormData) => void;
+  reviseQuestions?: (formData: FormData) => void;
 }) {
   const leads = canLeadPractices(role);
   const here = `/turmas/${cohort.id}`;
@@ -123,6 +132,18 @@ export function CohortDetailView({
           </>
         ) : null}
         {cohort.course.modules.length === 0 ? <p className="empty">Nenhuma unidade ainda.</p> : null}
+        {leads && reorderGrade ? (
+          <GradeOrder
+            courseId={cohort.course.id}
+            returnTo={here}
+            action={reorderGrade}
+            modules={cohort.course.modules.map((module) => ({
+              id: module.id,
+              name: module.name,
+              lessons: module.lessons.map((lesson) => ({ id: lesson.id, title: lesson.title })),
+            }))}
+          />
+        ) : null}
         {leads && createModule ? (
           <form className="compose" action={createModule} aria-label="Nova unidade">
             <input type="hidden" name="courseId" value={cohort.course.id} />
@@ -208,6 +229,27 @@ export function CohortDetailView({
                   ))
                 : null}
               {leads && exam.scores.length === 0 ? <p className="meta">Ninguém fez esta prova.</p> : null}
+              {leads && reviseQuestions ? (
+                <form className="compose" action={reviseQuestions} aria-label={`Editar questões de ${exam.title}`}>
+                  <input type="hidden" name="cohortId" value={cohort.id} />
+                  <input type="hidden" name="examId" value={exam.id} />
+                  {exam.questions.map((question) => (
+                    <fieldset key={question.id}>
+                      <label>
+                        Enunciado
+                        <textarea name={`prompt:${question.id}`} defaultValue={question.prompt} required />
+                      </label>
+                      {question.choices.map((choice) => (
+                        <label key={choice.id}>
+                          Alternativa
+                          <input name={`choice:${question.id}/${choice.id}`} defaultValue={choice.label} required />
+                        </label>
+                      ))}
+                    </fieldset>
+                  ))}
+                  <button type="submit">Guardar questões</button>
+                </form>
+              ) : null}
               {leads && removeExam ? (
                 <form action={removeExam}>
                   <input type="hidden" name="cohortId" value={cohort.id} />

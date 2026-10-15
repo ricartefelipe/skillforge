@@ -27,6 +27,8 @@ import {
   reviewPeer,
   reviseAnnouncement,
   revisePractice,
+  reorderGrade,
+  reviseQuestions,
   saveQuestion,
   submitPractice,
   takeExam,
@@ -109,6 +111,8 @@ export default async function Page({
         openGroup={openGroup}
         reviewPeer={reviewPeer}
         saveQuestion={saveQuestion}
+        reorderGrade={reorderGrade}
+        reviseQuestions={reviseQuestions}
       />
     </Shell>
   );
