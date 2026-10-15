@@ -47,6 +47,10 @@ export function CohortDetailView({
   callRoll,
   createModule,
   createLesson,
+  removeLesson,
+  removePractice,
+  removeExam,
+  withdrawNotice,
 }: {
   cohort: CohortDetail;
   role: string;
@@ -64,6 +68,10 @@ export function CohortDetailView({
   callRoll?: (formData: FormData) => void;
   createModule?: (formData: FormData) => void;
   createLesson?: (formData: FormData) => void;
+  removeLesson?: (formData: FormData) => void;
+  removePractice?: (formData: FormData) => void;
+  removeExam?: (formData: FormData) => void;
+  withdrawNotice?: (formData: FormData) => void;
 }) {
   const leads = canLeadPractices(role);
   const here = `/turmas/${cohort.id}`;
@@ -114,6 +122,13 @@ export function CohortDetailView({
                   <Link href={`/catalogo/aulas/${lesson.id}`}>{lesson.title}</Link>
                   <span className="kind">{kindLabel(lesson.kind)}</span>
                   {lesson.completed === true ? <span className="done">Concluída</span> : null}
+                  {leads && removeLesson ? (
+                    <form action={removeLesson}>
+                      <input type="hidden" name="lessonId" value={lesson.id} />
+                      <input type="hidden" name="returnTo" value={here} />
+                      <button className="quiet" type="submit">Retirar</button>
+                    </form>
+                  ) : null}
                   {role === "aluno" && lesson.completed === false ? (
                     <form action={completeLesson}>
                       <input type="hidden" name="cohortId" value={cohort.id} />
@@ -166,6 +181,13 @@ export function CohortDetailView({
                   ))
                 : null}
               {leads && exam.scores.length === 0 ? <p className="meta">Ninguém fez esta prova.</p> : null}
+              {leads && removeExam ? (
+                <form action={removeExam}>
+                  <input type="hidden" name="cohortId" value={cohort.id} />
+                  <input type="hidden" name="examId" value={exam.id} />
+                  <button className="quiet" type="submit">Retirar prova</button>
+                </form>
+              ) : null}
             </section>
           );
         })}
@@ -180,6 +202,7 @@ export function CohortDetailView({
             role={role}
             submitPractice={submitPractice}
             returnPractice={returnPractice}
+            removePractice={removePractice}
           />
         ))}
         {leads ? (
@@ -232,6 +255,15 @@ export function CohortDetailView({
             <button type="submit">Publicar aviso</button>
           </form>
         ) : null}
+        {leads && withdrawNotice
+          ? announcements.map((item) => (
+              <form key={`retirar-${item.id}`} action={withdrawNotice}>
+                <input type="hidden" name="cohortId" value={cohort.id} />
+                <input type="hidden" name="announcementId" value={item.id} />
+                <button className="quiet" type="submit">Retirar {item.title}</button>
+              </form>
+            ))
+          : null}
       </section>
       <section className="tree" id="chamada" aria-label="Chamada">
         <h3>Chamada</h3>
@@ -306,18 +338,27 @@ function PracticeCard({
   role,
   submitPractice,
   returnPractice,
+  removePractice,
 }: {
   cohortId: string;
   practice: Practice;
   role: string;
   submitPractice: (formData: FormData) => void;
   returnPractice: (formData: FormData) => void;
+  removePractice?: (formData: FormData) => void;
 }) {
   const own = role === "aluno" ? (practice.deliveries[0] ?? null) : null;
   const waiting = own !== null && own.feedback === null;
   return (
     <section className="module" aria-label={practice.title}>
       <h3>{practice.title}</h3>
+      {canLeadPractices(role) && removePractice ? (
+        <form action={removePractice}>
+          <input type="hidden" name="cohortId" value={cohortId} />
+          <input type="hidden" name="practiceId" value={practice.id} />
+          <button className="quiet" type="submit">Retirar prática</button>
+        </form>
+      ) : null}
       <p>{practice.prompt}</p>
       {practice.dueAt ? <p className="meta">Prazo {practice.dueAt}</p> : null}
       {practice.criteria.length > 0 ? (

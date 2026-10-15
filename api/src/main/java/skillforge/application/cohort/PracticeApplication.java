@@ -53,6 +53,13 @@ public class PracticeApplication {
         return new Opened(practices.openPractice(cohortId, actor, title, prompt, dueAt, clean), title);
     }
 
+    public void remove(Actor actor, UUID cohortId, UUID practiceId) {
+        if (actor.role() == Role.ALUNO) {
+            throw new Rejection(Failure.FORBIDDEN);
+        }
+        practices.removePractice(cohortId, actor, practiceId);
+    }
+
     public void submit(Actor actor, UUID cohortId, UUID practiceId, String rawText) {
         actor.requireStudent();
         practices.submit(cohortId, practiceId, actor, Texts.require(rawText, Failure.BLANK_SUBMISSION));

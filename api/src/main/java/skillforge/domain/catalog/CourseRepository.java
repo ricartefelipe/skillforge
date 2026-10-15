@@ -12,6 +12,10 @@ public interface CourseRepository {
 
     UUID addLesson(UUID moduleId, String title, LessonContent.Accepted content);
 
+    void removeLesson(UUID lessonId);
+
+    Optional<UUID> courseOfLesson(UUID lessonId);
+
     List<Course> list();
 
     Optional<Course> find(UUID id);

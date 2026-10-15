@@ -405,6 +405,39 @@ h1 {
   border-color: var(--ink);
 }
 
+.player {
+  display: grid;
+  grid-template-columns: minmax(14rem, 18rem) 1fr;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.playlist {
+  display: grid;
+  gap: 0.35rem;
+  padding: 1rem;
+  border-radius: 16px;
+  background: var(--ink);
+  color: #f4f8fc;
+}
+
+.playlist a {
+  color: #f4f8fc;
+  text-decoration: none;
+  padding: 0.35rem 0;
+}
+
+.playlist a[aria-current="page"] {
+  color: #00c86f;
+  font-weight: 700;
+}
+
+@media (max-width: 860px) {
+  .player {
+    grid-template-columns: 1fr;
+  }
+}
+
 .unit {
   margin: 0;
   padding: 1rem 1.1rem 1.15rem;

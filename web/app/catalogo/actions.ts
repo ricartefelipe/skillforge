@@ -15,6 +15,29 @@ export async function createModule(formData: FormData) {
   await sendJson(`/courses/${courseId}/modules`, { name: field(formData, "name") }, back(formData));
 }
 
+export async function removeLesson(formData: FormData) {
+  const lessonId = field(formData, "lessonId");
+  const token = (await cookies()).get(ACCESS_COOKIE)?.value;
+  const page = back(formData);
+  if (!token) {
+    redirect("/login");
+  }
+  let response: Response;
+  try {
+    response = await fetch(`${apiUrl()}/lessons/${lessonId}`, {
+      method: "DELETE",
+      headers: { authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+  } catch {
+    redirect(`${page}?erro=unavailable`);
+  }
+  if (!response.ok && response.status !== 204) {
+    redirect(`${page}?erro=unavailable`);
+  }
+  redirect(page);
+}
+
 export async function createLesson(formData: FormData) {
   const moduleId = field(formData, "moduleId");
   const body = new FormData();

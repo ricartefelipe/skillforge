@@ -10,13 +10,16 @@ import {
   callRoll,
   completeLesson,
   enrollStudent,
+  removeExam,
+  removePractice,
+  withdrawNotice,
   openExam,
   openPractice,
   returnPractice,
   submitPractice,
   takeExam,
 } from "../actions";
-import { createLesson, createModule } from "../../catalogo/actions";
+import { createLesson, createModule, removeLesson } from "../../catalogo/actions";
 import { CohortDetailView } from "../detail";
 
 export default async function Page({
@@ -79,6 +82,10 @@ export default async function Page({
         callRoll={callRoll}
         createModule={createModule}
         createLesson={createLesson}
+        removeLesson={removeLesson}
+        removePractice={removePractice}
+        removeExam={removeExam}
+        withdrawNotice={withdrawNotice}
       />
     </Shell>
   );

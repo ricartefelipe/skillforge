@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS lesson (
     media bytea,
     media_type text,
     CONSTRAINT lesson_title_not_blank CHECK (length(btrim(title)) > 0),
-    CONSTRAINT lesson_kind CHECK (kind IN ('markdown', 'pdf', 'video')),
+    CONSTRAINT lesson_kind CHECK (kind IN ('markdown', 'pdf', 'ebook', 'video')),
     -- A lesson carries markdown, or a file, and never both.
     CONSTRAINT lesson_one_content CHECK (
         (markdown IS NOT NULL) = (kind = 'markdown')
@@ -33,6 +33,9 @@ CREATE TABLE IF NOT EXISTS lesson (
         AND (markdown IS NULL OR length(btrim(markdown)) > 0)
     )
 );
+
+ALTER TABLE lesson DROP CONSTRAINT IF EXISTS lesson_kind;
+ALTER TABLE lesson ADD CONSTRAINT lesson_kind CHECK (kind IN ('markdown', 'pdf', 'ebook', 'video'));
 
 CREATE TABLE IF NOT EXISTS cohort (
     id uuid PRIMARY KEY,

@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -86,6 +87,12 @@ class CatalogController {
                 markdown,
                 media);
         return ResponseEntity.status(HttpStatus.CREATED).body(LessonBody.from(lesson));
+    }
+
+    @DeleteMapping("/lessons/{id}")
+    ResponseEntity<Void> removeLesson(Authentication authentication, @PathVariable UUID id) {
+        catalog.removeLesson(RequestActor.from(authentication), id);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/lessons/{id}")

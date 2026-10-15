@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { Session } from "../lib/access";
@@ -16,7 +17,13 @@ async function consult(path: string): Promise<ProbeReading> {
   }
 }
 
-export function SkillforgeHome({ session }: { session: Session | null }) {
+export function SkillforgeHome({
+  session,
+  resume = null,
+}: {
+  session: Session | null;
+  resume?: { href: string; title: string } | null;
+}) {
   const [liveness, setLiveness] = useState<ProbeReading>("pending");
   const [readiness, setReadiness] = useState<ProbeReading>("pending");
   const request = useRef(0);
@@ -56,6 +63,11 @@ export function SkillforgeHome({ session }: { session: Session | null }) {
           <h1 aria-live="polite">{headline(liveness, readiness)}</h1>
           <p className="lede">Construção de competências pela prática.</p>
         </header>
+        {resume ? (
+          <p>
+            <Link href={resume.href}>Continuar: {resume.title}</Link>
+          </p>
+        ) : null}
         <section className="panel access" aria-label="Acesso">
           {session ? (
             <article>

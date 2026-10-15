@@ -27,7 +27,7 @@ A interface mostra Entrar, ou o nome e o papel com Sair. Com sessão, o menu tem
 
 A grade é o curso dividido em unidades. Cada unidade reúne os materiais, nesta ordem em que forem publicados: página, ebook e vídeo. O ebook é PDF ou EPUB, até 100 MB. O vídeo é MP4, MOV ou WebM, até 512 MB. A administração cria o curso. Quem ministra abre a unidade e publica o material no curso da própria turma.
 
-A administração abre a turma, indica a conta do docente e matricula pela conta. O aluno vê só as turmas em que está. O docente vê só as que ministra. A administração vê todas. Dentro da turma a classe fica em quatro partes: grade, atividades, avisos e pessoas. O material se publica na unidade da grade. A prova e a prática ficam em atividades.
+A administração abre a turma, indica a conta do docente e matricula pela conta. O aluno vê só as turmas em que está. O docente vê só as que ministra. A administração vê todas. Dentro da turma a classe fica em quatro partes: grade, atividades, avisos e pessoas. O material se publica na unidade da grade. A prova e a prática ficam em atividades. A aula abre com a grade ao lado. A busca fica em Cursos e Aulas. A agenda lista os prazos. O boletim marca aprovado a partir da média 7. Quem ministra pode retirar aula, prática, prova e aviso.
 
 - O aluno marca a aula como concluída. A marca permanece. Marcar de novo não muda a conta.
 - A prática tem enunciado, prazo opcional e rubrica opcional. O aluno entrega um texto. O docente devolve um comentário e a nota de 0 a 10. Com rubrica, a nota é a soma dos critérios. Depois da devolutiva, a entrega não muda.

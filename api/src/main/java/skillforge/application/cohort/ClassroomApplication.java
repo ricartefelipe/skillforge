@@ -29,6 +29,13 @@ public class ClassroomApplication {
         this.classroom = classroom;
     }
 
+    public void withdraw(Actor actor, UUID cohortId, UUID announcementId) {
+        if (actor.role() == Role.ALUNO) {
+            throw new Rejection(Failure.FORBIDDEN);
+        }
+        classroom.withdraw(cohortId, actor, announcementId);
+    }
+
     public UUID announce(Actor actor, UUID cohortId, String rawTitle, String rawBody) {
         if (actor.role() == Role.ALUNO) {
             throw new Rejection(Failure.FORBIDDEN);
