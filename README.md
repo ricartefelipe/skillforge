@@ -209,6 +209,12 @@ A visão noturna deixa de divergir da página que o servidor já entregou.
 - O tema gravado no navegador entra antes da pintura.
 - Com a lua ligada, a página hidrata sem o aviso de atributos diferentes.
 
+## Incremento 14
+
+A pasta do editor fica de fora do repositório.
+
+- `.idea/` não entra no Git.
+
 ## Arranque
 
 É preciso Java 21, Node.js 22, Docker e curl.
