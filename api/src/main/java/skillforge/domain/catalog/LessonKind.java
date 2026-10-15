@@ -6,6 +6,7 @@ public enum LessonKind {
 
     MARKDOWN("markdown"),
     PDF("pdf"),
+    EBOOK("ebook"),
     VIDEO("video");
 
     private final String wire;

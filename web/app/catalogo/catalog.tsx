@@ -6,11 +6,12 @@ import { LessonForm } from "./lesson-form";
 function kindLabel(kind: LessonSummary["kind"]): string {
   switch (kind) {
     case "pdf":
-      return "PDF";
+    case "ebook":
+      return "Ebook";
     case "video":
       return "Vídeo";
-    default:
-      return "Markdown";
+    case "markdown":
+      return "Página";
   }
 }
 
@@ -63,20 +64,22 @@ export function CatalogView({
       {courses?.map((course) => (
         <section className="tree" key={course.id} aria-label={course.name}>
           <h2>{course.name}</h2>
+          <p className="course-name">Grade em unidades. Cada unidade reúne página, ebook e vídeo.</p>
           {writes(course.id) ? (
-            <form className="compose" action={createModule} aria-label={`Novo módulo em ${course.name}`}>
+            <form className="compose" action={createModule} aria-label={`Nova unidade em ${course.name}`}>
               <input type="hidden" name="courseId" value={course.id} />
               <input type="hidden" name="returnTo" value={returnTo} />
               <label>
-                Nome do módulo
+                Nome da unidade
                 <input name="name" required />
               </label>
-              <button type="submit">Criar módulo</button>
+              <button type="submit">Abrir unidade</button>
             </form>
           ) : null}
-          {course.modules.length === 0 ? <p className="empty">Nenhum módulo ainda.</p> : null}
-          {course.modules.map((module) => (
-            <section className="module" key={module.id} aria-label={module.name}>
+          {course.modules.length === 0 ? <p className="empty">Nenhuma unidade ainda.</p> : null}
+          {course.modules.map((module, index) => (
+            <section className="module unit" key={module.id} aria-label={module.name}>
+              <p className="meta">Unidade {index + 1}</p>
               <h3>{module.name}</h3>
               <ul>
                 {module.lessons.map((lesson) => (
@@ -88,7 +91,7 @@ export function CatalogView({
               </ul>
               {writes(course.id) ? (
                 <>
-                  <p className="meta">Publicar aula neste módulo</p>
+                  <p className="meta">Publicar material nesta unidade</p>
                   <LessonForm moduleId={module.id} action={createLesson} returnTo={returnTo} />
                 </>
               ) : null}

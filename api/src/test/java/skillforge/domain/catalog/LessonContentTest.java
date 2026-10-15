@@ -52,6 +52,24 @@ class LessonContentTest {
     }
 
     @Test
+    void ebookAcceptsPdfAndEpub() {
+        byte[] pdf = "%PDF-1.4\n".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+        LessonContent.Accepted pdfAccepted = assertInstanceOf(
+                LessonContent.Accepted.class,
+                LessonContent.decide("ebook", null, pdf, LIMITS));
+        assertEquals(LessonKind.PDF, pdfAccepted.kind());
+
+        byte[] epub = "PK\u0003\u0004application/epub+zip".getBytes(java.nio.charset.StandardCharsets.ISO_8859_1);
+        LessonContent.Accepted epubAccepted = assertInstanceOf(
+                LessonContent.Accepted.class,
+                LessonContent.decide("ebook", null, epub, LIMITS));
+        assertEquals(LessonKind.EBOOK, epubAccepted.kind());
+        assertEquals("application/epub+zip", epubAccepted.mediaType());
+
+        assertEquals("not-ebook", code(LessonContent.decide("ebook", null, "PK\u0003\u0004notas".getBytes(), LIMITS)));
+    }
+
+    @Test
     void videoAcceptsMp4AndWebm() {
         byte[] mp4 = new byte[] {0, 0, 0, 24, 'f', 't', 'y', 'p'};
         byte[] webm = new byte[] {0x1a, 0x45, (byte) 0xdf, (byte) 0xa3};
@@ -65,6 +83,12 @@ class LessonContentTest {
                 LessonContent.Accepted.class,
                 LessonContent.decide("video", " ", webm, LIMITS));
         assertEquals("video/webm", webmAccepted.mediaType());
+
+        byte[] later = new byte[] {0, 0, 0, 0, 0, 0, 0, 0, 'f', 't', 'y', 'p'};
+        LessonContent.Accepted laterAccepted = assertInstanceOf(
+                LessonContent.Accepted.class,
+                LessonContent.decide("video", null, later, LIMITS));
+        assertEquals("video/mp4", laterAccepted.mediaType());
 
         assertEquals("not-video", code(LessonContent.decide("video", null, "%PDF".getBytes(), LIMITS)));
         assertEquals("unknown-kind", code(LessonContent.decide("slide", null, mp4, LIMITS)));

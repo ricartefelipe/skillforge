@@ -38,7 +38,8 @@ describe("CatalogView", () => {
     expect(screen.getByRole("form", { name: "Novo curso" })).toBeInTheDocument();
     const tree = screen.getByRole("region", { name: "Forja" });
     expect(within(tree).getByRole("link", { name: "O que é" })).toHaveAttribute("href", "/catalogo/aulas/l1");
-    expect(within(tree).getByRole("form", { name: "Nova aula" })).toBeInTheDocument();
+    expect(within(tree).getByRole("form", { name: "Novo material" })).toBeInTheDocument();
+    expect(within(tree).getByText("Unidade 1")).toBeInTheDocument();
   });
 
   it("hides compose forms from a student and does not call an empty catalog missing", () => {
@@ -73,10 +74,10 @@ describe("CatalogView", () => {
       />,
     );
 
-    const form = screen.getByRole("form", { name: "Nova aula" });
+    const form = screen.getByRole("form", { name: "Novo material" });
     expect(within(form).getByRole("textbox", { name: "Texto" })).toBeInTheDocument();
 
-    fireEvent.change(within(form).getByRole("combobox", { name: "Tipo" }), { target: { value: "video" } });
+    fireEvent.change(within(form).getByRole("combobox", { name: "Material" }), { target: { value: "video" } });
 
     expect(within(form).queryByRole("textbox", { name: "Texto" })).not.toBeInTheDocument();
     expect(within(form).getByLabelText("Arquivo")).toBeInTheDocument();

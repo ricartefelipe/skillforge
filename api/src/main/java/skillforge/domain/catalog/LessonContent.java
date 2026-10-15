@@ -68,6 +68,7 @@ public final class LessonContent {
             case MARKDOWN -> markdown(markdown, media, limits.markdownMax());
             case PDF -> file(
                     markdown, media, limits.pdfMax(), "application/pdf", Failure.NOT_PDF, LessonContent::pdf, parsed);
+            case EBOOK -> ebook(markdown, media, limits.pdfMax());
             case VIDEO -> file(
                     markdown, media, limits.videoMax(), null, Failure.NOT_VIDEO, LessonContent::videoType, parsed);
         };
@@ -109,12 +110,37 @@ public final class LessonContent {
         return new Accepted(kind, null, media, mediaType);
     }
 
+    private static Decision ebook(String markdown, byte[] media, long max) {
+        if (markdown != null && !markdown.isBlank()) {
+            return new Rejected(Failure.FILE_ONLY);
+        }
+        if (media == null || media.length == 0 || pdf(media) == null && epub(media) == null) {
+            return new Rejected(Failure.NOT_EBOOK);
+        }
+        if (pdf(media) != null) {
+            return file(null, media, max, "application/pdf", Failure.NOT_EBOOK, LessonContent::pdf, LessonKind.PDF);
+        }
+        return file(null, media, max, "application/epub+zip", Failure.NOT_EBOOK, LessonContent::epub, LessonKind.EBOOK);
+    }
+
     private static String pdf(byte[] media) {
         byte[] header = "%PDF".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
         if (media.length < header.length || !Arrays.equals(media, 0, header.length, header, 0, header.length)) {
             return null;
         }
         return "application/pdf";
+    }
+
+    private static String epub(byte[] media) {
+        if (media.length < 4 || media[0] != 'P' || media[1] != 'K' || media[2] != 3 || media[3] != 4) {
+            return null;
+        }
+        int window = Math.min(media.length, 200);
+        String head = new String(media, 0, window, java.nio.charset.StandardCharsets.ISO_8859_1);
+        if (!head.contains("application/epub+zip")) {
+            return null;
+        }
+        return "application/epub+zip";
     }
 
     private static String videoType(byte[] media) {
@@ -125,8 +151,11 @@ public final class LessonContent {
                 && (media[3] & 0xff) == 0xa3) {
             return "video/webm";
         }
-        if (media.length >= 8 && media[4] == 'f' && media[5] == 't' && media[6] == 'y' && media[7] == 'p') {
-            return "video/mp4";
+        int last = Math.min(media.length - 4, 64);
+        for (int index = 0; index <= last; index++) {
+            if (media[index] == 'f' && media[index + 1] == 't' && media[index + 2] == 'y' && media[index + 3] == 'p') {
+                return "video/mp4";
+            }
         }
         return null;
     }

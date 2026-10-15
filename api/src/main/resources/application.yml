@@ -13,16 +13,16 @@ spring:
   servlet:
     multipart:
       # The ceiling matches the largest lesson. A bigger body is refused before it is stored.
-      max-file-size: 8MB
-      max-request-size: 8MB
+      max-file-size: 200MB
+      max-request-size: 200MB
 
 skillforge:
   issuer: ${KEYCLOAK_ISSUER:http://localhost:8180/realms/skillforge}
   identity-timeout: 2s
   catalog:
     markdown-max: 100000
-    pdf-max: 8MB
-    video-max: 8MB
+    pdf-max: 40MB
+    video-max: 200MB
 
 management:
   endpoints:

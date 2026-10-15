@@ -42,9 +42,9 @@ public class SkillforgeProperties {
 
         private int markdownMax = 100_000;
 
-        private DataSize pdfMax = DataSize.ofMegabytes(8);
+        private DataSize pdfMax = DataSize.ofMegabytes(40);
 
-        private DataSize videoMax = DataSize.ofMegabytes(8);
+        private DataSize videoMax = DataSize.ofMegabytes(200);
 
         public int getMarkdownMax() {
             return markdownMax;
