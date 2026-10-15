@@ -457,10 +457,27 @@ h1 {
   color: #f4f8fc;
 }
 
+.playlist section {
+  display: grid;
+  gap: 0.15rem;
+}
+
 .playlist a {
+  display: grid;
+  gap: 0.1rem;
   color: #f4f8fc;
   text-decoration: none;
-  padding: 0.35rem 0;
+  padding: 0.45rem 0;
+  border-top: 1px solid rgba(244, 248, 252, 0.12);
+}
+
+.playlist .kind {
+  color: #c5d0dc;
+  font-size: 0.78rem;
+}
+
+.next-lesson {
+  margin: 0.8rem 0 0;
 }
 
 .playlist a[aria-current="page"] {

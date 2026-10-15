@@ -158,8 +158,8 @@ public class StudioApplication {
         studio.saveMail(actor.username(), email);
     }
 
-    public java.util.List<String> mail(Actor actor) {
-        return studio.mail(actor.username());
+    public skillforge.domain.studio.Mailbox mail(Actor actor) {
+        return studio.mailbox(actor.username());
     }
 
     public void reviseQuestions(Actor actor, UUID cohortId, UUID examId, java.util.List<QuestionText> questions) {

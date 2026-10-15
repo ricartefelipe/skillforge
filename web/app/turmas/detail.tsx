@@ -12,31 +12,12 @@ import {
   type ClassNotice,
   type StudyGroup,
 } from "../../lib/cohort";
-import type { LessonSummary } from "../../lib/catalog";
+import { kindLabel } from "../../lib/catalog";
+import { formatDeadline } from "../../lib/deadline";
 import { LessonForm } from "../catalogo/lesson-form";
 import { ExamForm } from "../exam-form";
 import { GradeOrder } from "./grade-order";
 import { ProgressMeter } from "../meter";
-
-function kindLabel(kind: LessonSummary["kind"]): string {
-  switch (kind) {
-    case "pdf":
-    case "ebook":
-      return "Ebook";
-    case "video":
-      return "Vídeo";
-    case "scorm":
-      return "Pacote";
-    case "lti":
-      return "Ferramenta";
-    case "markdown":
-      return "Página";
-    default: {
-      const uncovered: never = kind;
-      return uncovered;
-    }
-  }
-}
 
 export function CohortDetailView({
   cohort,
@@ -197,7 +178,7 @@ export function CohortDetailView({
           return (
             <section className="module" key={exam.id} aria-label={exam.title}>
               <h3>{exam.title}</h3>
-              {exam.dueAt ? <p className="meta">Prazo {exam.dueAt}</p> : null}
+              {exam.dueAt ? <p className="meta">Prazo {formatDeadline(exam.dueAt)}</p> : null}
               <p className="meta">
                 {exam.minutes ? `${exam.minutes} min · ` : null}
                 {exam.attemptsAllowed === 1 ? "1 tentativa" : `${exam.attemptsAllowed} tentativas`}
@@ -525,7 +506,7 @@ function PracticeCard({
         </form>
       ) : null}
       <p>{practice.prompt}</p>
-      {practice.dueAt ? <p className="meta">Prazo {practice.dueAt}</p> : null}
+      {practice.dueAt ? <p className="meta">Prazo {formatDeadline(practice.dueAt)}</p> : null}
       {practice.criteria.length > 0 ? (
         <ul>
           {practice.criteria.map((criterion) => (

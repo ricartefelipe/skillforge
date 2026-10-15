@@ -495,7 +495,27 @@ class JdbcStudioRepository implements StudioRepository {
     }
 
     private List<Resume> nextForStudent(String student) {
-        return jdbc.query("""
+        List<Resume> current = incomplete(student, true);
+        if (!current.isEmpty()) {
+            return current;
+        }
+        return incomplete(student, false);
+    }
+
+    private List<Resume> incomplete(String student, boolean sameCourse) {
+        String courseFilter = sameCourse ? """
+                AND course.id = (
+                    SELECT progress_course.id
+                    FROM completion
+                    JOIN cohort progress_cohort ON progress_cohort.id = completion.cohort_id
+                    JOIN course progress_course ON progress_course.id = progress_cohort.course_id
+                    WHERE completion.student = ?
+                    GROUP BY progress_course.id, progress_course.name
+                    ORDER BY COUNT(*) DESC, progress_course.name
+                    LIMIT 1
+                )
+                """ : "";
+        String sql = """
                 SELECT lesson.id, lesson.title
                 FROM lesson
                 JOIN module ON module.id = lesson.module_id
@@ -506,9 +526,23 @@ class JdbcStudioRepository implements StudioRepository {
                     AND completion.cohort_id = cohort.id
                     AND completion.student = ?
                 WHERE completion.lesson_id IS NULL
+                """ + courseFilter + """
                 ORDER BY course.name, module.position, lesson.position
                 LIMIT 1
-                """, (rs, row) -> new Resume(rs.getObject("id", UUID.class), rs.getString("title")), student, student);
+                """;
+        if (sameCourse) {
+            return jdbc.query(
+                    sql,
+                    (rs, row) -> new Resume(rs.getObject("id", UUID.class), rs.getString("title")),
+                    student,
+                    student,
+                    student);
+        }
+        return jdbc.query(
+                sql,
+                (rs, row) -> new Resume(rs.getObject("id", UUID.class), rs.getString("title")),
+                student,
+                student);
     }
 
     private List<Resume> nextForTeacher(String teacher) {
@@ -747,12 +781,17 @@ class JdbcStudioRepository implements StudioRepository {
     }
 
     @Override
-    public List<String> mail(String account) {
+    public skillforge.domain.studio.Mailbox mailbox(String account) {
         schema.ensure();
-        return jdbc.query(
+        List<String> addresses = jdbc.query(
+                "SELECT email FROM account_mail WHERE account = ?",
+                (rs, row) -> rs.getString("email"),
+                account);
+        List<String> sent = jdbc.query(
                 "SELECT body FROM mail_outbox WHERE account = ? ORDER BY created_at DESC LIMIT 20",
                 (rs, row) -> rs.getString("body"),
                 account);
+        return new skillforge.domain.studio.Mailbox(addresses.isEmpty() ? null : addresses.get(0), sent);
     }
 
     @Override

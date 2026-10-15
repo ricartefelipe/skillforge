@@ -25,6 +25,7 @@ export default async function Page() {
   }
 
   const notes = await loadInbox(access);
+  const mailbox = await loadMailbox(access);
   return (
     <Shell session={session}>
       <div className="page">
@@ -35,12 +36,12 @@ export default async function Page() {
         <form className="compose" action={saveMail} aria-label="E-mail">
           <label>
             E-mail para os recados
-            <input name="email" type="email" required />
+            <input name="email" type="email" required defaultValue={mailbox.email ?? ""} />
           </label>
           <button type="submit">Guardar e-mail</button>
         </form>
         <p className="meta">Com o correio configurado, cada recado também sai para esse endereço. Sem correio, a mensagem fica aqui.</p>
-        {(await loadMail(access)).map((body) => (
+        {mailbox.sent.map((body) => (
           <p key={body} className="module">{body}</p>
         ))}
         {notes.length === 0 ? <p className="empty">Nenhum recado.</p> : null}
@@ -62,19 +63,27 @@ export default async function Page() {
   );
 }
 
-async function loadMail(token: string) {
+async function loadMailbox(token: string): Promise<{ email: string | null; sent: string[] }> {
   try {
     const response = await fetch(`${apiUrl()}/me/email`, {
       headers: { authorization: `Bearer ${token}` },
       cache: "no-store",
     });
     if (!response.ok) {
-      return [];
+      return { email: null, sent: [] };
     }
     const body: unknown = await response.json();
-    return Array.isArray(body) ? body.filter((item): item is string => typeof item === "string") : [];
+    if (body === null || typeof body !== "object" || Array.isArray(body)) {
+      return { email: null, sent: [] };
+    }
+    const record = body as Record<string, unknown>;
+    const email = typeof record.email === "string" && record.email.includes("@") ? record.email : null;
+    const sent = Array.isArray(record.sent)
+      ? record.sent.filter((item): item is string => typeof item === "string")
+      : [];
+    return { email, sent };
   } catch {
-    return [];
+    return { email: null, sent: [] };
   }
 }
 

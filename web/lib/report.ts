@@ -10,6 +10,8 @@ export type Report = {
   examWeight: number;
   practices: Practice[];
   exams: ClassExam[];
+  average: string | null;
+  certified: boolean;
 };
 
 export async function loadReports(token: string): Promise<Report[] | null> {
@@ -39,7 +41,19 @@ export function reportsFromBody(httpOk: boolean, body: unknown): Report[] | null
     }
     const practiceWeight = count(item, "practiceWeight") ?? 1;
     const examWeight = count(item, "examWeight") ?? 1;
-    reports.push({ cohortId, cohortName, courseName, practiceWeight, examWeight, practices, exams });
+    const average = optionalText(item, "average");
+    const certified = (item as Record<string, unknown>).certified === true;
+    reports.push({
+      cohortId,
+      cohortName,
+      courseName,
+      practiceWeight,
+      examWeight,
+      practices,
+      exams,
+      average,
+      certified,
+    });
   }
   return reports;
 }
@@ -47,6 +61,20 @@ export function reportsFromBody(httpOk: boolean, body: unknown): Report[] | null
 function count(value: object, key: string): number | null {
   const found = (value as Record<string, unknown>)[key];
   if (typeof found !== "number" || !Number.isInteger(found)) {
+    return null;
+  }
+  return found;
+}
+
+function optionalText(value: object, key: string): string | null {
+  if (!(key in value)) {
+    return null;
+  }
+  const found = (value as Record<string, unknown>)[key];
+  if (found === null) {
+    return null;
+  }
+  if (typeof found !== "string" || found.trim().length === 0) {
     return null;
   }
   return found;

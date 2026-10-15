@@ -26,8 +26,8 @@ describe("LessonView", () => {
   it("points a pdf at the lesson file and plays a video from the same place", () => {
     const { rerender } = render(<LessonView lesson={{ id: "l2", title: "Notas", kind: "pdf" }} />);
 
-    expect(screen.getByRole("link", { name: "Abrir o ebook" })).toHaveAttribute("href", "/catalogo/aulas/l2/arquivo");
-    expect(screen.getByTitle("Ebook da aula")).toHaveAttribute("src", "/catalogo/aulas/l2/arquivo");
+    expect(screen.getByRole("link", { name: "Abrir o PDF" })).toHaveAttribute("href", "/catalogo/aulas/l2/arquivo");
+    expect(screen.getByTitle("PDF da aula")).toHaveAttribute("src", "/catalogo/aulas/l2/arquivo");
 
     rerender(<LessonView lesson={{ id: "l3", title: "Demo", kind: "video" }} />);
 
