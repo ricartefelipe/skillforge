@@ -57,16 +57,16 @@ export function Shell({ session, children }: { session: Session | null; children
 function Mark() {
   return (
     <svg className="mark" viewBox="0 0 48 48" aria-hidden="true">
-      <rect width="48" height="48" rx="14" fill="#14352c" />
+      <rect width="48" height="48" rx="14" fill="#00c86f" />
       <path
         d="M13 31.5h22M15.5 31.5 19 22h10l3.5 9.5M21.5 22v-6h5v6"
         fill="none"
-        stroke="#f6ead7"
+        stroke="#051933"
         strokeWidth="2.3"
         strokeLinejoin="round"
         strokeLinecap="round"
       />
-      <circle cx="34" cy="14" r="2.4" fill="#e37b3a" />
+      <circle cx="34" cy="14" r="2.4" fill="#051933" />
     </svg>
   );
 }

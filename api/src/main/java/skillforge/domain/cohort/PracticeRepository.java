@@ -1,0 +1,30 @@
+package skillforge.domain.cohort;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
+
+import skillforge.domain.identity.Actor;
+
+public interface PracticeRepository {
+
+    UUID openPractice(
+            UUID cohortId,
+            Actor actor,
+            String title,
+            String prompt,
+            Instant dueAt,
+            List<CriterionDraft> criteria);
+
+    void submit(UUID cohortId, UUID practiceId, Actor actor, String text);
+
+    void feedback(
+            UUID cohortId,
+            UUID practiceId,
+            Actor actor,
+            String student,
+            String text,
+            int grade,
+            List<CriterionMark> marks);
+
+}
