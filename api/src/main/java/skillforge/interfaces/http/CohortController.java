@@ -17,7 +17,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 
+import skillforge.application.cohort.ClassroomApplication;
 import skillforge.application.cohort.CohortApplication;
+import skillforge.application.cohort.ExamApplication;
+import skillforge.application.cohort.Opened;
+import skillforge.application.cohort.PracticeApplication;
 import skillforge.domain.catalog.Course;
 import skillforge.domain.catalog.Module;
 import skillforge.domain.cohort.Announcement;
@@ -44,8 +48,21 @@ class CohortController {
 
     private final CohortApplication cohorts;
 
-    CohortController(CohortApplication cohorts) {
+    private final PracticeApplication practices;
+
+    private final ExamApplication exams;
+
+    private final ClassroomApplication classroom;
+
+    CohortController(
+            CohortApplication cohorts,
+            PracticeApplication practices,
+            ExamApplication exams,
+            ClassroomApplication classroom) {
         this.cohorts = cohorts;
+        this.practices = practices;
+        this.exams = exams;
+        this.classroom = classroom;
     }
 
     @GetMapping("/grades")
@@ -74,7 +91,7 @@ class CohortController {
     @PostMapping("/cohorts")
     ResponseEntity<IdName> open(Authentication authentication, @RequestBody OpenBody body) {
         OpenBody request = body == null ? new OpenBody(null, null, null) : body;
-        CohortApplication.Opened opened = cohorts.open(
+        Opened opened = cohorts.open(
                 RequestActor.from(authentication),
                 request.courseId(),
                 request.name(),
@@ -169,7 +186,7 @@ class CohortController {
         java.time.Instant dueAt = request.dueAt() == null || request.dueAt().isBlank()
                 ? null
                 : java.time.Instant.parse(request.dueAt());
-        CohortApplication.Opened opened = cohorts.openPractice(
+        Opened opened = practices.open(
                 RequestActor.from(authentication),
                 id,
                 request.title(),
@@ -185,7 +202,7 @@ class CohortController {
             @PathVariable UUID id,
             @PathVariable UUID practiceId,
             @RequestBody TextRequest body) {
-        cohorts.submit(RequestActor.from(authentication), id, practiceId, body == null ? null : body.text());
+        practices.submit(RequestActor.from(authentication), id, practiceId, body == null ? null : body.text());
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
@@ -204,7 +221,7 @@ class CohortController {
                 }
             }
         }
-        cohorts.feedback(
+        practices.feedback(
                 RequestActor.from(authentication),
                 id,
                 practiceId,
@@ -224,7 +241,7 @@ class CohortController {
         java.time.Instant dueAt = request.dueAt() == null || request.dueAt().isBlank()
                 ? null
                 : java.time.Instant.parse(request.dueAt());
-        CohortApplication.Opened opened = cohorts.openExam(
+        Opened opened = exams.open(
                 RequestActor.from(authentication),
                 id,
                 request.title(),
@@ -247,13 +264,13 @@ class CohortController {
                 }
             }
         }
-        cohorts.takeExam(RequestActor.from(authentication), id, examId, answers);
+        exams.take(RequestActor.from(authentication), id, examId, answers);
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
     @GetMapping("/cohorts/{id}/announcements")
     List<Announcement> announcements(Authentication authentication, @PathVariable UUID id) {
-        return cohorts.announcements(RequestActor.from(authentication), id);
+        return classroom.announcements(RequestActor.from(authentication), id);
     }
 
     @PostMapping("/cohorts/{id}/announcements")
@@ -262,25 +279,25 @@ class CohortController {
             @PathVariable UUID id,
             @RequestBody NoticeRequest body) {
         NoticeRequest request = body == null ? new NoticeRequest(null, null) : body;
-        UUID created = cohorts.announce(RequestActor.from(authentication), id, request.title(), request.body());
+        UUID created = classroom.announce(RequestActor.from(authentication), id, request.title(), request.body());
         return ResponseEntity.status(HttpStatus.CREATED).body(new IdName(created, request.title()));
     }
 
     @PostMapping("/cohorts/{id}/attendance")
     ResponseEntity<Void> call(Authentication authentication, @PathVariable UUID id, @RequestBody CallRequest body) {
         CallRequest request = body == null ? new CallRequest(null, null) : body;
-        cohorts.call(RequestActor.from(authentication), id, request.heldOn(), request.marks());
+        classroom.call(RequestActor.from(authentication), id, request.heldOn(), request.marks());
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
     @GetMapping("/cohorts/{id}/attendance")
     List<Roll> attendance(Authentication authentication, @PathVariable UUID id) {
-        return cohorts.rolls(RequestActor.from(authentication), id);
+        return classroom.rolls(RequestActor.from(authentication), id);
     }
 
     @GetMapping("/cohorts/{id}/certificate")
     Certificate certificate(Authentication authentication, @PathVariable UUID id) {
-        return cohorts.certificate(RequestActor.from(authentication), id);
+        return classroom.certificate(RequestActor.from(authentication), id);
     }
 
     private static List<ExamBody> exams(List<Exam> exams, boolean revealKey) {

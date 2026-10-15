@@ -1,18 +1,18 @@
 :root {
   color-scheme: light;
-  --ink: #14352c;
-  --ink-soft: #1d4a3e;
-  --brass: #c4622d;
-  --brass-bright: #f0c9a0;
-  --paper: #f6f1e8;
-  --paper-deep: #e7dfd2;
-  --card: #fffdf8;
-  --line: #ddd4c6;
-  --soot: #1c1915;
-  --muted: #5e574e;
-  --alive: #1f6b45;
-  --down: #9a3412;
-  --shadow: 0 10px 28px rgba(28, 25, 21, 0.06);
+  --ink: #051933;
+  --ink-soft: #0c2f52;
+  --brass: #00a85a;
+  --brass-bright: #b8f5d4;
+  --paper: #f4f7fb;
+  --paper-deep: #e7eef5;
+  --card: #ffffff;
+  --line: #d9e3ee;
+  --soot: #051933;
+  --muted: #5c6f86;
+  --alive: #00a85a;
+  --down: #d64545;
+  --shadow: 0 12px 30px rgba(5, 25, 51, 0.08);
 }
 
 * {
@@ -37,21 +37,23 @@ a {
 }
 
 .shell {
-  display: grid;
-  grid-template-columns: 16.5rem 1fr;
   min-height: 100vh;
+  background:
+    radial-gradient(900px 280px at 100% -10%, rgba(0, 200, 111, 0.16), transparent 55%),
+    var(--paper);
 }
 
 .rail {
   position: sticky;
   top: 0;
+  z-index: 5;
   display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-  height: 100vh;
-  padding: 1.25rem 1rem 1.1rem;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 0.85rem 1.4rem;
   background: var(--ink);
-  color: #f6f1e8;
+  color: #f4f8fc;
+  box-shadow: 0 8px 24px rgba(5, 25, 51, 0.18);
 }
 
 .brand {
@@ -90,8 +92,10 @@ a {
 }
 
 .rail nav {
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
   gap: 0.25rem;
+  margin-right: auto;
 }
 
 .rail nav a {
@@ -108,19 +112,19 @@ a {
 }
 
 .rail nav a.enter {
-  background: #e37b3a;
-  color: #1c1915;
+  background: #00c86f;
+  color: #051933;
   text-align: center;
 }
 
 .rail nav a.enter:hover {
-  background: #f0a06a;
+  background: #3ad888;
 }
 
 .rail-foot {
-  margin-top: auto;
-  display: grid;
-  gap: 0.7rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 .rail .who {
@@ -139,15 +143,14 @@ a {
 }
 
 .rail button.leave {
-  width: 100%;
-  background: transparent;
-  color: #f6f1e8;
-  border: 1px solid rgba(246, 241, 232, 0.35);
+  background: #00c86f;
+  color: #051933;
+  border: 0;
 }
 
 .rail button.leave:hover {
-  background: #f6f1e8;
-  color: var(--ink);
+  background: #3ad888;
+  color: #051933;
 }
 
 .stage {
@@ -183,7 +186,7 @@ a {
 
 h1 {
   margin: 0;
-  font-family: var(--font-display), "Iowan Old Style", serif;
+  font-family: var(--font-grotesk), "Avenir Next", sans-serif;
   font-size: clamp(2.2rem, 4.6vw, 3.6rem);
   font-weight: 600;
   line-height: 0.98;
@@ -466,8 +469,8 @@ a.file-link {
   justify-self: start;
   border: 0;
   border-radius: 999px;
-  background: var(--ink);
-  color: #f6f0e4;
+  background: #00c86f;
+  color: #051933;
   font: inherit;
   font-size: 0.92rem;
   font-weight: 700;
@@ -479,7 +482,7 @@ a.file-link {
 
 button:hover,
 a.file-link:hover {
-  background: var(--ink-soft);
+  background: #00a85a;
   transform: translateY(-1px);
 }
 
@@ -490,8 +493,8 @@ button.quiet {
 }
 
 button.quiet:hover {
-  background: var(--ink);
-  color: #f6f0e4;
+  background: #051933;
+  color: #f4f8fc;
 }
 
 button:focus-visible,
@@ -665,13 +668,10 @@ textarea:focus-visible {
 }
 
 @media (max-width: 860px) {
-  .shell {
-    grid-template-columns: 1fr;
-  }
-
   .rail {
     position: static;
-    height: auto;
+    align-items: flex-start;
+    flex-direction: column;
     gap: 0.85rem;
   }
 
