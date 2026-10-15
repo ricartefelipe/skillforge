@@ -14,6 +14,8 @@ import skillforge.domain.shared.Names;
 import skillforge.domain.shared.Rejection;
 import skillforge.domain.shared.Texts;
 import skillforge.domain.studio.BankQuestion;
+import skillforge.domain.studio.Hit;
+import skillforge.domain.studio.QuestionText;
 import skillforge.domain.studio.InboxNote;
 import skillforge.domain.studio.PeerWork;
 import skillforge.domain.studio.Resume;
@@ -135,6 +137,47 @@ public class StudioApplication {
 
     public void read(Actor actor, UUID id) {
         studio.read(actor, id);
+    }
+
+    public java.util.List<Hit> search(Actor actor, String rawQuery) {
+        String query = rawQuery == null ? "" : rawQuery.trim();
+        if (query.length() < 2) {
+            return java.util.List.of();
+        }
+        if (query.length() > 80) {
+            throw new Rejection(Failure.TOO_LARGE);
+        }
+        return studio.search(actor, query);
+    }
+
+    public void saveMail(Actor actor, String rawEmail) {
+        String email = rawEmail == null ? "" : rawEmail.trim();
+        if (email.length() < 3 || email.length() > Names.MAX || email.indexOf('@') < 1 || email.contains(" ")) {
+            throw new Rejection(Failure.MAIL);
+        }
+        studio.saveMail(actor.username(), email);
+    }
+
+    public void reviseQuestions(Actor actor, UUID cohortId, UUID examId, java.util.List<QuestionText> questions) {
+        requireLead(actor);
+        if (questions == null || questions.isEmpty()) {
+            throw new Rejection(Failure.INVALID_EXAM);
+        }
+        java.util.List<QuestionText> clean = new java.util.ArrayList<>();
+        for (QuestionText question : questions) {
+            if (question == null || question.choices() == null || question.choices().isEmpty()) {
+                throw new Rejection(Failure.INVALID_EXAM);
+            }
+            java.util.List<QuestionText.ChoiceText> choices = new java.util.ArrayList<>();
+            for (QuestionText.ChoiceText choice : question.choices()) {
+                choices.add(new QuestionText.ChoiceText(
+                        choice.id(),
+                        Names.require(choice.label(), Failure.BLANK_CHOICE)));
+            }
+            String prompt = Texts.require(question.prompt(), Failure.BLANK_QUESTION);
+            clean.add(new QuestionText(question.id(), prompt, choices));
+        }
+        studio.reviseQuestions(cohortId, actor, examId, clean);
     }
 
     public List<ExamDraft.QuestionDraft> bankDrafts(Actor actor, UUID cohortId, List<UUID> ids) {

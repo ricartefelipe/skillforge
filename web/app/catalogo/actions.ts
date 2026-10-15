@@ -79,6 +79,14 @@ export async function createLesson(formData: FormData) {
   if (file instanceof File && file.size > 0) {
     body.set("file", file);
   }
+  const launchUrl = field(formData, "launchUrl");
+  const secret = field(formData, "secret");
+  if (launchUrl.length > 0) {
+    body.set("launchUrl", launchUrl);
+  }
+  if (secret.length > 0) {
+    body.set("secret", secret);
+  }
   await send(`/modules/${moduleId}/lessons`, body, {}, back(formData));
 }
 

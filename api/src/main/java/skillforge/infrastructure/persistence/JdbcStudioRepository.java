@@ -22,6 +22,8 @@ import skillforge.domain.identity.Role;
 import skillforge.domain.shared.Failure;
 import skillforge.domain.shared.Rejection;
 import skillforge.domain.studio.BankQuestion;
+import skillforge.domain.studio.Hit;
+import skillforge.domain.studio.QuestionText;
 import skillforge.domain.studio.InboxNote;
 import skillforge.domain.studio.PeerNote;
 import skillforge.domain.studio.PeerWork;
@@ -36,9 +38,12 @@ class JdbcStudioRepository implements StudioRepository {
 
     private final Schema schema;
 
-    JdbcStudioRepository(JdbcTemplate jdbc, Schema schema) {
+    private final MailDispatch mail;
+
+    JdbcStudioRepository(JdbcTemplate jdbc, Schema schema, MailDispatch mail) {
         this.jdbc = jdbc;
         this.schema = schema;
+        this.mail = mail;
     }
 
     @Override
@@ -415,6 +420,7 @@ class JdbcStudioRepository implements StudioRepository {
                     account,
                     body,
                     Timestamp.from(Instant.now()));
+            mail.offer(account, body);
         }
         catch (DataAccessResourceFailureException ex) {
             throw new Unavailable(ex);
@@ -675,6 +681,110 @@ class JdbcStudioRepository implements StudioRepository {
                 groupId,
                 cohortId);
         return count != null && count > 0;
+    }
+
+    @Override
+    public List<Hit> search(Actor actor, String query) {
+        schema.ensure();
+        String needle = "%" + query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
+        String role = actor.role().wire();
+        String name = actor.username();
+        List<Hit> hits = new ArrayList<>();
+        hits.addAll(jdbc.query("""
+                SELECT lesson.title, '/catalogo/aulas/' || lesson.id::text
+                FROM lesson
+                JOIN module ON module.id = lesson.module_id
+                JOIN course ON course.id = module.course_id
+                WHERE lesson.title ILIKE ? ESCAPE '\\'
+                """ + visibleCourse() + """
+                ORDER BY lesson.title
+                LIMIT 20
+                """, (rs, row) -> new Hit("aula", rs.getString(1), rs.getString(2)), needle, role, name, name));
+        hits.addAll(jdbc.query("""
+                SELECT practice.title, '/turmas/' || cohort.id::text
+                FROM practice
+                JOIN cohort ON cohort.id = practice.cohort_id
+                WHERE practice.title ILIKE ? ESCAPE '\\'
+                """ + visibleCohort() + """
+                ORDER BY practice.title
+                LIMIT 20
+                """, (rs, row) -> new Hit("pratica", rs.getString(1), rs.getString(2)), needle, role, name, name));
+        hits.addAll(jdbc.query("""
+                SELECT exam.title, '/turmas/' || cohort.id::text
+                FROM exam
+                JOIN cohort ON cohort.id = exam.cohort_id
+                WHERE exam.title ILIKE ? ESCAPE '\\'
+                """ + visibleCohort() + """
+                ORDER BY exam.title
+                LIMIT 20
+                """, (rs, row) -> new Hit("prova", rs.getString(1), rs.getString(2)), needle, role, name, name));
+        return List.copyOf(hits);
+    }
+
+    @Override
+    public void saveMail(String account, String email) {
+        schema.ensure();
+        jdbc.update("""
+                INSERT INTO account_mail (account, email) VALUES (?, ?)
+                ON CONFLICT (account) DO UPDATE SET email = EXCLUDED.email
+                """, account, email);
+    }
+
+    @Override
+    @Transactional
+    public void reviseQuestions(UUID cohortId, Actor actor, UUID examId, List<QuestionText> questions) {
+        schema.ensure();
+        requireLead(cohortId, actor);
+        if (!examInCohort(cohortId, examId)) {
+            throw new Rejection(Failure.NOT_FOUND);
+        }
+        for (QuestionText question : questions) {
+            int updated = jdbc.update(
+                    "UPDATE question SET prompt = ? WHERE id = ? AND exam_id = ?",
+                    question.prompt(),
+                    question.id(),
+                    examId);
+            if (updated == 0) {
+                throw new Rejection(Failure.NOT_FOUND);
+            }
+            for (QuestionText.ChoiceText choice : question.choices()) {
+                int label = jdbc.update(
+                        "UPDATE choice SET label = ? WHERE id = ? AND question_id = ?",
+                        choice.label(),
+                        choice.id(),
+                        question.id());
+                if (label == 0) {
+                    throw new Rejection(Failure.NOT_FOUND);
+                }
+            }
+        }
+    }
+
+    private static String visibleCourse() {
+        return """
+                AND (
+                    ? = 'administracao'
+                    OR EXISTS (SELECT 1 FROM cohort WHERE cohort.course_id = course.id AND cohort.teacher = ?)
+                    OR EXISTS (
+                        SELECT 1 FROM cohort
+                        JOIN enrollment ON enrollment.cohort_id = cohort.id
+                        WHERE cohort.course_id = course.id AND enrollment.student = ?
+                    )
+                )
+                """;
+    }
+
+    private static String visibleCohort() {
+        return """
+                AND (
+                    ? = 'administracao'
+                    OR cohort.teacher = ?
+                    OR EXISTS (
+                        SELECT 1 FROM enrollment
+                        WHERE enrollment.cohort_id = cohort.id AND enrollment.student = ?
+                    )
+                )
+                """;
     }
 
     private boolean enrolled(UUID cohortId, String student) {

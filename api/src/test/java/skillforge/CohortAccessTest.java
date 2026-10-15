@@ -59,6 +59,7 @@ class CohortAccessTest {
         mvc.perform(get("/cohorts").with(as("administracao", "administracao"))).andExpect(status().isOk());
         jdbc.update("""
                 TRUNCATE certificate, criterion_mark, criterion, presence, class_day, announcement, inbox,
+                mail_outbox, account_mail, scorm_track, scorm_file, lesson_tool,
                 peer_review, study_member, study_group, exam_clock, sitting, attempt_answer, attempt,
                 choice, question, exam, bank_choice, bank_question, lesson_asset, reply, doubt, submission,
                 practice, completion, enrollment, cohort, lesson, module, course
@@ -630,6 +631,98 @@ class CohortAccessTest {
         mvc.perform(get("/grades").with(as("aluno", "aluno")))
                 .andExpect(jsonPath("$[0].practiceWeight").value(2))
                 .andExpect(jsonPath("$[0].examWeight").value(1));
+    }
+
+    @Test
+    void searchPackageToolAndQuestionTextStayAfterAnAttempt() throws Exception {
+        String courseId = createCourse("Acervo");
+        String moduleId = createModule(courseId, "Unidade");
+        String lessonId = createMarkdown(moduleId, "Primeira peça");
+        String cohortId = openCohort("Integral", courseId, "docente");
+        enroll(cohortId, "aluno");
+
+        mvc.perform(get("/search").param("q", "peça").with(as("aluno", "aluno")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].kind").value("aula"))
+                .andExpect(jsonPath("$[0].title").value("Primeira peça"));
+
+        mvc.perform(put("/courses/" + courseId + "/order")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"modules\":[{\"id\":\"" + moduleId + "\",\"lessons\":[\"" + lessonId + "\"]}]}")
+                        .with(as("docente", "docente")))
+                .andExpect(status().isNoContent());
+
+        mvc.perform(multipart("/modules/" + moduleId + "/lessons")
+                        .file(new MockMultipartFile("file", "curso.zip", "application/zip", scormZip()))
+                        .param("title", "Pacote")
+                        .param("kind", "scorm")
+                        .with(as("administracao", "administracao")))
+                .andExpect(status().isCreated());
+
+        mvc.perform(multipart("/modules/" + moduleId + "/lessons")
+                        .param("title", "Ferramenta")
+                        .param("kind", "lti")
+                        .param("launchUrl", "https://tool.example/launch")
+                        .param("secret", "segredo-longo")
+                        .with(as("administracao", "administracao")))
+                .andExpect(status().isCreated());
+        String toolId = first(JsonPath.read(
+                mvc.perform(get("/courses/curriculum").with(as("administracao", "administracao")))
+                        .andReturn()
+                        .getResponse()
+                        .getContentAsString(),
+                "$[0].modules[0].lessons[?(@.title == 'Ferramenta')].id"));
+        String launch = mvc.perform(get("/lessons/" + toolId + "/launch").with(as("aluno", "aluno")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.url").value("https://tool.example/launch"))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        org.junit.jupiter.api.Assertions.assertFalse(launch.contains("segredo-longo"));
+
+        mvc.perform(put("/me/email")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"aluno@example.com\"}")
+                        .with(as("aluno", "aluno")))
+                .andExpect(status().isNoContent());
+
+        String examId = openExam(cohortId);
+        String page = mvc.perform(get("/cohorts/" + cohortId).with(as("docente", "docente")))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        String questionId = JsonPath.read(page, "$.exams[0].questions[0].id");
+        String choiceId = first(JsonPath.read(page, "$.exams[0].questions[0].choices[0].id"));
+        mvc.perform(post("/cohorts/" + cohortId + "/exams/" + examId + "/attempt")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(attemptJson(questionId, choiceId))
+                        .with(as("aluno", "aluno")))
+                .andExpect(status().isCreated());
+        mvc.perform(put("/cohorts/" + cohortId + "/exams/" + examId + "/questions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"questions\":[{\"id\":\"" + questionId + "\",\"prompt\":\"Novo enunciado\","
+                                + "\"choices\":[{\"id\":\"" + choiceId + "\",\"label\":\"Nova\"}]}]}")
+                        .with(as("docente", "docente")))
+                .andExpect(status().isNoContent());
+        mvc.perform(get("/cohorts/" + cohortId).with(as("aluno", "aluno")))
+                .andExpect(jsonPath("$.exams[0].questions[0].prompt").value("Novo enunciado"))
+                .andExpect(jsonPath("$.exams[0].scores[0].grade").exists());
+    }
+
+    private static byte[] scormZip() throws Exception {
+        java.io.ByteArrayOutputStream buffer = new java.io.ByteArrayOutputStream();
+        java.util.zip.ZipOutputStream zip = new java.util.zip.ZipOutputStream(buffer);
+        zip.putNextEntry(new java.util.zip.ZipEntry("imsmanifest.xml"));
+        String manifest = """
+                <manifest><resources><resource href="index.html"/></resources></manifest>
+                """;
+        zip.write(manifest.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        zip.closeEntry();
+        zip.putNextEntry(new java.util.zip.ZipEntry("index.html"));
+        zip.write("<html></html>".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        zip.closeEntry();
+        zip.close();
+        return buffer.toByteArray();
     }
 
     private static String examQuestion() {

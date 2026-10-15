@@ -26,6 +26,7 @@ import skillforge.domain.catalog.Lesson;
 import skillforge.domain.catalog.LessonAsset;
 import skillforge.domain.catalog.LessonFile;
 import skillforge.domain.catalog.LessonText;
+import skillforge.domain.catalog.ModuleOrder;
 import skillforge.domain.catalog.Module;
 
 @RestController
@@ -79,7 +80,9 @@ class CatalogController {
             @RequestParam String title,
             @RequestParam String kind,
             @RequestParam(required = false) String markdown,
-            @RequestParam(required = false) MultipartFile file) throws IOException {
+            @RequestParam(required = false) MultipartFile file,
+            @RequestParam(required = false) String launchUrl,
+            @RequestParam(required = false) String secret) throws IOException {
         byte[] media = file == null || file.isEmpty() ? null : file.getBytes();
         Lesson lesson = catalog.createLesson(
                 RequestActor.from(authentication),
@@ -87,7 +90,9 @@ class CatalogController {
                 title,
                 kind,
                 markdown,
-                media);
+                media,
+                launchUrl,
+                secret);
         return ResponseEntity.status(HttpStatus.CREATED).body(LessonBody.from(lesson));
     }
 
@@ -151,6 +156,52 @@ class CatalogController {
         return LessonTextBody.from(catalog.lesson(RequestActor.from(authentication), id));
     }
 
+    @GetMapping("/lessons/{id}/scorm")
+    LaunchPath scorm(Authentication authentication, @PathVariable UUID id) {
+        return new LaunchPath(catalog.scormLaunch(RequestActor.from(authentication), id));
+    }
+
+    @GetMapping("/lessons/{id}/scorm/file")
+    ResponseEntity<byte[]> scormFile(
+            Authentication authentication,
+            @PathVariable UUID id,
+            @RequestParam String path) {
+        LessonFile file = catalog.scormFile(RequestActor.from(authentication), id, path);
+        return ResponseEntity.ok().contentType(MediaType.parseMediaType(file.mediaType())).body(file.content());
+    }
+
+    @PostMapping("/lessons/{id}/scorm/commit")
+    ResponseEntity<Void> track(
+            Authentication authentication,
+            @PathVariable UUID id,
+            @RequestBody TrackBody body) {
+        TrackBody request = body == null ? new TrackBody(null, null) : body;
+        catalog.trackScorm(RequestActor.from(authentication), id, request.status(), request.score());
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/lessons/{id}/launch")
+    skillforge.domain.catalog.SignedLaunch launch(Authentication authentication, @PathVariable UUID id) {
+        return catalog.launch(RequestActor.from(authentication), id);
+    }
+
+    @PutMapping("/courses/{courseId}/order")
+    ResponseEntity<Void> reorder(
+            Authentication authentication,
+            @PathVariable UUID courseId,
+            @RequestBody OrderBody body) {
+        java.util.List<ModuleOrder> modules = new java.util.ArrayList<>();
+        if (body != null && body.modules() != null) {
+            for (ModuleOrderBody module : body.modules()) {
+                modules.add(new ModuleOrder(
+                        module.id(),
+                        module.lessons() == null ? java.util.List.of() : module.lessons()));
+            }
+        }
+        catalog.reorder(RequestActor.from(authentication), courseId, modules);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/lessons/{id}/media")
     ResponseEntity<byte[]> media(Authentication authentication, @PathVariable UUID id) {
         LessonFile file = catalog.media(RequestActor.from(authentication), id);
@@ -158,6 +209,18 @@ class CatalogController {
     }
 
     record LessonEdit(String title, String markdown) {
+    }
+
+    record LaunchPath(String path) {
+    }
+
+    record TrackBody(String status, Integer score) {
+    }
+
+    record OrderBody(java.util.List<ModuleOrderBody> modules) {
+    }
+
+    record ModuleOrderBody(UUID id, java.util.List<UUID> lessons) {
     }
 
     record NameBody(String name) {

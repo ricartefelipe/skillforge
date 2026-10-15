@@ -4,7 +4,7 @@ import { loadSession } from "../../lib/access";
 import { ACCESS_COOKIE } from "../../lib/cookies";
 import { apiUrl } from "../../lib/openid";
 import { Shell } from "../shell";
-import { markRead } from "../turmas/actions";
+import { markRead, saveMail } from "../turmas/actions";
 
 export default async function Page() {
   const jar = await cookies();
@@ -32,6 +32,14 @@ export default async function Page() {
           <p className="kicker">Recados</p>
           <h1>Recados</h1>
         </header>
+        <form className="compose" action={saveMail} aria-label="E-mail">
+          <label>
+            E-mail para os recados
+            <input name="email" type="email" required />
+          </label>
+          <button type="submit">Guardar e-mail</button>
+        </form>
+        <p className="meta">Com o correio configurado, cada recado também sai para esse endereço.</p>
         {notes.length === 0 ? <p className="empty">Nenhum recado.</p> : null}
         {notes.map((note) => (
           <section key={note.id} className="module">
