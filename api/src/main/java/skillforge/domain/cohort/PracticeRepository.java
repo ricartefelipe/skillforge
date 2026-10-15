@@ -18,6 +18,8 @@ public interface PracticeRepository {
 
     void submit(UUID cohortId, UUID practiceId, Actor actor, String text);
 
+    void removePractice(UUID cohortId, Actor actor, UUID practiceId);
+
     void feedback(
             UUID cohortId,
             UUID practiceId,

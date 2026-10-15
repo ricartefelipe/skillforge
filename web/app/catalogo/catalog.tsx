@@ -27,6 +27,7 @@ export function CatalogView({
   kicker = "Disponíveis",
   returnTo = "/catalogo",
   titleAs = "h1",
+  query = "",
 }: {
   courses: Course[] | null;
   canCompose: boolean;
@@ -39,6 +40,7 @@ export function CatalogView({
   kicker?: string;
   returnTo?: string;
   titleAs?: "h1" | "h2";
+  query?: string;
 }) {
   const Title = titleAs;
   const writes = (courseId: string) => canCompose || writableCourseIds.includes(courseId);
@@ -49,6 +51,13 @@ export function CatalogView({
         <Title>{heading}</Title>
       </header>
       {notice ? <p role="alert">{notice}</p> : null}
+      <form className="compose" action={returnTo} method="get" aria-label="Buscar">
+        <label>
+          Buscar
+          <input name="q" defaultValue={query} placeholder="Curso, unidade ou aula" />
+        </label>
+        <button type="submit">Buscar</button>
+      </form>
       {canCompose ? (
         <form className="sheet" action={createCourse} aria-label="Novo curso">
           <input type="hidden" name="returnTo" value={returnTo} />

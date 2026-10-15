@@ -1,10 +1,13 @@
 import { cookies } from "next/headers";
 
 import { loadSession } from "../../../../lib/access";
-import { catalogNotice, lessonFromBody } from "../../../../lib/catalog";
+import { catalogNotice, coursesFromBody, lessonFromBody, type Course } from "../../../../lib/catalog";
 import { ACCESS_COOKIE } from "../../../../lib/cookies";
 import { doubtsFromBody } from "../../../../lib/forum";
+import { readJson } from "../../../../lib/api-read";
 import { apiUrl } from "../../../../lib/openid";
+import Link from "next/link";
+
 import { Shell } from "../../../shell";
 import { LessonView } from "../../lesson";
 import { openDoubt, replyDoubt } from "../actions";
@@ -52,19 +55,48 @@ export default async function Page({
 
   const query = await searchParams;
   const notice = catalogNotice(query.erro ?? null);
+  const course = courseOf(await loadCurriculum(access), id);
   return (
     <Shell session={session}>
       <div className="page">
         <header className="intro">
-          <p className="kicker">Aula</p>
+          <p className="kicker">{course?.name ?? "Aula"}</p>
           <h1>{lesson.title}</h1>
         </header>
         {notice ? <p role="alert">{notice}</p> : null}
-        <LessonView lesson={lesson} />
-        <Forum lessonId={id} doubts={await loadDoubts(access, id)} openDoubt={openDoubt} replyDoubt={replyDoubt} />
+        <div className="player">
+          <aside className="playlist" aria-label="Grade da aula">
+            {course?.modules.map((module) => (
+              <section key={module.id}>
+                <p className="meta">{module.name}</p>
+                {module.lessons.map((item) => (
+                  <Link key={item.id} href={`/catalogo/aulas/${item.id}`} aria-current={item.id === id ? "page" : undefined}>
+                    {item.title}
+                  </Link>
+                ))}
+              </section>
+            ))}
+          </aside>
+          <div>
+            <LessonView lesson={lesson} />
+            <Forum lessonId={id} doubts={await loadDoubts(access, id)} openDoubt={openDoubt} replyDoubt={replyDoubt} />
+          </div>
+        </div>
       </div>
     </Shell>
   );
+}
+
+function courseOf(courses: Course[] | null, lessonId: string) {
+  return courses?.find((course) => course.modules.some((module) => module.lessons.some((lesson) => lesson.id === lessonId))) ?? null;
+}
+
+async function loadCurriculum(token: string) {
+  const read = await readJson(token, "/courses/curriculum");
+  if (read === null) {
+    return null;
+  }
+  return coursesFromBody(read.ok, read.body);
 }
 
 async function loadDoubts(token: string, id: string) {

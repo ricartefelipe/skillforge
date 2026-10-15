@@ -9,6 +9,7 @@ import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -196,6 +197,15 @@ class CohortController {
         return ResponseEntity.status(HttpStatus.CREATED).body(new IdName(opened.id(), opened.name()));
     }
 
+    @DeleteMapping("/cohorts/{id}/practices/{practiceId}")
+    ResponseEntity<Void> removePractice(
+            Authentication authentication,
+            @PathVariable UUID id,
+            @PathVariable UUID practiceId) {
+        practices.remove(RequestActor.from(authentication), id, practiceId);
+        return ResponseEntity.noContent().build();
+    }
+
     @PostMapping("/cohorts/{id}/practices/{practiceId}/submission")
     ResponseEntity<Void> submit(
             Authentication authentication,
@@ -250,6 +260,15 @@ class CohortController {
         return ResponseEntity.status(HttpStatus.CREATED).body(new IdName(opened.id(), opened.name()));
     }
 
+    @DeleteMapping("/cohorts/{id}/exams/{examId}")
+    ResponseEntity<Void> removeExam(
+            Authentication authentication,
+            @PathVariable UUID id,
+            @PathVariable UUID examId) {
+        exams.remove(RequestActor.from(authentication), id, examId);
+        return ResponseEntity.noContent().build();
+    }
+
     @PostMapping("/cohorts/{id}/exams/{examId}/attempt")
     ResponseEntity<Void> takeExam(
             Authentication authentication,
@@ -281,6 +300,15 @@ class CohortController {
         NoticeRequest request = body == null ? new NoticeRequest(null, null) : body;
         UUID created = classroom.announce(RequestActor.from(authentication), id, request.title(), request.body());
         return ResponseEntity.status(HttpStatus.CREATED).body(new IdName(created, request.title()));
+    }
+
+    @DeleteMapping("/cohorts/{id}/announcements/{announcementId}")
+    ResponseEntity<Void> withdraw(
+            Authentication authentication,
+            @PathVariable UUID id,
+            @PathVariable UUID announcementId) {
+        classroom.withdraw(RequestActor.from(authentication), id, announcementId);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/cohorts/{id}/attendance")

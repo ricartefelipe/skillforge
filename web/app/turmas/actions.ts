@@ -27,6 +27,24 @@ export async function completeLesson(formData: FormData) {
   redirect(page);
 }
 
+export async function removePractice(formData: FormData) {
+  const cohortId = field(formData, "cohortId");
+  const practiceId = field(formData, "practiceId");
+  await del(`/cohorts/${cohortId}/practices/${practiceId}`, `/turmas/${cohortId}`);
+}
+
+export async function removeExam(formData: FormData) {
+  const cohortId = field(formData, "cohortId");
+  const examId = field(formData, "examId");
+  await del(`/cohorts/${cohortId}/exams/${examId}`, `/turmas/${cohortId}`);
+}
+
+export async function withdrawNotice(formData: FormData) {
+  const cohortId = field(formData, "cohortId");
+  const announcementId = field(formData, "announcementId");
+  await del(`/cohorts/${cohortId}/announcements/${announcementId}`, `/turmas/${cohortId}`);
+}
+
 export async function announce(formData: FormData) {
   const cohortId = field(formData, "cohortId");
   const page = field(formData, "returnTo") || `/turmas/${cohortId}`;
@@ -139,6 +157,27 @@ export async function enrollStudent(formData: FormData) {
 function field(formData: FormData, name: string): string {
   const value = formData.get(name);
   return typeof value === "string" ? value : "";
+}
+
+async function del(path: string, page: string) {
+  const token = (await cookies()).get(ACCESS_COOKIE)?.value;
+  if (!token) {
+    redirect("/login");
+  }
+  let response: Response;
+  try {
+    response = await fetch(`${apiUrl()}${path}`, {
+      method: "DELETE",
+      headers: { authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+  } catch {
+    redirect(`${page}?erro=unavailable`);
+  }
+  if (!response.ok && response.status !== 204) {
+    redirect(`${page}?erro=unavailable`);
+  }
+  redirect(page);
 }
 
 async function post(

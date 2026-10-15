@@ -63,6 +63,13 @@ public class ExamApplication {
         return new Opened(exams.openExam(cohortId, actor, new ExamDraft(title, dueAt, clean)), title);
     }
 
+    public void remove(Actor actor, UUID cohortId, UUID examId) {
+        if (actor.role() == Role.ALUNO) {
+            throw new Rejection(Failure.FORBIDDEN);
+        }
+        exams.removeExam(cohortId, actor, examId);
+    }
+
     public void take(Actor actor, UUID cohortId, UUID examId, Map<UUID, UUID> answers) {
         actor.requireStudent();
         if (answers == null) {
