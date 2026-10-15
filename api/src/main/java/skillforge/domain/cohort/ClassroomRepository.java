@@ -11,6 +11,8 @@ public interface ClassroomRepository {
 
     UUID announce(UUID cohortId, Actor actor, String title, String body);
 
+    void withdraw(UUID cohortId, Actor actor, UUID announcementId);
+
     UUID call(UUID cohortId, Actor actor, LocalDate heldOn, List<Presence> marks);
 
     Optional<Certificate> certificate(UUID cohortId, Actor actor);

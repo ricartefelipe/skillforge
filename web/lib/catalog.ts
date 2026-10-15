@@ -26,6 +26,33 @@ export type LessonDetail = {
 
 const KINDS = new Set(["markdown", "pdf", "ebook", "video"]);
 
+export function narrowCourses(courses: Course[] | null, query: string): Course[] | null {
+  if (courses === null) {
+    return null;
+  }
+  const needle = query.trim().toLocaleLowerCase("pt-BR");
+  if (needle.length === 0) {
+    return courses;
+  }
+  return courses
+    .map((course) => {
+      if (course.name.toLocaleLowerCase("pt-BR").includes(needle)) {
+        return course;
+      }
+      const modules = course.modules
+        .map((module) => ({
+          ...module,
+          lessons: module.lessons.filter((lesson) => lesson.title.toLocaleLowerCase("pt-BR").includes(needle)),
+        }))
+        .filter(
+          (module) =>
+            module.name.toLocaleLowerCase("pt-BR").includes(needle) || module.lessons.length > 0,
+        );
+      return { ...course, modules };
+    })
+    .filter((course) => course.name.toLocaleLowerCase("pt-BR").includes(needle) || course.modules.length > 0);
+}
+
 export function canCompose(role: string): boolean {
   return role === "administracao";
 }

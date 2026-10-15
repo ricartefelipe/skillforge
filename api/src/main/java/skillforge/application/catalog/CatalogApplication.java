@@ -91,6 +91,12 @@ public class CatalogApplication {
         };
     }
 
+    public void removeLesson(Actor actor, UUID lessonId) {
+        UUID courseId = courses.courseOfLesson(lessonId).orElseThrow(() -> new Rejection(Failure.NOT_FOUND));
+        requireWriter(actor, courseId);
+        courses.removeLesson(lessonId);
+    }
+
     public LessonText lesson(Actor actor, UUID id) {
         Objects.requireNonNull(actor, "actor");
         return courses.lesson(id).orElseThrow(() -> new Rejection(Failure.NOT_FOUND));

@@ -11,4 +11,6 @@ public interface ExamRepository {
 
     void takeExam(UUID cohortId, UUID examId, Actor actor, Map<UUID, UUID> answers);
 
+    void removeExam(UUID cohortId, Actor actor, UUID examId);
+
 }

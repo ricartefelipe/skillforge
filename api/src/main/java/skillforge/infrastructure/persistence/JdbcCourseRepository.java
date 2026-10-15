@@ -91,6 +91,42 @@ class JdbcCourseRepository implements CourseRepository {
     }
 
     @Override
+    public void removeLesson(UUID lessonId) {
+        schema.ensure();
+        try {
+            jdbc.update(
+                    "DELETE FROM reply WHERE doubt_id IN (SELECT id FROM doubt WHERE lesson_id = ?)",
+                    lessonId);
+            jdbc.update("DELETE FROM doubt WHERE lesson_id = ?", lessonId);
+            jdbc.update("DELETE FROM completion WHERE lesson_id = ?", lessonId);
+            int removed = jdbc.update("DELETE FROM lesson WHERE id = ?", lessonId);
+            if (removed == 0) {
+                throw new Rejection(Failure.NOT_FOUND);
+            }
+        }
+        catch (DataAccessResourceFailureException ex) {
+            throw new Unavailable(ex);
+        }
+    }
+
+    @Override
+    public Optional<UUID> courseOfLesson(UUID lessonId) {
+        schema.ensure();
+        try {
+            List<UUID> ids = jdbc.query("""
+                    SELECT module.course_id
+                    FROM lesson
+                    JOIN module ON module.id = lesson.module_id
+                    WHERE lesson.id = ?
+                    """, (rs, row) -> rs.getObject(1, UUID.class), lessonId);
+            return ids.stream().findFirst();
+        }
+        catch (DataAccessResourceFailureException ex) {
+            throw new Unavailable(ex);
+        }
+    }
+
+    @Override
     public List<Course> list() {
         schema.ensure();
         try {

@@ -273,6 +273,27 @@ class JdbcCohortRepository implements CohortRepository {
     }
 
     @Override
+    @Transactional
+    public void removePractice(UUID cohortId, Actor actor, UUID practiceId) {
+        schema.ensure();
+        try {
+            requireLead(cohortId, actor);
+            if (!practiceInCohort(cohortId, practiceId)) {
+                throw new Rejection(Failure.NOT_FOUND);
+            }
+            jdbc.update(
+                    "DELETE FROM criterion_mark WHERE criterion_id IN (SELECT id FROM criterion WHERE practice_id = ?)",
+                    practiceId);
+            jdbc.update("DELETE FROM criterion WHERE practice_id = ?", practiceId);
+            jdbc.update("DELETE FROM submission WHERE practice_id = ?", practiceId);
+            jdbc.update("DELETE FROM practice WHERE id = ?", practiceId);
+        }
+        catch (DataAccessResourceFailureException ex) {
+            throw new Unavailable(ex);
+        }
+    }
+
+    @Override
     public boolean teaches(String teacher, UUID courseId) {
         schema.ensure();
         try {
@@ -426,6 +447,28 @@ class JdbcCohortRepository implements CohortRepository {
         }
         catch (DuplicateKeyException ex) {
             throw new Rejection(Failure.ALREADY_TAKEN);
+        }
+        catch (DataAccessResourceFailureException ex) {
+            throw new Unavailable(ex);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void removeExam(UUID cohortId, Actor actor, UUID examId) {
+        schema.ensure();
+        try {
+            requireLead(cohortId, actor);
+            if (!examInCohort(cohortId, examId)) {
+                throw new Rejection(Failure.NOT_FOUND);
+            }
+            jdbc.update("DELETE FROM attempt_answer WHERE exam_id = ?", examId);
+            jdbc.update("DELETE FROM attempt WHERE exam_id = ?", examId);
+            jdbc.update(
+                    "DELETE FROM choice WHERE question_id IN (SELECT id FROM question WHERE exam_id = ?)",
+                    examId);
+            jdbc.update("DELETE FROM question WHERE exam_id = ?", examId);
+            jdbc.update("DELETE FROM exam WHERE id = ?", examId);
         }
         catch (DataAccessResourceFailureException ex) {
             throw new Unavailable(ex);
@@ -897,6 +940,24 @@ class JdbcCohortRepository implements CohortRepository {
                     title,
                     body);
             return id;
+        }
+        catch (DataAccessResourceFailureException ex) {
+            throw new Unavailable(ex);
+        }
+    }
+
+    @Override
+    public void withdraw(UUID cohortId, Actor actor, UUID announcementId) {
+        schema.ensure();
+        try {
+            requireLead(cohortId, actor);
+            int removed = jdbc.update(
+                    "DELETE FROM announcement WHERE id = ? AND cohort_id = ?",
+                    announcementId,
+                    cohortId);
+            if (removed == 0) {
+                throw new Rejection(Failure.NOT_FOUND);
+            }
         }
         catch (DataAccessResourceFailureException ex) {
             throw new Unavailable(ex);

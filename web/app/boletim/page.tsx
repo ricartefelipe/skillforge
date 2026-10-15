@@ -54,7 +54,13 @@ export default async function Page() {
               <p>
                 <Link href={`/turmas/${report.cohortId}/certificado`}>Certificado</Link>
               </p>
-              {average === null ? <p className="empty">Sem nota ainda.</p> : <p className="tally">Média {average.toFixed(1)}</p>}
+              {average === null ? (
+                <p className="empty">Em curso</p>
+              ) : (
+                <p className="tally">
+                  Média {average.toFixed(1)} · {average >= 7 ? "Aprovado" : "Reprovado"}
+                </p>
+              )}
               <ul>
                 {report.exams.map((exam) => (
                   <li className="person" key={exam.id}>

@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 
 import { loadSession } from "../../lib/access";
-import { canCompose, catalogNotice, coursesFromBody } from "../../lib/catalog";
+import { canCompose, catalogNotice, coursesFromBody, narrowCourses } from "../../lib/catalog";
 import { ACCESS_COOKIE } from "../../lib/cookies";
 import { readIds, readJson } from "../../lib/api-read";
 import { apiUrl } from "../../lib/openid";
@@ -9,7 +9,7 @@ import { Shell } from "../shell";
 import { createCourse, createLesson, createModule } from "./actions";
 import { CatalogView } from "./catalog";
 
-export default async function Page({ searchParams }: { searchParams: Promise<{ erro?: string }> }) {
+export default async function Page({ searchParams }: { searchParams: Promise<{ erro?: string; q?: string }> }) {
   const jar = await cookies();
   const access = jar.get(ACCESS_COOKIE)?.value;
   const session = access ? await loadSession(access, apiUrl()) : null;
@@ -31,7 +31,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
   return (
     <Shell session={session}>
       <CatalogView
-        courses={await loadCourses(access ?? "")}
+        courses={narrowCourses(await loadCourses(access ?? ""), params.q ?? "")}
+        query={params.q ?? ""}
         canCompose={canCompose(session.role)}
         writableCourseIds={canCompose(session.role) ? [] : await readIds(access ?? "", "/courses/teaching")}
         notice={catalogNotice(params.erro ?? null)}
