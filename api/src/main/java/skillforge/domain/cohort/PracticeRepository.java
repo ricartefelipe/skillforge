@@ -31,4 +31,6 @@ public interface PracticeRepository {
             int grade,
             List<CriterionMark> marks);
 
+    void revise(UUID cohortId, Actor actor, UUID practiceId, String title, String prompt, Instant dueAt);
+
 }

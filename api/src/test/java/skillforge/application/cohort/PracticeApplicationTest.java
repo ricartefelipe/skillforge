@@ -8,8 +8,7 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
-import skillforge.application.studio.RecordingStudio;
-import skillforge.application.studio.StudioApplication;
+import skillforge.application.notice.MemoryNotices;
 import skillforge.domain.cohort.CriterionDraft;
 import skillforge.domain.cohort.CriterionMark;
 import skillforge.domain.cohort.PracticeRepository;
@@ -19,11 +18,11 @@ import skillforge.domain.shared.Rejection;
 
 class PracticeApplicationTest {
 
-    private final RecordingStudio store = new RecordingStudio();
+    private final MemoryNotices store = new MemoryNotices();
 
     private final MemoryPractices memory = new MemoryPractices();
 
-    private final PracticeApplication practices = new PracticeApplication(memory, new StudioApplication(store));
+    private final PracticeApplication practices = new PracticeApplication(memory, store);
 
     private final Actor teacher = new Actor(Role.DOCENTE, "docente");
 
@@ -98,6 +97,17 @@ class PracticeApplicationTest {
                 List<CriterionMark> marks) {
             assertEquals("aluno", student);
             grade = given;
+        }
+
+        @Override
+        public void revise(
+                UUID cohortId,
+                Actor actor,
+                UUID practiceId,
+                String title,
+                String prompt,
+                java.time.Instant dueAt) {
+            throw new UnsupportedOperationException();
         }
 
     }

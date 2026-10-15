@@ -227,6 +227,26 @@ class JdbcClassroomRepository implements ClassroomRepository {
         return present == null ? 0 : present;
     }
 
+    @Override
+    public void reviseAnnouncement(UUID cohortId, Actor actor, UUID announcementId, String title, String body) {
+        gate.ensure();
+        try {
+            gate.requireLead(cohortId, actor);
+            int updated = gate.jdbc.update(
+                    "UPDATE announcement SET title = ?, body = ? WHERE id = ? AND cohort_id = ?",
+                    title,
+                    body,
+                    announcementId,
+                    cohortId);
+            if (updated == 0) {
+                throw new Rejection(Failure.NOT_FOUND);
+            }
+        }
+        catch (DataAccessResourceFailureException ex) {
+            throw new Unavailable(ex);
+        }
+    }
+
     private static Certificate toCertificate(ResultSet rs) throws SQLException {
         return new Certificate(
                 rs.getString("student"),
