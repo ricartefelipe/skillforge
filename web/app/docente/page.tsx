@@ -70,7 +70,9 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
         <header className="intro">
           <p className="kicker">Bancada</p>
           <h1>Docente</h1>
-          <p className="lede">Publique a aula, a prova e o aviso das turmas que você ministra.</p>
+          <p className="lede">
+            A grade é o curso, dividido em unidades. Em cada unidade você publica página, ebook e vídeo.
+          </p>
         </header>
         <CatalogView
           courses={publishable}
