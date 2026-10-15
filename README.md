@@ -202,6 +202,13 @@ A gravação da turma deixou de ficar numa classe só.
 - A prática, a prova e a sala têm cada uma o próprio adaptador.
 - O repositório da turma não reúne mais esses três contratos.
 
+## Incremento 13
+
+A visão noturna deixa de divergir da página que o servidor já entregou.
+
+- O tema gravado no navegador entra antes da pintura.
+- Com a lua ligada, a página hidrata sem o aviso de atributos diferentes.
+
 ## Arranque
 
 É preciso Java 21, Node.js 22, Docker e curl.
