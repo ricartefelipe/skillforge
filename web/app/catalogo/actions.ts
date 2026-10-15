@@ -41,6 +41,9 @@ function back(formData: FormData): string {
   if (value === "/aulas" || value === "/docente" || value === "/catalogo") {
     return value;
   }
+  if (value.startsWith("/turmas/") && !value.slice("/turmas/".length).includes("/")) {
+    return value;
+  }
   return "/catalogo";
 }
 

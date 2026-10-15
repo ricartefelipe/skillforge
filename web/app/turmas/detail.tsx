@@ -10,6 +10,7 @@ import {
   type ClassNotice,
 } from "../../lib/cohort";
 import type { LessonSummary } from "../../lib/catalog";
+import { LessonForm } from "../catalogo/lesson-form";
 import { ExamForm } from "../exam-form";
 import { ProgressMeter } from "../meter";
 
@@ -44,6 +45,8 @@ export function CohortDetailView({
   rolls = [],
   announce,
   callRoll,
+  createModule,
+  createLesson,
 }: {
   cohort: CohortDetail;
   role: string;
@@ -59,7 +62,11 @@ export function CohortDetailView({
   rolls?: RollCall[];
   announce?: (formData: FormData) => void;
   callRoll?: (formData: FormData) => void;
+  createModule?: (formData: FormData) => void;
+  createLesson?: (formData: FormData) => void;
 }) {
+  const leads = canLeadPractices(role);
+  const here = `/turmas/${cohort.id}`;
   return (
     <div className="page">
       <header className="intro">
@@ -67,19 +74,39 @@ export function CohortDetailView({
         <h1>{cohort.name}</h1>
       </header>
       {notice ? <p role="alert">{notice}</p> : null}
-      <section className="tree" aria-label={cohort.course.name}>
-        <p className="meta">Curso</p>
-        <h2>{cohort.course.name}</h2>
-        <p className="meta">Ministrada por {cohort.teacher}</p>
+      <p className="meta">
+        {cohort.course.name} · ministrada por {cohort.teacher}
+      </p>
+      <nav className="class-nav" aria-label="Seções da turma">
+        <a href="#grade">Grade</a>
+        <a href="#atividades">Atividades</a>
+        <a href="#avisos">Avisos</a>
+        <a href="#pessoas">Pessoas</a>
+        <a href="#chamada">Chamada</a>
+      </nav>
+      <section className="tree" id="grade" aria-label="Grade">
+        <h2>Grade</h2>
         {cohort.completed !== null && cohort.total !== null ? (
           <>
             <p className="tally">{progressLabel(cohort.completed, cohort.total)}</p>
             <ProgressMeter completed={cohort.completed} total={cohort.total} />
           </>
         ) : null}
-        {cohort.course.modules.length === 0 ? <p className="empty">Nenhuma aula ainda.</p> : null}
-        {cohort.course.modules.map((module) => (
-          <section className="module" key={module.id} aria-label={module.name}>
+        {cohort.course.modules.length === 0 ? <p className="empty">Nenhuma unidade ainda.</p> : null}
+        {leads && createModule ? (
+          <form className="compose" action={createModule} aria-label="Nova unidade">
+            <input type="hidden" name="courseId" value={cohort.course.id} />
+            <input type="hidden" name="returnTo" value={here} />
+            <label>
+              Nome da unidade
+              <input name="name" required />
+            </label>
+            <button type="submit">Abrir unidade</button>
+          </form>
+        ) : null}
+        {cohort.course.modules.map((module, index) => (
+          <section className="module unit" key={module.id} aria-label={module.name}>
+            <p className="meta">Unidade {index + 1}</p>
             <h3>{module.name}</h3>
             <ul>
               {module.lessons.map((lesson) => (
@@ -97,27 +124,93 @@ export function CohortDetailView({
                 </li>
               ))}
             </ul>
+            {leads && createLesson ? (
+              <LessonForm moduleId={module.id} action={createLesson} returnTo={here} />
+            ) : null}
           </section>
         ))}
-        {cohort.students ? (
-          <>
-            <h3>Alunos</h3>
-            {cohort.students.length === 0 ? (
-              <p className="empty">Nenhum aluno matriculado.</p>
-            ) : (
-              <ul aria-label="Alunos">
-                {cohort.students.map((student) => (
-                  <li className="person" key={student.student}>
-                    <span>{student.student}</span>
-                    <span className="tally">{progressLabel(student.completed, student.total)}</span>
-                    <ProgressMeter completed={student.completed} total={student.total} />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </>
+      </section>
+      <section className="tree" id="atividades" aria-label="Atividades">
+        <h2>Atividades</h2>
+        <h3>Provas</h3>
+        {cohort.exams.length === 0 ? <p className="empty">Nenhuma prova ainda.</p> : null}
+        {cohort.exams.map((exam) => {
+          const own = role === "aluno" ? (exam.scores[0] ?? null) : null;
+          return (
+            <section className="module" key={exam.id} aria-label={exam.title}>
+              <h3>{exam.title}</h3>
+              {exam.dueAt ? <p className="meta">Prazo {exam.dueAt}</p> : null}
+              {role === "aluno" && own === null ? (
+                <form className="compose" action={takeExam} aria-label={`Fazer ${exam.title}`}>
+                  <input type="hidden" name="cohortId" value={cohort.id} />
+                  <input type="hidden" name="examId" value={exam.id} />
+                  {exam.questions.map((question) => (
+                    <fieldset key={question.id}>
+                      <legend>{question.prompt}</legend>
+                      {question.choices.map((choice) => (
+                        <label key={choice.id}>
+                          <input type="radio" name={question.id} value={choice.id} required /> {choice.label}
+                        </label>
+                      ))}
+                    </fieldset>
+                  ))}
+                  <button type="submit">Entregar prova</button>
+                </form>
+              ) : null}
+              {role === "aluno" && own !== null ? <p className="tally">Nota {own.grade}</p> : null}
+              {leads
+                ? exam.scores.map((score) => (
+                    <p key={score.student} className="tally">
+                      {score.student} {score.grade}
+                    </p>
+                  ))
+                : null}
+              {leads && exam.scores.length === 0 ? <p className="meta">Ninguém fez esta prova.</p> : null}
+            </section>
+          );
+        })}
+        {leads ? <ExamForm cohortId={cohort.id} action={openExam} returnTo={here} /> : null}
+        <h3>Práticas</h3>
+        {cohort.practices.length === 0 ? <p className="empty">Nenhuma prática ainda.</p> : null}
+        {cohort.practices.map((practice) => (
+          <PracticeCard
+            key={practice.id}
+            cohortId={cohort.id}
+            practice={practice}
+            role={role}
+            submitPractice={submitPractice}
+            returnPractice={returnPractice}
+          />
+        ))}
+        {leads ? (
+          <form className="compose" action={openPractice} aria-label="Nova prática">
+            <input type="hidden" name="cohortId" value={cohort.id} />
+            <label>
+              Título
+              <input name="title" required />
+            </label>
+            <label>
+              Enunciado
+              <textarea name="prompt" required />
+            </label>
+            <label>
+              Prazo
+              <input name="dueAt" type="datetime-local" />
+            </label>
+            <label>
+              Critério da rubrica
+              <input name="criterion" />
+            </label>
+            <label>
+              Pontos do critério
+              <input name="points" type="number" min={1} max={10} />
+            </label>
+            <button type="submit">Abrir prática</button>
+          </form>
         ) : null}
-        <h3>Avisos</h3>
+      </section>
+      <section className="tree" id="avisos" aria-label="Avisos">
+        <h2>Avisos</h2>
         {announcements.length === 0 ? <p className="empty">Nenhum aviso.</p> : null}
         {announcements.map((item) => (
           <section key={item.id} className="module" aria-label={item.title}>
@@ -139,6 +232,8 @@ export function CohortDetailView({
             <button type="submit">Publicar aviso</button>
           </form>
         ) : null}
+      </section>
+      <section className="tree" id="chamada" aria-label="Chamada">
         <h3>Chamada</h3>
         {rolls.length === 0 ? <p className="empty">Nenhuma chamada.</p> : null}
         <ul>
@@ -169,83 +264,26 @@ export function CohortDetailView({
             <button type="submit">Registrar chamada</button>
           </form>
         ) : null}
-        <h3>Provas</h3>
-        {cohort.exams.length === 0 ? <p className="empty">Nenhuma prova ainda.</p> : null}
-        {cohort.exams.map((exam) => {
-          const own = role === "aluno" ? (exam.scores[0] ?? null) : null;
-          return (
-            <section className="module" key={exam.id} aria-label={exam.title}>
-              <h3>{exam.title}</h3>
-              {exam.dueAt ? <p className="meta">Prazo {exam.dueAt}</p> : null}
-              {role === "aluno" && own === null ? (
-                <form className="compose" action={takeExam} aria-label={`Fazer ${exam.title}`}>
-                  <input type="hidden" name="cohortId" value={cohort.id} />
-                  <input type="hidden" name="examId" value={exam.id} />
-                  {exam.questions.map((question) => (
-                    <fieldset key={question.id}>
-                      <legend>{question.prompt}</legend>
-                      {question.choices.map((choice) => (
-                        <label key={choice.id}>
-                          <input type="radio" name={question.id} value={choice.id} required /> {choice.label}
-                        </label>
-                      ))}
-                    </fieldset>
-                  ))}
-                  <button type="submit">Entregar prova</button>
-                </form>
-              ) : null}
-              {role === "aluno" && own !== null ? <p className="tally">Nota {own.grade}</p> : null}
-              {canLeadPractices(role)
-                ? exam.scores.map((score) => (
-                    <p key={score.student} className="tally">
-                      {score.student} {score.grade}
-                    </p>
-                  ))
-                : null}
-              {canLeadPractices(role) && exam.scores.length === 0 ? (
-                <p className="meta">Ninguém fez esta prova.</p>
-              ) : null}
-            </section>
-          );
-        })}
-        {canLeadPractices(role) ? <ExamForm cohortId={cohort.id} action={openExam} /> : null}
-        <h3>Práticas</h3>
-        {cohort.practices.length === 0 ? <p className="empty">Nenhuma prática ainda.</p> : null}
-        {cohort.practices.map((practice) => (
-          <PracticeCard
-            key={practice.id}
-            cohortId={cohort.id}
-            practice={practice}
-            role={role}
-            submitPractice={submitPractice}
-            returnPractice={returnPractice}
-          />
-        ))}
-        {canLeadPractices(role) ? (
-          <form className="compose" action={openPractice} aria-label="Nova prática">
-            <input type="hidden" name="cohortId" value={cohort.id} />
-            <label>
-              Título
-              <input name="title" required />
-            </label>
-            <label>
-              Enunciado
-              <textarea name="prompt" required />
-            </label>
-            <label>
-              Prazo
-              <input name="dueAt" type="datetime-local" />
-            </label>
-            <label>
-              Critério da rubrica
-              <input name="criterion" />
-            </label>
-            <label>
-              Pontos do critério
-              <input name="points" type="number" min={1} max={10} />
-            </label>
-            <button type="submit">Abrir prática</button>
-          </form>
+      </section>
+      <section className="tree" id="pessoas" aria-label="Pessoas">
+        <h2>Pessoas</h2>
+        {cohort.students ? (
+          <>
+            <h3>Alunos</h3>
+            {cohort.students.length === 0 ? (
+              <p className="empty">Nenhum aluno matriculado.</p>
+            ) : (
+              <ul aria-label="Alunos">
+                {cohort.students.map((student) => (
+                  <li className="person" key={student.student}>
+                    <span>{student.student}</span>
+                    <span className="tally">{progressLabel(student.completed, student.total)}</span>
+                    <ProgressMeter completed={student.completed} total={student.total} />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
         ) : null}
         {canManageCohorts(role) ? (
           <form className="compose" action={enrollStudent} aria-label="Matricular aluno">

@@ -16,6 +16,7 @@ import {
   submitPractice,
   takeExam,
 } from "../actions";
+import { createLesson, createModule } from "../../catalogo/actions";
 import { CohortDetailView } from "../detail";
 
 export default async function Page({
@@ -76,6 +77,8 @@ export default async function Page({
         rolls={await loadRolls(access, id)}
         announce={announce}
         callRoll={callRoll}
+        createModule={createModule}
+        createLesson={createLesson}
       />
     </Shell>
   );
