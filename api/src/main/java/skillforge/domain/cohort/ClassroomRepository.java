@@ -21,4 +21,6 @@ public interface ClassroomRepository {
 
     List<Roll> rolls(UUID cohortId, Actor actor);
 
+    void reviseAnnouncement(UUID cohortId, Actor actor, UUID announcementId, String title, String body);
+
 }

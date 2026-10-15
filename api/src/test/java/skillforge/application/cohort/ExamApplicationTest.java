@@ -9,8 +9,8 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
-import skillforge.application.studio.RecordingStudio;
-import skillforge.application.studio.StudioApplication;
+import skillforge.application.notice.MemoryNotices;
+import skillforge.domain.bank.BankRepository;
 import skillforge.domain.cohort.ExamDraft;
 import skillforge.domain.cohort.ExamRepository;
 import skillforge.domain.identity.Actor;
@@ -19,11 +19,11 @@ import skillforge.domain.shared.Rejection;
 
 class ExamApplicationTest {
 
-    private final RecordingStudio store = new RecordingStudio();
+    private final MemoryNotices store = new MemoryNotices();
 
     private final UUID opened = UUID.randomUUID();
 
-    private final ExamApplication exams = new ExamApplication(new MemoryExams(), new StudioApplication(store));
+    private final ExamApplication exams = new ExamApplication(new MemoryExams(), new EmptyBank(), store);
 
     private final Actor teacher = new Actor(Role.DOCENTE, "docente");
 
@@ -119,6 +119,46 @@ class ExamApplicationTest {
         @Override
         public java.util.List<skillforge.domain.cohort.Exam> inCohort(UUID cohortId, Actor actor) {
             throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void revise(
+                UUID cohortId,
+                Actor actor,
+                UUID examId,
+                String title,
+                java.time.Instant dueAt,
+                Integer minutes,
+                int attemptsAllowed) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void reviseQuestions(
+                UUID cohortId,
+                Actor actor,
+                UUID examId,
+                java.util.List<skillforge.domain.studio.QuestionText> questions) {
+            throw new UnsupportedOperationException();
+        }
+
+    }
+
+    private static final class EmptyBank implements BankRepository {
+
+        @Override
+        public UUID add(UUID courseId, Actor actor, String prompt, java.util.List<ExamDraft.ChoiceDraft> choices) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public java.util.List<skillforge.domain.studio.BankQuestion> list(UUID courseId, Actor actor) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public java.util.List<ExamDraft.QuestionDraft> drafts(UUID cohortId, Actor actor, java.util.List<UUID> ids) {
+            return java.util.List.of();
         }
 
     }

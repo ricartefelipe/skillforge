@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-import skillforge.application.studio.StudioApplication;
 import skillforge.domain.cohort.Announcement;
 import skillforge.domain.cohort.Certificate;
 import skillforge.domain.cohort.ClassroomRepository;
@@ -13,6 +12,7 @@ import skillforge.domain.cohort.CohortRepository;
 import skillforge.domain.cohort.Presence;
 import skillforge.domain.cohort.Roll;
 import skillforge.domain.identity.Actor;
+import skillforge.domain.notice.NoticeRepository;
 import skillforge.domain.identity.Role;
 import skillforge.domain.shared.Failure;
 import skillforge.domain.shared.Names;
@@ -25,12 +25,12 @@ public class ClassroomApplication {
 
     private final ClassroomRepository classroom;
 
-    private final StudioApplication studio;
+    private final NoticeRepository notices;
 
-    public ClassroomApplication(CohortRepository cohorts, ClassroomRepository classroom, StudioApplication studio) {
+    public ClassroomApplication(CohortRepository cohorts, ClassroomRepository classroom, NoticeRepository notices) {
         this.cohorts = cohorts;
         this.classroom = classroom;
-        this.studio = studio;
+        this.notices = notices;
     }
 
     public void withdraw(Actor actor, UUID cohortId, UUID announcementId) {
@@ -49,7 +49,7 @@ public class ClassroomApplication {
                 actor,
                 Names.require(rawTitle, Failure.BLANK_TITLE),
                 Texts.require(rawBody, Failure.BLANK_PROMPT));
-        studio.tellCohort(cohortId, "Novo aviso da turma.");
+        notices.tellCohort(cohortId, "Novo aviso da turma.");
         return id;
     }
 
@@ -75,6 +75,18 @@ public class ClassroomApplication {
     public List<Roll> rolls(Actor actor, UUID cohortId) {
         cohorts.page(cohortId, actor).orElseThrow(() -> new Rejection(Failure.NOT_FOUND));
         return classroom.rolls(cohortId, actor);
+    }
+
+    public void reviseAnnouncement(Actor actor, UUID cohortId, UUID announcementId, String rawTitle, String rawBody) {
+        if (actor.role() == Role.ALUNO) {
+            throw new Rejection(Failure.FORBIDDEN);
+        }
+        classroom.reviseAnnouncement(
+                cohortId,
+                actor,
+                announcementId,
+                Names.require(rawTitle, Failure.BLANK_TITLE),
+                Texts.require(rawBody, Failure.BLANK_PROMPT));
     }
 
     public Certificate certificate(Actor actor, UUID cohortId) {

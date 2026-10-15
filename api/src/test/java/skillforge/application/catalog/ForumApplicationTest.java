@@ -10,7 +10,7 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
-import skillforge.domain.cohort.CohortRepository;
+import skillforge.domain.cohort.CourseAccess;
 import skillforge.domain.forum.ForumRepository;
 import skillforge.domain.identity.Actor;
 import skillforge.domain.identity.Role;
@@ -80,46 +80,16 @@ class ForumApplicationTest {
 
     }
 
-    private final class MemoryCohorts implements CohortRepository {
-
-        @Override
-        public UUID open(UUID courseId, String name, String teacher) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public void enroll(UUID cohortId, String student) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public List<skillforge.domain.cohort.CohortListing> visible(Actor actor) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public java.util.Optional<skillforge.domain.cohort.CohortDetail> page(UUID id, Actor actor) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public void complete(UUID cohortId, UUID lessonId, String student) {
-            throw new UnsupportedOperationException();
-        }
+    private final class MemoryCohorts implements CourseAccess {
 
         @Override
         public boolean teaches(String teacher, UUID courseId) {
-            throw new UnsupportedOperationException();
+            return false;
         }
 
         @Override
         public Set<UUID> courseIds(Actor actor) {
             return "aluno".equals(actor.username()) ? Set.of(course) : Set.of();
-        }
-
-        @Override
-        public List<skillforge.domain.cohort.Report> report(Actor actor) {
-            throw new UnsupportedOperationException();
         }
 
     }

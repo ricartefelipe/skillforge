@@ -16,6 +16,7 @@ import org.springframework.stereotype.Component;
 
 import skillforge.domain.catalog.Course;
 import skillforge.domain.cohort.CohortDetail;
+import skillforge.domain.cohort.CourseAccess;
 import skillforge.domain.cohort.CohortListing;
 import skillforge.domain.cohort.CohortRepository;
 import skillforge.domain.cohort.CohortSummary;
@@ -30,7 +31,7 @@ import skillforge.domain.shared.Failure;
 import skillforge.domain.shared.Rejection;
 
 @Component
-class JdbcCohortRepository implements CohortRepository {
+class JdbcCohortRepository implements CohortRepository, CourseAccess {
 
     private final CohortGate gate;
 
@@ -368,6 +369,22 @@ class JdbcCohortRepository implements CohortRepository {
             }
         }
         return grades;
+    }
+
+    @Override
+    public void weigh(UUID cohortId, Actor actor, int practiceWeight, int examWeight) {
+        gate.ensure();
+        try {
+            gate.requireLead(cohortId, actor);
+            gate.jdbc.update(
+                    "UPDATE cohort SET practice_weight = ?, exam_weight = ? WHERE id = ?",
+                    practiceWeight,
+                    examWeight,
+                    cohortId);
+        }
+        catch (DataAccessResourceFailureException ex) {
+            throw new Unavailable(ex);
+        }
     }
 
     private static List<Integer> examGrades(List<skillforge.domain.cohort.Exam> cohortExams) {

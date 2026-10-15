@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-import skillforge.application.studio.StudioApplication;
 import skillforge.domain.cohort.CriterionDraft;
 import skillforge.domain.cohort.CriterionMark;
 import skillforge.domain.cohort.PracticeRepository;
@@ -15,17 +14,18 @@ import skillforge.domain.shared.Failure;
 import skillforge.domain.shared.Marks;
 import skillforge.domain.shared.Names;
 import skillforge.domain.shared.Rejection;
+import skillforge.domain.notice.NoticeRepository;
 import skillforge.domain.shared.Texts;
 
 public class PracticeApplication {
 
     private final PracticeRepository practices;
 
-    private final StudioApplication studio;
+    private final NoticeRepository notices;
 
-    public PracticeApplication(PracticeRepository practices, StudioApplication studio) {
+    public PracticeApplication(PracticeRepository practices, NoticeRepository notices) {
         this.practices = practices;
-        this.studio = studio;
+        this.notices = notices;
     }
 
     public Opened open(
@@ -91,7 +91,30 @@ public class PracticeApplication {
                 Texts.require(rawText, Failure.BLANK_FEEDBACK),
                 grade,
                 clean);
-        studio.tell(student, "A devolutiva da prática foi publicada.");
+        notices.tell(student, "A devolutiva da prática foi publicada.");
+    }
+
+    public void revise(
+            Actor actor,
+            UUID cohortId,
+            UUID practiceId,
+            String rawTitle,
+            String rawPrompt,
+            Instant dueAt) {
+        requireLead(actor);
+        practices.revise(
+                cohortId,
+                actor,
+                practiceId,
+                Names.require(rawTitle, Failure.BLANK_PRACTICE),
+                Texts.require(rawPrompt, Failure.BLANK_PROMPT),
+                dueAt);
+    }
+
+    private static void requireLead(Actor actor) {
+        if (actor.role() == Role.ALUNO) {
+            throw new Rejection(Failure.FORBIDDEN);
+        }
     }
 
 }

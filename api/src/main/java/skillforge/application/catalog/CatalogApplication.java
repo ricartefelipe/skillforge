@@ -18,7 +18,7 @@ import skillforge.domain.catalog.SignedLaunch;
 import skillforge.domain.catalog.LessonContent;
 import skillforge.domain.catalog.LessonFile;
 import skillforge.domain.catalog.LessonText;
-import skillforge.domain.cohort.CohortRepository;
+import skillforge.domain.cohort.CourseAccess;
 import skillforge.domain.identity.Actor;
 import skillforge.domain.identity.Role;
 import skillforge.domain.shared.Failure;
@@ -29,13 +29,13 @@ public class CatalogApplication {
 
     private final CourseRepository courses;
 
-    private final CohortRepository cohorts;
+    private final CourseAccess access;
 
     private final LessonBounds bounds;
 
-    public CatalogApplication(CourseRepository courses, CohortRepository cohorts, LessonBounds bounds) {
+    public CatalogApplication(CourseRepository courses, CourseAccess access, LessonBounds bounds) {
         this.courses = courses;
-        this.cohorts = cohorts;
+        this.access = access;
         this.bounds = bounds;
     }
 
@@ -49,7 +49,7 @@ public class CatalogApplication {
         if (actor.role() == Role.ADMINISTRACAO) {
             return courses.list();
         }
-        Set<UUID> ids = cohorts.courseIds(actor);
+        Set<UUID> ids = access.courseIds(actor);
         return courses.list().stream().filter(course -> ids.contains(course.id())).toList();
     }
 
@@ -61,7 +61,7 @@ public class CatalogApplication {
         if (actor.role() != Role.DOCENTE) {
             return Set.of();
         }
-        return cohorts.courseIds(actor);
+        return access.courseIds(actor);
     }
 
     public Created createCourse(Actor actor, String rawName) {
@@ -288,7 +288,7 @@ public class CatalogApplication {
         if (actor.role() == Role.ADMINISTRACAO) {
             return;
         }
-        if (actor.role() == Role.DOCENTE && cohorts.teaches(actor.username(), courseId)) {
+        if (actor.role() == Role.DOCENTE && access.teaches(actor.username(), courseId)) {
             return;
         }
         throw new Rejection(Failure.FORBIDDEN);

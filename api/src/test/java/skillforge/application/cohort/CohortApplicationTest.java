@@ -72,17 +72,12 @@ class CohortApplicationTest {
         }
 
         @Override
-        public boolean teaches(String teacher, UUID courseId) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public java.util.Set<UUID> courseIds(Actor actor) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
         public java.util.List<skillforge.domain.cohort.Report> report(Actor actor) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void weigh(UUID cohortId, Actor actor, int practiceWeight, int examWeight) {
             throw new UnsupportedOperationException();
         }
 
