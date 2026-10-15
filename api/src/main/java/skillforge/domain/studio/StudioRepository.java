@@ -61,7 +61,7 @@ public interface StudioRepository {
 
     void saveMail(String account, String email);
 
-    java.util.List<String> mail(String account);
+    Mailbox mailbox(String account);
 
     void reviseQuestions(UUID cohortId, Actor actor, UUID examId, java.util.List<QuestionText> questions);
 

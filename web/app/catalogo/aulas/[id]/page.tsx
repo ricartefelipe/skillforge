@@ -1,10 +1,10 @@
 import { cookies } from "next/headers";
 
 import { loadSession } from "../../../../lib/access";
-import { catalogNotice, coursesFromBody, lessonFromBody, type Course } from "../../../../lib/catalog";
+import { catalogNotice, coursesFromBody, kindLabel, lessonFromBody, nextInTrail, type Course } from "../../../../lib/catalog";
+import { readJson } from "../../../../lib/api-read";
 import { ACCESS_COOKIE } from "../../../../lib/cookies";
 import { doubtsFromBody } from "../../../../lib/forum";
-import { readJson } from "../../../../lib/api-read";
 import { apiUrl } from "../../../../lib/openid";
 import Link from "next/link";
 
@@ -56,7 +56,10 @@ export default async function Page({
 
   const query = await searchParams;
   const notice = catalogNotice(query.erro ?? null);
-  const course = courseOf(await loadCurriculum(access), id);
+  const found = courseOf(await loadCurriculum(access), id);
+  const finished = await finishedLessons(access, found?.id ?? null);
+  const course = found ? withCompletion(found, finished) : null;
+  const next = course ? nextInTrail(course, id) : null;
   return (
     <Shell session={session}>
       <div className="page">
@@ -68,11 +71,15 @@ export default async function Page({
         <div className="player">
           <aside className="playlist" aria-label="Grade da aula">
             {course?.modules.map((module) => (
-              <section key={module.id}>
+              <section key={module.id} aria-label={module.name}>
                 <p className="meta">{module.name}</p>
                 {module.lessons.map((item) => (
                   <Link key={item.id} href={`/catalogo/aulas/${item.id}`} aria-current={item.id === id ? "page" : undefined}>
-                    {item.title}
+                    <span>{item.title}</span>
+                    <span className="kind">
+                      {kindLabel(item.kind)}
+                      {item.completed ? " · Concluída" : ""}
+                    </span>
                   </Link>
                 ))}
               </section>
@@ -80,6 +87,11 @@ export default async function Page({
           </aside>
           <div>
             <LessonView lesson={lesson} />
+            {next ? (
+              <p className="next-lesson">
+                <Link href={`/catalogo/aulas/${next.id}`}>Próxima aula: {next.title}</Link>
+              </p>
+            ) : null}
             <AssetList lessonId={id} assets={await loadAssets(access, id)} />
             {session.role === "docente" || session.role === "administracao" ? (
               <>
@@ -170,6 +182,60 @@ async function loadAssets(token: string, id: string) {
   } catch {
     return [];
   }
+}
+
+function withCompletion(course: Course, finished: Set<string>): Course {
+  return {
+    ...course,
+    modules: course.modules.map((module) => ({
+      ...module,
+      lessons: module.lessons.map((lesson) => ({ ...lesson, completed: finished.has(lesson.id) })),
+    })),
+  };
+}
+
+async function finishedLessons(token: string, courseId: string | null): Promise<Set<string>> {
+  if (courseId === null) {
+    return new Set();
+  }
+  const list = await readJson(token, "/cohorts");
+  if (list === null || !list.ok || !Array.isArray(list.body)) {
+    return new Set();
+  }
+  const cohortId = list.body.flatMap((item) => {
+    if (item === null || typeof item !== "object") {
+      return [];
+    }
+    const record = item as Record<string, unknown>;
+    return record.courseId === courseId && typeof record.id === "string" ? [record.id] : [];
+  })[0];
+  if (cohortId === undefined) {
+    return new Set();
+  }
+  const detail = await readJson(token, `/cohorts/${cohortId}`);
+  if (detail === null || !detail.ok || detail.body === null || typeof detail.body !== "object") {
+    return new Set();
+  }
+  const course = (detail.body as Record<string, unknown>).course;
+  const ids = new Set<string>();
+  if (course === null || typeof course !== "object" || !Array.isArray((course as { modules?: unknown }).modules)) {
+    return ids;
+  }
+  for (const unit of (course as { modules: unknown[] }).modules) {
+    if (unit === null || typeof unit !== "object" || !Array.isArray((unit as { lessons?: unknown }).lessons)) {
+      continue;
+    }
+    for (const lesson of (unit as { lessons: unknown[] }).lessons) {
+      if (lesson === null || typeof lesson !== "object") {
+        continue;
+      }
+      const record = lesson as Record<string, unknown>;
+      if (record.completed === true && typeof record.id === "string") {
+        ids.add(record.id);
+      }
+    }
+  }
+  return ids;
 }
 
 function courseOf(courses: Course[] | null, lessonId: string) {

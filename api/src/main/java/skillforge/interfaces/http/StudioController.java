@@ -43,7 +43,7 @@ class StudioController {
     }
 
     @GetMapping("/me/email")
-    java.util.List<String> mail(Authentication authentication) {
+    skillforge.domain.studio.Mailbox mail(Authentication authentication) {
         return studio.mail(actor(authentication));
     }
 
