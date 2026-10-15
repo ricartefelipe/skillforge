@@ -383,6 +383,25 @@ h1 {
   border-left: 1px solid var(--line);
 }
 
+.class-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.class-nav a {
+  padding: 0.45rem 0.8rem;
+  border-radius: 999px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.class-nav a:hover {
+  border-color: var(--ink);
+}
+
 .unit {
   margin: 0;
   padding: 1rem 1.1rem 1.15rem;
