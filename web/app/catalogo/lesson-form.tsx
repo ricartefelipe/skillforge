@@ -47,6 +47,10 @@ export function LessonForm({
             Segredo compartilhado
             <input name="secret" required minLength={8} autoComplete="off" />
           </label>
+          <label>
+            Login da ferramenta
+            <input name="authLogin" type="url" placeholder="https://tool.example/login" />
+          </label>
         </>
       ) : null}
       {kind !== "markdown" && kind !== "lti" ? (

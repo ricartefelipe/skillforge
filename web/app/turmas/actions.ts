@@ -266,14 +266,17 @@ export async function reviseQuestions(formData: FormData) {
   const cohortId = field(formData, "cohortId");
   const examId = field(formData, "examId");
   const page = `/turmas/${cohortId}`;
-  const questions = new Map<string, { id: string; prompt: string; choices: { id: string; label: string }[] }>();
+  const retired = new Set(formData.getAll("retire").filter((value): value is string => typeof value === "string"));
+  const questions = new Map<string, { id: string | null; prompt: string; choices: { id: string | null; label: string }[] }>();
   for (const [key, value] of formData.entries()) {
     if (typeof value !== "string") {
       continue;
     }
     if (key.startsWith("prompt:")) {
       const id = key.slice("prompt:".length);
-      questions.set(id, { id, prompt: value, choices: questions.get(id)?.choices ?? [] });
+      if (!retired.has(id)) {
+        questions.set(id, { id, prompt: value, choices: questions.get(id)?.choices ?? [] });
+      }
     }
   }
   for (const [key, value] of formData.entries()) {
@@ -285,6 +288,17 @@ export async function reviseQuestions(formData: FormData) {
     if (question && choiceId) {
       question.choices.push({ id: choiceId, label: value });
     }
+  }
+  const added = field(formData, "newPrompt");
+  if (added.length > 0) {
+    questions.set("new", {
+      id: null,
+      prompt: added,
+      choices: [
+        { id: null, label: field(formData, "newRight") },
+        { id: null, label: field(formData, "newWrong") },
+      ],
+    });
   }
   await put(`/cohorts/${cohortId}/exams/${examId}/questions`, { questions: [...questions.values()] }, page);
   redirect(page);

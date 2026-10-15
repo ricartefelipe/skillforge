@@ -14,7 +14,7 @@ import skillforge.domain.cohort.ClassroomRepository;
 import skillforge.domain.cohort.ExamRepository;
 import skillforge.domain.cohort.PracticeRepository;
 import skillforge.domain.catalog.CourseRepository;
-import skillforge.domain.catalog.ForumRepository;
+import skillforge.domain.forum.ForumRepository;
 import skillforge.domain.catalog.LessonBounds;
 import skillforge.domain.cohort.CohortRepository;
 import skillforge.domain.studio.StudioRepository;

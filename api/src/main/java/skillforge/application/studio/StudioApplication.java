@@ -158,6 +158,10 @@ public class StudioApplication {
         studio.saveMail(actor.username(), email);
     }
 
+    public java.util.List<String> mail(Actor actor) {
+        return studio.mail(actor.username());
+    }
+
     public void reviseQuestions(Actor actor, UUID cohortId, UUID examId, java.util.List<QuestionText> questions) {
         requireLead(actor);
         if (questions == null || questions.isEmpty()) {

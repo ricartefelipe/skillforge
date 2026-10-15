@@ -59,7 +59,8 @@ class CohortAccessTest {
         mvc.perform(get("/cohorts").with(as("administracao", "administracao"))).andExpect(status().isOk());
         jdbc.update("""
                 TRUNCATE certificate, criterion_mark, criterion, presence, class_day, announcement, inbox,
-                mail_outbox, account_mail, scorm_track, scorm_file, lesson_tool,
+                mail_outbox, account_mail, scorm_item_track, scorm_item, scorm_track, scorm_file,
+                lesson_tool, lti_hint, lti_key,
                 peer_review, study_member, study_group, exam_clock, sitting, attempt_answer, attempt,
                 choice, question, exam, bank_choice, bank_question, lesson_asset, reply, doubt, submission,
                 practice, completion, enrollment, cohort, lesson, module, course

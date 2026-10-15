@@ -628,6 +628,7 @@ class JdbcCohortRepository implements CohortRepository {
                 SELECT id, exam_id, prompt
                 FROM question
                 WHERE exam_id IN (SELECT id FROM exam WHERE cohort_id = ?)
+                  AND retired IS NOT TRUE
                 ORDER BY position
                 """, (rs, row) -> {
                     questions.get(rs.getObject("exam_id", UUID.class)).add(new QuestionRow(
@@ -642,6 +643,7 @@ class JdbcCohortRepository implements CohortRepository {
                 JOIN question ON question.id = choice.question_id
                 JOIN exam ON exam.id = question.exam_id
                 WHERE exam.cohort_id = ?
+                  AND choice.retired IS NOT TRUE
                 ORDER BY choice.label
                 """, (rs, row) -> {
                     choices.computeIfAbsent(rs.getObject("question_id", UUID.class), id -> new ArrayList<>())

@@ -39,7 +39,10 @@ export default async function Page() {
           </label>
           <button type="submit">Guardar e-mail</button>
         </form>
-        <p className="meta">Com o correio configurado, cada recado também sai para esse endereço.</p>
+        <p className="meta">Com o correio configurado, cada recado também sai para esse endereço. Sem correio, a mensagem fica aqui.</p>
+        {(await loadMail(access)).map((body) => (
+          <p key={body} className="module">{body}</p>
+        ))}
         {notes.length === 0 ? <p className="empty">Nenhum recado.</p> : null}
         {notes.map((note) => (
           <section key={note.id} className="module">
@@ -57,6 +60,22 @@ export default async function Page() {
       </div>
     </Shell>
   );
+}
+
+async function loadMail(token: string) {
+  try {
+    const response = await fetch(`${apiUrl()}/me/email`, {
+      headers: { authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      return [];
+    }
+    const body: unknown = await response.json();
+    return Array.isArray(body) ? body.filter((item): item is string => typeof item === "string") : [];
+  } catch {
+    return [];
+  }
 }
 
 async function loadInbox(token: string) {

@@ -15,6 +15,23 @@
   --shadow: 0 12px 30px rgba(5, 25, 51, 0.08);
 }
 
+:root[data-theme="night"] {
+  color-scheme: dark;
+  --ink: #051933;
+  --ink-soft: #d5e4f2;
+  --brass: #3dde8a;
+  --brass-bright: #123524;
+  --paper: #07111c;
+  --paper-deep: #0d1b2c;
+  --card: #102033;
+  --line: #24384d;
+  --soot: #f4f7fb;
+  --muted: #93a8bd;
+  --alive: #3dde8a;
+  --down: #ff8d8d;
+  --shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -34,6 +51,25 @@ body {
 
 a {
   color: inherit;
+}
+
+.theme {
+  display: grid;
+  place-items: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  margin-left: auto;
+  border: 0;
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--soot);
+  box-shadow: var(--shadow);
+  cursor: pointer;
+}
+
+.theme svg {
+  width: 1.25rem;
+  height: 1.25rem;
 }
 
 .shell {

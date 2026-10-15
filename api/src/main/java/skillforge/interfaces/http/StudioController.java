@@ -42,6 +42,11 @@ class StudioController {
         return studio.search(actor(authentication), query);
     }
 
+    @GetMapping("/me/email")
+    java.util.List<String> mail(Authentication authentication) {
+        return studio.mail(actor(authentication));
+    }
+
     @PutMapping("/me/email")
     ResponseEntity<Void> saveMail(Authentication authentication, @RequestBody MailEdit body) {
         MailEdit request = body == null ? new MailEdit(null) : body;
