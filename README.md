@@ -25,7 +25,7 @@ A interface mostra Entrar, ou o nome e o papel com Sair. Com sessão, o menu tem
 
 ## A turma, como está
 
-A grade é o curso dividido em unidades. Cada unidade reúne os materiais, nesta ordem em que forem publicados: página, ebook e vídeo. O ebook é PDF ou EPUB, até 40 MB. O vídeo é MP4, MOV ou WebM, até 200 MB. A administração cria o curso. Quem ministra abre a unidade e publica o material no curso da própria turma.
+A grade é o curso dividido em unidades. Cada unidade reúne os materiais, nesta ordem em que forem publicados: página, ebook e vídeo. O ebook é PDF ou EPUB, até 8 MB. O vídeo é MP4, MOV ou WebM, até 8 MB. A administração cria o curso. Quem ministra abre a unidade e publica o material no curso da própria turma.
 
 A administração abre a turma, indica a conta do docente e matricula pela conta. O aluno vê só as turmas em que está. O docente vê só as que ministra. A administração vê todas.
 

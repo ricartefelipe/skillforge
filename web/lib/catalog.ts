@@ -53,7 +53,7 @@ export function catalogNotice(code: string | null): string | null {
     case "not-video":
       return "O vídeo precisa ser MP4, MOV ou WebM.";
     case "too-large":
-      return "O arquivo passa do limite: ebook até 40 MB, vídeo até 200 MB.";
+      return "O arquivo passa de 8 MB.";
     case "not-found":
       return "Não encontrei esse item.";
     case "unavailable":
