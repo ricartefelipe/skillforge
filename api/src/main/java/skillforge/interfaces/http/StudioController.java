@@ -15,7 +15,16 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import skillforge.application.studio.StudioApplication;
+import skillforge.application.bank.BankApplication;
+import skillforge.application.cohort.ClassroomApplication;
+import skillforge.application.cohort.CohortApplication;
+import skillforge.application.cohort.ExamApplication;
+import skillforge.application.cohort.PracticeApplication;
+import skillforge.application.group.GroupApplication;
+import skillforge.application.mail.MailApplication;
+import skillforge.application.notice.NoticeApplication;
+import skillforge.application.resume.ResumeApplication;
+import skillforge.application.search.SearchApplication;
 import skillforge.domain.cohort.ExamDraft;
 import skillforge.domain.identity.Actor;
 import skillforge.domain.studio.BankQuestion;
@@ -29,28 +38,65 @@ import skillforge.domain.studio.StudyGroup;
 @RestController
 class StudioController {
 
-    private final StudioApplication studio;
+    private final SearchApplication search;
 
-    StudioController(StudioApplication studio) {
-        this.studio = studio;
+    private final MailApplication mail;
+
+    private final ExamApplication exams;
+
+    private final ResumeApplication resumes;
+
+    private final NoticeApplication notices;
+
+    private final PracticeApplication practices;
+
+    private final ClassroomApplication classroom;
+
+    private final CohortApplication cohorts;
+
+    private final BankApplication bank;
+
+    private final GroupApplication groups;
+
+    StudioController(
+            SearchApplication search,
+            MailApplication mail,
+            ExamApplication exams,
+            ResumeApplication resumes,
+            NoticeApplication notices,
+            PracticeApplication practices,
+            ClassroomApplication classroom,
+            CohortApplication cohorts,
+            BankApplication bank,
+            GroupApplication groups) {
+        this.search = search;
+        this.mail = mail;
+        this.exams = exams;
+        this.resumes = resumes;
+        this.notices = notices;
+        this.practices = practices;
+        this.classroom = classroom;
+        this.cohorts = cohorts;
+        this.bank = bank;
+        this.groups = groups;
     }
 
     @GetMapping("/search")
     java.util.List<Hit> search(
             Authentication authentication,
             @RequestParam(name = "q", required = false) String query) {
-        return studio.search(actor(authentication), query);
+        return search.search(actor(authentication), query);
     }
 
     @GetMapping("/me/email")
     skillforge.domain.studio.Mailbox mail(Authentication authentication) {
-        return studio.mail(actor(authentication));
+        return mail.mailbox(actor(authentication));
     }
 
     @PutMapping("/me/email")
     ResponseEntity<Void> saveMail(Authentication authentication, @RequestBody MailEdit body) {
         MailEdit request = body == null ? new MailEdit(null) : body;
-        studio.saveMail(actor(authentication), request.email());
+        mail.save(actor(authentication), request.email());
         return ResponseEntity.noContent().build();
     }
 
@@ -60,7 +106,7 @@ class StudioController {
             @PathVariable UUID id,
             @PathVariable UUID examId,
             @RequestBody QuestionEdit body) {
-        studio.reviseQuestions(
+        exams.reviseQuestions(
                 actor(authentication),
                 id,
                 examId,
@@ -70,19 +116,19 @@ class StudioController {
 
     @GetMapping("/resume")
     ResponseEntity<ResumeBody> resume(Authentication authentication) {
-        return studio.resume(actor(authentication))
+        return resumes.resume(actor(authentication))
                 .map(item -> ResponseEntity.ok(ResumeBody.from(item)))
                 .orElseGet(() -> ResponseEntity.noContent().build());
     }
 
     @GetMapping("/inbox")
     List<InboxNote> inbox(Authentication authentication) {
-        return studio.inbox(actor(authentication));
+        return notices.inbox(actor(authentication));
     }
 
     @PostMapping("/inbox/{id}/read")
     ResponseEntity<Void> read(Authentication authentication, @PathVariable UUID id) {
-        studio.read(actor(authentication), id);
+        notices.read(actor(authentication), id);
         return ResponseEntity.noContent().build();
     }
 
@@ -93,7 +139,7 @@ class StudioController {
             @PathVariable UUID practiceId,
             @RequestBody PracticeEdit body) {
         PracticeEdit request = body == null ? new PracticeEdit(null, null, null) : body;
-        studio.revisePractice(
+        practices.revise(
                 actor(authentication),
                 id,
                 practiceId,
@@ -110,7 +156,7 @@ class StudioController {
             @PathVariable UUID examId,
             @RequestBody ExamEdit body) {
         ExamEdit request = body == null ? new ExamEdit(null, null, null, null) : body;
-        studio.reviseExam(
+        exams.revise(
                 actor(authentication),
                 id,
                 examId,
@@ -128,20 +174,20 @@ class StudioController {
             @PathVariable UUID announcementId,
             @RequestBody NoticeEdit body) {
         NoticeEdit request = body == null ? new NoticeEdit(null, null) : body;
-        studio.reviseAnnouncement(actor(authentication), id, announcementId, request.title(), request.body());
+        classroom.reviseAnnouncement(actor(authentication), id, announcementId, request.title(), request.body());
         return ResponseEntity.noContent().build();
     }
 
     @PutMapping("/cohorts/{id}/weights")
     ResponseEntity<Void> weigh(Authentication authentication, @PathVariable UUID id, @RequestBody WeightEdit body) {
         WeightEdit request = body == null ? new WeightEdit(0, 0) : body;
-        studio.weigh(actor(authentication), id, request.practiceWeight(), request.examWeight());
+        cohorts.weigh(actor(authentication), id, request.practiceWeight(), request.examWeight());
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/courses/{courseId}/bank")
     List<BankQuestion> bank(Authentication authentication, @PathVariable UUID courseId) {
-        return studio.bank(actor(authentication), courseId);
+        return bank.list(actor(authentication), courseId);
     }
 
     @PostMapping("/courses/{courseId}/bank")
@@ -150,19 +196,19 @@ class StudioController {
             @PathVariable UUID courseId,
             @RequestBody BankEdit body) {
         BankEdit request = body == null ? new BankEdit(null, null) : body;
-        UUID id = studio.addBankQuestion(actor(authentication), courseId, request.prompt(), request.choices());
+        UUID id = bank.add(actor(authentication), courseId, request.prompt(), request.choices());
         return ResponseEntity.status(HttpStatus.CREATED).body(new IdBody(id));
     }
 
     @GetMapping("/cohorts/{id}/groups")
     List<StudyGroup> groups(Authentication authentication, @PathVariable UUID id) {
-        return studio.groups(actor(authentication), id);
+        return groups.groups(actor(authentication), id);
     }
 
     @PostMapping("/cohorts/{id}/groups")
     ResponseEntity<IdBody> openGroup(Authentication authentication, @PathVariable UUID id, @RequestBody NameEdit body) {
         NameEdit request = body == null ? new NameEdit(null) : body;
-        UUID created = studio.openGroup(actor(authentication), id, request.name());
+        UUID created = groups.open(actor(authentication), id, request.name());
         return ResponseEntity.status(HttpStatus.CREATED).body(new IdBody(created));
     }
 
@@ -173,13 +219,13 @@ class StudioController {
             @PathVariable UUID groupId,
             @RequestBody MemberEdit body) {
         MemberEdit request = body == null ? new MemberEdit(null) : body;
-        studio.addMember(actor(authentication), id, groupId, request.student());
+        groups.addMember(actor(authentication), id, groupId, request.student());
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
     @GetMapping("/cohorts/{id}/practices/{practiceId}/reviews")
     List<PeerWork> peers(Authentication authentication, @PathVariable UUID id, @PathVariable UUID practiceId) {
-        return studio.peers(actor(authentication), id, practiceId);
+        return groups.peers(actor(authentication), id, practiceId);
     }
 
     @PostMapping("/cohorts/{id}/practices/{practiceId}/reviews")
@@ -189,7 +235,7 @@ class StudioController {
             @PathVariable UUID practiceId,
             @RequestBody ReviewEdit body) {
         ReviewEdit request = body == null ? new ReviewEdit(null, null, 0) : body;
-        studio.review(actor(authentication), id, practiceId, request.author(), request.comment(), request.mark());
+        groups.review(actor(authentication), id, practiceId, request.author(), request.comment(), request.mark());
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 

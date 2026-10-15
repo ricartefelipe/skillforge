@@ -5,7 +5,7 @@ import java.util.UUID;
 
 import skillforge.domain.forum.Doubt;
 import skillforge.domain.forum.ForumRepository;
-import skillforge.domain.cohort.CohortRepository;
+import skillforge.domain.cohort.CourseAccess;
 import skillforge.domain.identity.Actor;
 import skillforge.domain.identity.Role;
 import skillforge.domain.shared.Failure;
@@ -17,11 +17,11 @@ public class ForumApplication {
 
     private final ForumRepository forum;
 
-    private final CohortRepository cohorts;
+    private final CourseAccess access;
 
-    public ForumApplication(ForumRepository forum, CohortRepository cohorts) {
+    public ForumApplication(ForumRepository forum, CourseAccess access) {
         this.forum = forum;
-        this.cohorts = cohorts;
+        this.access = access;
     }
 
     public List<Doubt> list(Actor actor, UUID lessonId) {
@@ -48,7 +48,7 @@ public class ForumApplication {
 
     private void requireMember(Actor actor, UUID lessonId) {
         UUID courseId = forum.courseOfLesson(lessonId).orElseThrow(() -> new Rejection(Failure.NOT_FOUND));
-        if (actor.role() == Role.ADMINISTRACAO || cohorts.courseIds(actor).contains(courseId)) {
+        if (actor.role() == Role.ADMINISTRACAO || access.courseIds(actor).contains(courseId)) {
             return;
         }
         throw new Rejection(Failure.NOT_FOUND);

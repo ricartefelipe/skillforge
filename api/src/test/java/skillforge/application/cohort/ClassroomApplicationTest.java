@@ -10,8 +10,7 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
-import skillforge.application.studio.RecordingStudio;
-import skillforge.application.studio.StudioApplication;
+import skillforge.application.notice.MemoryNotices;
 import skillforge.domain.cohort.Certificate;
 import skillforge.domain.cohort.ClassroomRepository;
 import skillforge.domain.cohort.CohortRepository;
@@ -22,14 +21,14 @@ import skillforge.domain.shared.Rejection;
 
 class ClassroomApplicationTest {
 
-    private final RecordingStudio store = new RecordingStudio();
+    private final MemoryNotices store = new MemoryNotices();
 
     private final UUID cohort = UUID.randomUUID();
 
     private final ClassroomApplication classroom = new ClassroomApplication(
             new ClosedCohorts(),
             new MemoryClassroom(),
-            new StudioApplication(store));
+            store);
 
     @Test
     void anAnnouncementTellsTheCohortAndAStudentCannotPublishIt() {
@@ -102,17 +101,12 @@ class ClassroomApplicationTest {
         }
 
         @Override
-        public boolean teaches(String teacher, UUID courseId) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public java.util.Set<UUID> courseIds(Actor actor) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
         public java.util.List<skillforge.domain.cohort.Report> report(Actor actor) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void weigh(UUID cohortId, Actor actor, int practiceWeight, int examWeight) {
             throw new UnsupportedOperationException();
         }
 
@@ -148,6 +142,11 @@ class ClassroomApplicationTest {
 
         @Override
         public java.util.List<skillforge.domain.cohort.Roll> rolls(UUID cohortId, Actor actor) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void reviseAnnouncement(UUID cohortId, Actor actor, UUID announcementId, String title, String body) {
             throw new UnsupportedOperationException();
         }
 

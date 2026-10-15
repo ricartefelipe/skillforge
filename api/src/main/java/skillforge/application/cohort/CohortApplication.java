@@ -8,6 +8,7 @@ import skillforge.domain.cohort.CohortListing;
 import skillforge.domain.cohort.CohortRepository;
 import skillforge.domain.cohort.Report;
 import skillforge.domain.identity.Actor;
+import skillforge.domain.identity.Role;
 import skillforge.domain.shared.Failure;
 import skillforge.domain.shared.Names;
 import skillforge.domain.shared.Rejection;
@@ -50,6 +51,16 @@ public class CohortApplication {
 
     public List<Report> report(Actor actor) {
         return cohorts.report(actor);
+    }
+
+    public void weigh(Actor actor, UUID cohortId, int practiceWeight, int examWeight) {
+        if (actor.role() == Role.ALUNO) {
+            throw new Rejection(Failure.FORBIDDEN);
+        }
+        if (practiceWeight < 1 || practiceWeight > 5 || examWeight < 1 || examWeight > 5) {
+            throw new Rejection(Failure.WEIGHT);
+        }
+        cohorts.weigh(cohortId, actor, practiceWeight, examWeight);
     }
 
 }

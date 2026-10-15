@@ -2,6 +2,8 @@ package skillforge.infrastructure.persistence;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -292,6 +294,41 @@ class JdbcPracticeRepository implements PracticeRepository {
     }
 
     private record Seed(UUID id, String title, String prompt, java.time.Instant dueAt) {
+    }
+
+    @Override
+    public void revise(UUID cohortId, Actor actor, UUID practiceId, String title, String prompt, Instant dueAt) {
+        gate.ensure();
+        try {
+            gate.requireLead(cohortId, actor);
+            Integer owned = gate.jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM practice WHERE id = ? AND cohort_id = ?",
+                    Integer.class,
+                    practiceId,
+                    cohortId);
+            if (owned == null || owned == 0) {
+                throw new Rejection(Failure.NOT_FOUND);
+            }
+            Integer submissions = gate.jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM submission WHERE practice_id = ?",
+                    Integer.class,
+                    practiceId);
+            if (submissions != null && submissions > 0) {
+                throw new Rejection(Failure.LOCKED);
+            }
+            gate.jdbc.update(
+                    "UPDATE practice SET title = ?, prompt = ?, due_at = ? WHERE id = ?",
+                    title,
+                    prompt,
+                    dueAt == null ? null : Timestamp.from(dueAt),
+                    practiceId);
+        }
+        catch (DuplicateKeyException ex) {
+            throw new Rejection(Failure.DUPLICATE_PRACTICE);
+        }
+        catch (DataAccessResourceFailureException ex) {
+            throw new Unavailable(ex);
+        }
     }
 
 }

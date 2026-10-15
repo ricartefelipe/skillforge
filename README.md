@@ -243,6 +243,14 @@ A aplicação da turma, do fórum, da busca e do correio também tem teste unit�
 - A busca curta não consulta o acervo. O e-mail sem endereço não grava.
 - Cada recusa da API vira o status HTTP correspondente.
 
+## Incremento 18
+
+O estúdio deixa de ser um único ponto por onde passa o resto do sistema.
+
+- Catálogo e fórum só perguntam se a pessoa está no curso.
+- Recado, correio, busca, banco, grupo e continuação têm porta própria.
+- Prova, prática, aviso e peso ficam com quem já guarda esses dados.
+
 ## Arranque
 
 É preciso Java 21, Node.js 22, Docker e curl.

@@ -2,6 +2,10 @@ package skillforge.infrastructure.persistence;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -21,6 +25,7 @@ import skillforge.domain.cohort.ExamRepository;
 import skillforge.domain.cohort.ExamScore;
 import skillforge.domain.cohort.Question;
 import skillforge.domain.identity.Actor;
+import skillforge.domain.studio.QuestionText;
 import skillforge.domain.identity.Role;
 import skillforge.domain.shared.Failure;
 import skillforge.domain.shared.Rejection;
@@ -371,6 +376,135 @@ class JdbcExamRepository implements ExamRepository {
     }
 
     private record Row(UUID id, String prompt) {
+    }
+
+    @Override
+    public void revise(
+            UUID cohortId,
+            Actor actor,
+            UUID examId,
+            String title,
+            Instant dueAt,
+            Integer minutes,
+            int attemptsAllowed) {
+        gate.ensure();
+        try {
+            gate.requireLead(cohortId, actor);
+            if (!examOwned(cohortId, examId)) {
+                throw new Rejection(Failure.NOT_FOUND);
+            }
+            Integer taken = gate.jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM attempt WHERE exam_id = ?",
+                    Integer.class,
+                    examId);
+            if (taken != null && taken > 0) {
+                throw new Rejection(Failure.LOCKED);
+            }
+            gate.jdbc.update(
+                    "UPDATE exam SET title = ?, due_at = ?, minutes = ?, attempts_allowed = ? WHERE id = ?",
+                    title,
+                    dueAt == null ? null : Timestamp.from(dueAt),
+                    minutes,
+                    attemptsAllowed,
+                    examId);
+        }
+        catch (DuplicateKeyException ex) {
+            throw new Rejection(Failure.DUPLICATE_EXAM);
+        }
+        catch (DataAccessResourceFailureException ex) {
+            throw new Unavailable(ex);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void reviseQuestions(UUID cohortId, Actor actor, UUID examId, List<QuestionText> questions) {
+        gate.ensure();
+        gate.requireLead(cohortId, actor);
+        if (!examOwned(cohortId, examId)) {
+            throw new Rejection(Failure.NOT_FOUND);
+        }
+        Set<UUID> kept = new HashSet<>();
+        for (QuestionText question : questions) {
+            UUID questionId = question.id() == null ? UUID.randomUUID() : question.id();
+            if (question.id() == null) {
+                Integer position = gate.jdbc.queryForObject(
+                        "SELECT COALESCE(MAX(position), 0) + 1 FROM question WHERE exam_id = ?",
+                        Integer.class,
+                        examId);
+                gate.jdbc.update(
+                        "INSERT INTO question (id, exam_id, position, prompt, retired) VALUES (?, ?, ?, ?, false)",
+                        questionId,
+                        examId,
+                        position,
+                        question.prompt());
+            }
+            else {
+                int updated = gate.jdbc.update(
+                        "UPDATE question SET prompt = ?, retired = false WHERE id = ? AND exam_id = ?",
+                        question.prompt(),
+                        questionId,
+                        examId);
+                if (updated == 0) {
+                    throw new Rejection(Failure.NOT_FOUND);
+                }
+            }
+            kept.add(questionId);
+            keepChoices(question, questionId);
+        }
+        gate.jdbc.update("UPDATE question SET retired = true WHERE exam_id = ?", examId);
+        for (UUID questionId : kept) {
+            gate.jdbc.update("UPDATE question SET retired = false WHERE id = ?", questionId);
+        }
+    }
+
+    private void keepChoices(QuestionText question, UUID questionId) {
+        boolean first = question.id() == null;
+        Set<UUID> keptChoices = new HashSet<>();
+        for (QuestionText.ChoiceText choice : question.choices()) {
+            if (choice.id() == null) {
+                UUID choiceId = UUID.randomUUID();
+                gate.jdbc.update(
+                        "INSERT INTO choice (id, question_id, label, correct, retired) VALUES (?, ?, ?, ?, false)",
+                        choiceId,
+                        questionId,
+                        choice.label(),
+                        first);
+                first = false;
+                keptChoices.add(choiceId);
+            }
+            else {
+                int label = gate.jdbc.update(
+                        "UPDATE choice SET label = ?, retired = false WHERE id = ? AND question_id = ?",
+                        choice.label(),
+                        choice.id(),
+                        questionId);
+                if (label == 0) {
+                    throw new Rejection(Failure.NOT_FOUND);
+                }
+                keptChoices.add(choice.id());
+            }
+        }
+        gate.jdbc.update("UPDATE choice SET retired = true WHERE question_id = ?", questionId);
+        for (UUID choiceId : keptChoices) {
+            gate.jdbc.update("UPDATE choice SET retired = false WHERE id = ?", choiceId);
+        }
+        Integer correct = gate.jdbc.queryForObject(
+                "SELECT COUNT(*) FROM choice WHERE question_id = ? AND correct AND retired IS NOT TRUE",
+                Integer.class,
+                questionId);
+        if (correct == null || correct != 1) {
+            throw new Rejection(Failure.INVALID_EXAM);
+        }
+    }
+
+    private boolean examOwned(UUID cohortId, UUID examId) {
+        Integer count = gate.jdbc.queryForObject(
+                "SELECT COUNT(*) FROM exam WHERE id = ? AND cohort_id = ?",
+                Integer.class,
+                examId,
+                cohortId);
+        return count != null && count > 0;
     }
 
 }
