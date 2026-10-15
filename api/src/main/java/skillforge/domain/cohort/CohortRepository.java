@@ -7,7 +7,7 @@ import java.util.UUID;
 
 import skillforge.domain.identity.Actor;
 
-public interface CohortRepository extends PracticeRepository, ExamRepository, ClassroomRepository {
+public interface CohortRepository {
 
     UUID open(UUID courseId, String name, String teacher);
 

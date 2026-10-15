@@ -20,6 +20,8 @@ public interface PracticeRepository {
 
     void removePractice(UUID cohortId, Actor actor, UUID practiceId);
 
+    List<Practice> inCohort(UUID cohortId, Actor actor);
+
     void feedback(
             UUID cohortId,
             UUID practiceId,
