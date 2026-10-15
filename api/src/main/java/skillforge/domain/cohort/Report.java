@@ -4,7 +4,14 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
-public record Report(UUID cohortId, String cohortName, String courseName, List<Practice> practices, List<Exam> exams) {
+public record Report(
+        UUID cohortId,
+        String cohortName,
+        String courseName,
+        List<Practice> practices,
+        List<Exam> exams,
+        int practiceWeight,
+        int examWeight) {
 
     public Report {
         Objects.requireNonNull(cohortId, "cohortId");

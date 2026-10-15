@@ -4,10 +4,13 @@ import {
   canLeadPractices,
   canManageCohorts,
   progressLabel,
+  type BankItem,
   type CohortDetail,
+  type PeerWork,
   type Practice,
   type RollCall,
   type ClassNotice,
+  type StudyGroup,
 } from "../../lib/cohort";
 import type { LessonSummary } from "../../lib/catalog";
 import { LessonForm } from "../catalogo/lesson-form";
@@ -51,6 +54,15 @@ export function CohortDetailView({
   removePractice,
   removeExam,
   withdrawNotice,
+  bank = [],
+  groups = [],
+  peers = [],
+  revisePractice,
+  reviseAnnouncement,
+  weighCohort,
+  openGroup,
+  reviewPeer,
+  saveQuestion,
 }: {
   cohort: CohortDetail;
   role: string;
@@ -72,6 +84,15 @@ export function CohortDetailView({
   removePractice?: (formData: FormData) => void;
   removeExam?: (formData: FormData) => void;
   withdrawNotice?: (formData: FormData) => void;
+  bank?: BankItem[];
+  groups?: StudyGroup[];
+  peers?: PeerWork[];
+  revisePractice?: (formData: FormData) => void;
+  reviseAnnouncement?: (formData: FormData) => void;
+  weighCohort?: (formData: FormData) => void;
+  openGroup?: (formData: FormData) => void;
+  reviewPeer?: (formData: FormData) => void;
+  saveQuestion?: (formData: FormData) => void;
 }) {
   const leads = canLeadPractices(role);
   const here = `/turmas/${cohort.id}`;
@@ -90,6 +111,7 @@ export function CohortDetailView({
         <a href="#atividades">Atividades</a>
         <a href="#avisos">Avisos</a>
         <a href="#pessoas">Pessoas</a>
+        <a href="#grupos">Grupos</a>
         <a href="#chamada">Chamada</a>
       </nav>
       <section className="tree" id="grade" aria-label="Grade">
@@ -155,10 +177,15 @@ export function CohortDetailView({
             <section className="module" key={exam.id} aria-label={exam.title}>
               <h3>{exam.title}</h3>
               {exam.dueAt ? <p className="meta">Prazo {exam.dueAt}</p> : null}
-              {role === "aluno" && own === null ? (
+              <p className="meta">
+                {exam.minutes ? `${exam.minutes} min · ` : null}
+                {exam.attemptsAllowed === 1 ? "1 tentativa" : `${exam.attemptsAllowed} tentativas`}
+              </p>
+              {role === "aluno" && exam.taken < exam.attemptsAllowed ? (
                 <form className="compose" action={takeExam} aria-label={`Fazer ${exam.title}`}>
                   <input type="hidden" name="cohortId" value={cohort.id} />
                   <input type="hidden" name="examId" value={exam.id} />
+                  {exam.minutes ? <input type="hidden" name="minutes" value={exam.minutes} /> : null}
                   {exam.questions.map((question) => (
                     <fieldset key={question.id}>
                       <legend>{question.prompt}</legend>
@@ -191,7 +218,26 @@ export function CohortDetailView({
             </section>
           );
         })}
-        {leads ? <ExamForm cohortId={cohort.id} action={openExam} returnTo={here} /> : null}
+        {leads ? <ExamForm cohortId={cohort.id} action={openExam} returnTo={here} bank={bank} /> : null}
+        {leads && saveQuestion ? (
+          <form className="compose" action={saveQuestion} aria-label="Nova questão no banco">
+            <input type="hidden" name="cohortId" value={cohort.id} />
+            <input type="hidden" name="courseId" value={cohort.course.id} />
+            <label>
+              Enunciado para o banco
+              <textarea name="prompt" required />
+            </label>
+            <label>
+              Alternativa correta
+              <input name="right" required />
+            </label>
+            <label>
+              Alternativa errada
+              <input name="wrong" required />
+            </label>
+            <button type="submit">Guardar no banco</button>
+          </form>
+        ) : null}
         <h3>Práticas</h3>
         {cohort.practices.length === 0 ? <p className="empty">Nenhuma prática ainda.</p> : null}
         {cohort.practices.map((practice) => (
@@ -203,6 +249,9 @@ export function CohortDetailView({
             submitPractice={submitPractice}
             returnPractice={returnPractice}
             removePractice={removePractice}
+            revisePractice={revisePractice}
+            reviewPeer={reviewPeer}
+            peers={peers.filter((work) => work.practiceId === practice.id)}
           />
         ))}
         {leads ? (
@@ -239,6 +288,21 @@ export function CohortDetailView({
           <section key={item.id} className="module" aria-label={item.title}>
             <h3>{item.title}</h3>
             <p>{item.body}</p>
+            {leads && reviseAnnouncement ? (
+              <form className="compose" action={reviseAnnouncement} aria-label={`Editar ${item.title}`}>
+                <input type="hidden" name="cohortId" value={cohort.id} />
+                <input type="hidden" name="announcementId" value={item.id} />
+                <label>
+                  Título
+                  <input name="title" defaultValue={item.title} required />
+                </label>
+                <label>
+                  Aviso
+                  <textarea name="body" defaultValue={item.body} required />
+                </label>
+                <button type="submit">Guardar aviso</button>
+              </form>
+            ) : null}
           </section>
         ))}
         {canLeadPractices(role) && announce ? (
@@ -328,6 +392,44 @@ export function CohortDetailView({
           </form>
         ) : null}
       </section>
+      <section className="tree" id="grupos" aria-label="Grupos">
+        <h2>Grupos</h2>
+        {groups.length === 0 ? <p className="empty">Nenhum grupo.</p> : null}
+        {groups.map((group) => (
+          <section key={group.id} className="module" aria-label={group.name}>
+            <h3>{group.name}</h3>
+            <p>{group.members.length === 0 ? "Sem alunos." : group.members.join(", ")}</p>
+          </section>
+        ))}
+        {leads && openGroup ? (
+          <form className="compose" action={openGroup} aria-label="Novo grupo">
+            <input type="hidden" name="cohortId" value={cohort.id} />
+            <label>
+              Nome do grupo
+              <input name="name" required />
+            </label>
+            <label>
+              Contas, separadas por vírgula
+              <input name="members" />
+            </label>
+            <button type="submit">Abrir grupo</button>
+          </form>
+        ) : null}
+        {leads && weighCohort ? (
+          <form className="compose" action={weighCohort} aria-label="Pesos da média">
+            <input type="hidden" name="cohortId" value={cohort.id} />
+            <label>
+              Peso das práticas
+              <input name="practiceWeight" type="number" min={1} max={5} defaultValue={1} required />
+            </label>
+            <label>
+              Peso das provas
+              <input name="examWeight" type="number" min={1} max={5} defaultValue={1} required />
+            </label>
+            <button type="submit">Guardar pesos</button>
+          </form>
+        ) : null}
+      </section>
     </div>
   );
 }
@@ -339,6 +441,9 @@ function PracticeCard({
   submitPractice,
   returnPractice,
   removePractice,
+  revisePractice,
+  reviewPeer,
+  peers,
 }: {
   cohortId: string;
   practice: Practice;
@@ -346,6 +451,9 @@ function PracticeCard({
   submitPractice: (formData: FormData) => void;
   returnPractice: (formData: FormData) => void;
   removePractice?: (formData: FormData) => void;
+  revisePractice?: (formData: FormData) => void;
+  reviewPeer?: (formData: FormData) => void;
+  peers: PeerWork[];
 }) {
   const own = role === "aluno" ? (practice.deliveries[0] ?? null) : null;
   const waiting = own !== null && own.feedback === null;
@@ -440,6 +548,52 @@ function PracticeCard({
             </section>
           ))
         : null}
+      {canLeadPractices(role) && revisePractice && practice.deliveries.length === 0 ? (
+        <form className="compose" action={revisePractice} aria-label={`Editar ${practice.title}`}>
+          <input type="hidden" name="cohortId" value={cohortId} />
+          <input type="hidden" name="practiceId" value={practice.id} />
+          <label>
+            Título
+            <input name="title" defaultValue={practice.title} required />
+          </label>
+          <label>
+            Enunciado
+            <textarea name="prompt" defaultValue={practice.prompt} required />
+          </label>
+          <label>
+            Prazo
+            <input name="dueAt" type="datetime-local" />
+          </label>
+          <button type="submit">Guardar prática</button>
+        </form>
+      ) : null}
+      {peers.map((work) => (
+        <section key={work.author} aria-label={`Entrega de ${work.author}`}>
+          <p className="meta">{work.author}</p>
+          <p>{work.text}</p>
+          {work.reviews.map((review) => (
+            <p key={review.reviewer}>
+              {review.reviewer}: {review.comment} ({review.mark})
+            </p>
+          ))}
+          {role === "aluno" && reviewPeer && work.reviews.length === 0 ? (
+            <form className="compose" action={reviewPeer} aria-label={`Avaliar ${work.author}`}>
+              <input type="hidden" name="cohortId" value={cohortId} />
+              <input type="hidden" name="practiceId" value={practice.id} />
+              <input type="hidden" name="author" value={work.author} />
+              <label>
+                Comentário
+                <textarea name="comment" required />
+              </label>
+              <label>
+                Nota
+                <input name="mark" type="number" min={0} max={10} required />
+              </label>
+              <button type="submit">Avaliar colega</button>
+            </form>
+          ) : null}
+        </section>
+      ))}
     </section>
   );
 }

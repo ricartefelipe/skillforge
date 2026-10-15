@@ -9,7 +9,9 @@ import java.util.stream.Collectors;
 import skillforge.domain.catalog.Course;
 import skillforge.domain.catalog.CourseRepository;
 import skillforge.domain.catalog.Lesson;
+import skillforge.domain.catalog.LessonAsset;
 import skillforge.domain.catalog.LessonBounds;
+import skillforge.domain.catalog.LessonKind;
 import skillforge.domain.catalog.LessonContent;
 import skillforge.domain.catalog.LessonFile;
 import skillforge.domain.catalog.LessonText;
@@ -95,6 +97,54 @@ public class CatalogApplication {
         UUID courseId = courses.courseOfLesson(lessonId).orElseThrow(() -> new Rejection(Failure.NOT_FOUND));
         requireWriter(actor, courseId);
         courses.removeLesson(lessonId);
+    }
+
+    public void reviseLesson(Actor actor, UUID lessonId, String rawTitle, String markdown) {
+        UUID courseId = courses.courseOfLesson(lessonId).orElseThrow(() -> new Rejection(Failure.NOT_FOUND));
+        requireWriter(actor, courseId);
+        String title = Names.require(rawTitle, Failure.BLANK_TITLE);
+        String text = null;
+        if (markdown != null) {
+            text = switch (LessonContent.decide("markdown", markdown, null, bounds.current())) {
+                case LessonContent.Rejected rejected -> throw new Rejection(rejected.failure());
+                case LessonContent.Accepted accepted -> accepted.markdown();
+            };
+        }
+        courses.reviseLesson(lessonId, title, text);
+    }
+
+    public LessonAsset addAsset(Actor actor, UUID lessonId, String rawName, String kind, byte[] media) {
+        UUID courseId = courses.courseOfLesson(lessonId).orElseThrow(() -> new Rejection(Failure.NOT_FOUND));
+        requireWriter(actor, courseId);
+        String name = Names.require(rawName, Failure.BLANK_TITLE);
+        LessonContent.Accepted accepted = switch (LessonContent.decide(kind, null, media, bounds.current())) {
+            case LessonContent.Rejected rejected -> throw new Rejection(rejected.failure());
+            case LessonContent.Accepted file -> file;
+        };
+        if (accepted.kind() == LessonKind.MARKDOWN) {
+            throw new Rejection(Failure.FILE_ONLY);
+        }
+        return new LessonAsset(
+                courses.addAsset(lessonId, name, accepted.media(), accepted.mediaType()),
+                name,
+                accepted.mediaType());
+    }
+
+    public List<LessonAsset> assets(Actor actor, UUID lessonId) {
+        Objects.requireNonNull(actor, "actor");
+        courses.lesson(lessonId).orElseThrow(() -> new Rejection(Failure.NOT_FOUND));
+        return courses.assets(lessonId);
+    }
+
+    public LessonFile asset(Actor actor, UUID lessonId, UUID assetId) {
+        Objects.requireNonNull(actor, "actor");
+        return courses.asset(lessonId, assetId).orElseThrow(() -> new Rejection(Failure.NOT_FOUND));
+    }
+
+    public void removeAsset(Actor actor, UUID lessonId, UUID assetId) {
+        UUID courseId = courses.courseOfLesson(lessonId).orElseThrow(() -> new Rejection(Failure.NOT_FOUND));
+        requireWriter(actor, courseId);
+        courses.removeAsset(lessonId, assetId);
     }
 
     public LessonText lesson(Actor actor, UUID id) {

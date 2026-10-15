@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -22,6 +23,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import skillforge.application.catalog.CatalogApplication;
 import skillforge.domain.catalog.Course;
 import skillforge.domain.catalog.Lesson;
+import skillforge.domain.catalog.LessonAsset;
 import skillforge.domain.catalog.LessonFile;
 import skillforge.domain.catalog.LessonText;
 import skillforge.domain.catalog.Module;
@@ -89,6 +91,55 @@ class CatalogController {
         return ResponseEntity.status(HttpStatus.CREATED).body(LessonBody.from(lesson));
     }
 
+    @PutMapping("/lessons/{id}")
+    ResponseEntity<Void> reviseLesson(
+            Authentication authentication,
+            @PathVariable UUID id,
+            @RequestBody LessonEdit body) {
+        LessonEdit request = body == null ? new LessonEdit(null, null) : body;
+        catalog.reviseLesson(RequestActor.from(authentication), id, request.title(), request.markdown());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping(path = "/lessons/{id}/assets", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    ResponseEntity<LessonAsset> addAsset(
+            Authentication authentication,
+            @PathVariable UUID id,
+            @RequestParam String name,
+            @RequestParam String kind,
+            @RequestParam MultipartFile file) throws IOException {
+        LessonAsset asset = catalog.addAsset(
+                RequestActor.from(authentication),
+                id,
+                name,
+                kind,
+                file == null ? null : file.getBytes());
+        return ResponseEntity.status(HttpStatus.CREATED).body(asset);
+    }
+
+    @GetMapping("/lessons/{id}/assets")
+    List<LessonAsset> assets(Authentication authentication, @PathVariable UUID id) {
+        return catalog.assets(RequestActor.from(authentication), id);
+    }
+
+    @GetMapping("/lessons/{id}/assets/{assetId}")
+    ResponseEntity<byte[]> asset(
+            Authentication authentication,
+            @PathVariable UUID id,
+            @PathVariable UUID assetId) {
+        LessonFile file = catalog.asset(RequestActor.from(authentication), id, assetId);
+        return ResponseEntity.ok().contentType(MediaType.parseMediaType(file.mediaType())).body(file.content());
+    }
+
+    @DeleteMapping("/lessons/{id}/assets/{assetId}")
+    ResponseEntity<Void> removeAsset(
+            Authentication authentication,
+            @PathVariable UUID id,
+            @PathVariable UUID assetId) {
+        catalog.removeAsset(RequestActor.from(authentication), id, assetId);
+        return ResponseEntity.noContent().build();
+    }
+
     @DeleteMapping("/lessons/{id}")
     ResponseEntity<Void> removeLesson(Authentication authentication, @PathVariable UUID id) {
         catalog.removeLesson(RequestActor.from(authentication), id);
@@ -104,6 +155,9 @@ class CatalogController {
     ResponseEntity<byte[]> media(Authentication authentication, @PathVariable UUID id) {
         LessonFile file = catalog.media(RequestActor.from(authentication), id);
         return ResponseEntity.ok().contentType(MediaType.parseMediaType(file.mediaType())).body(file.content());
+    }
+
+    record LessonEdit(String title, String markdown) {
     }
 
     record NameBody(String name) {

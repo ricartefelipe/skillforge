@@ -65,8 +65,29 @@ export type ClassExam = {
   id: string;
   title: string;
   dueAt: string | null;
+  minutes: number | null;
+  attemptsAllowed: number;
+  taken: number;
   questions: ExamQuestion[];
   scores: ExamScore[];
+};
+
+export type StudyGroup = {
+  id: string;
+  name: string;
+  members: string[];
+};
+
+export type BankItem = {
+  id: string;
+  prompt: string;
+};
+
+export type PeerWork = {
+  practiceId: string;
+  author: string;
+  text: string;
+  reviews: { reviewer: string; comment: string; mark: number }[];
 };
 
 export type CohortDetail = {
@@ -100,6 +121,12 @@ const laterNotices: Record<string, string> = {
   "duplicate-day": "Já existe chamada neste dia.",
   rubric: "A nota tem de seguir a rubrica.",
   "not-certified": "Ainda não há certificado: é preciso média 7 e, se houver chamada, 75% de presença.",
+  locked: "Já houve entrega ou prova. Retire e publique de novo se precisar mudar o conteúdo.",
+  "not-started": "Comece a prova para o tempo correr.",
+  "duplicate-group": "Já existe um grupo com esse nome.",
+  grouped: "Esse aluno já está em um grupo desta turma.",
+  "already-reviewed": "Você já avaliou esta entrega.",
+  weight: "O peso vai de 1 a 5.",
 };
 
 export function cohortNotice(code: string | null): string | null {
@@ -365,7 +392,11 @@ function examFrom(value: unknown): ClassExam | null {
   }
   const due = (value as Record<string, unknown>).dueAt;
   const dueAt = typeof due === "string" ? due : null;
-  return { id, title, dueAt, questions, scores };
+  const record = value as Record<string, unknown>;
+  const minutes = typeof record.minutes === "number" ? record.minutes : null;
+  const attemptsAllowed = typeof record.attemptsAllowed === "number" ? record.attemptsAllowed : 1;
+  const taken = typeof record.taken === "number" ? record.taken : scores.length;
+  return { id, title, dueAt, minutes, attemptsAllowed, taken, questions, scores };
 }
 
 function questionFrom(value: unknown): ExamQuestion | null {

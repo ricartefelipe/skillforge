@@ -10,6 +10,7 @@ import Link from "next/link";
 
 import { Shell } from "../../../shell";
 import { LessonView } from "../../lesson";
+import { addAsset, reviseLesson } from "../../actions";
 import { openDoubt, replyDoubt } from "../actions";
 import { Forum } from "../../forum";
 
@@ -79,12 +80,96 @@ export default async function Page({
           </aside>
           <div>
             <LessonView lesson={lesson} />
+            <AssetList lessonId={id} assets={await loadAssets(access, id)} />
+            {session.role === "docente" || session.role === "administracao" ? (
+              <>
+                <form className="compose" action={reviseLesson} aria-label="Editar aula">
+                  <input type="hidden" name="lessonId" value={id} />
+                  <label>
+                    Título
+                    <input name="title" defaultValue={lesson.title} required />
+                  </label>
+                  {lesson.kind === "markdown" ? (
+                    <label>
+                      Texto
+                      <textarea name="markdown" defaultValue={lesson.markdown ?? ""} required />
+                    </label>
+                  ) : null}
+                  <button type="submit">Guardar aula</button>
+                </form>
+                <form className="compose" action={addAsset} aria-label="Arquivo da aula">
+                  <input type="hidden" name="lessonId" value={id} />
+                  <label>
+                    Nome do arquivo
+                    <input name="name" required />
+                  </label>
+                  <label>
+                    Tipo
+                    <select name="kind" defaultValue="ebook">
+                      <option value="ebook">Ebook</option>
+                      <option value="video">Vídeo</option>
+                    </select>
+                  </label>
+                  <label>
+                    Arquivo
+                    <input name="file" type="file" required />
+                  </label>
+                  <button type="submit">Anexar arquivo</button>
+                </form>
+              </>
+            ) : null}
             <Forum lessonId={id} doubts={await loadDoubts(access, id)} openDoubt={openDoubt} replyDoubt={replyDoubt} />
           </div>
         </div>
       </div>
     </Shell>
   );
+}
+
+function AssetList({ lessonId, assets }: { lessonId: string; assets: { id: string; name: string }[] }) {
+  if (assets.length === 0) {
+    return null;
+  }
+  return (
+    <section aria-label="Arquivos da aula">
+      <h2>Arquivos</h2>
+      <ul>
+        {assets.map((asset) => (
+          <li key={asset.id}>
+            <a href={`/catalogo/aulas/${lessonId}/arquivos/${asset.id}`}>{asset.name}</a>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+async function loadAssets(token: string, id: string) {
+  try {
+    const response = await fetch(`${apiUrl()}/lessons/${id}/assets`, {
+      headers: { authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      return [];
+    }
+    const body: unknown = await response.json();
+    if (!Array.isArray(body)) {
+      return [];
+    }
+    return body.flatMap((item) => {
+      if (item === null || typeof item !== "object") {
+        return [];
+      }
+      const record = item as Record<string, unknown>;
+      if (typeof record.id !== "string" || typeof record.name !== "string") {
+        return [];
+      }
+      return [{ id: record.id, name: record.name }];
+    });
+  } catch {
+    return [];
+  }
 }
 
 function courseOf(courses: Course[] | null, lessonId: string) {

@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 import skillforge.domain.catalog.Course;
 import skillforge.domain.catalog.CourseRepository;
 import skillforge.domain.catalog.Lesson;
+import skillforge.domain.catalog.LessonAsset;
 import skillforge.domain.catalog.LessonContent;
 import skillforge.domain.catalog.LessonFile;
 import skillforge.domain.catalog.LessonKind;
@@ -99,6 +100,7 @@ class JdbcCourseRepository implements CourseRepository {
                     lessonId);
             jdbc.update("DELETE FROM doubt WHERE lesson_id = ?", lessonId);
             jdbc.update("DELETE FROM completion WHERE lesson_id = ?", lessonId);
+            jdbc.update("DELETE FROM lesson_asset WHERE lesson_id = ?", lessonId);
             int removed = jdbc.update("DELETE FROM lesson WHERE id = ?", lessonId);
             if (removed == 0) {
                 throw new Rejection(Failure.NOT_FOUND);
@@ -239,6 +241,105 @@ class JdbcCourseRepository implements CourseRepository {
                 return Optional.empty();
             }
             return Optional.of(new LessonFile(kind(stored.kind()), stored.bytes(), stored.mediaType()));
+        }
+        catch (DataAccessResourceFailureException ex) {
+            throw new Unavailable(ex);
+        }
+    }
+
+    @Override
+    public void reviseLesson(UUID lessonId, String title, String markdown) {
+        schema.ensure();
+        try {
+            int updated = jdbc.update("UPDATE lesson SET title = ? WHERE id = ?", title, lessonId);
+            if (updated == 0) {
+                throw new Rejection(Failure.NOT_FOUND);
+            }
+            if (markdown == null) {
+                return;
+            }
+            int text = jdbc.update(
+                    "UPDATE lesson SET markdown = ? WHERE id = ? AND kind = 'markdown'",
+                    markdown,
+                    lessonId);
+            if (text == 0) {
+                throw new Rejection(Failure.FILE_ONLY);
+            }
+        }
+        catch (DataAccessResourceFailureException ex) {
+            throw new Unavailable(ex);
+        }
+    }
+
+    @Override
+    public UUID addAsset(UUID lessonId, String name, byte[] media, String mediaType) {
+        schema.ensure();
+        try {
+            if (lesson(lessonId).isEmpty()) {
+                throw new Rejection(Failure.NOT_FOUND);
+            }
+            UUID id = UUID.randomUUID();
+            jdbc.update(
+                    "INSERT INTO lesson_asset (id, lesson_id, name, media, media_type) VALUES (?, ?, ?, ?, ?)",
+                    id,
+                    lessonId,
+                    name,
+                    media,
+                    mediaType);
+            return id;
+        }
+        catch (DataAccessResourceFailureException ex) {
+            throw new Unavailable(ex);
+        }
+    }
+
+    @Override
+    public List<LessonAsset> assets(UUID lessonId) {
+        schema.ensure();
+        try {
+            return jdbc.query(
+                    "SELECT id, name, media_type FROM lesson_asset WHERE lesson_id = ? ORDER BY name",
+                    (rs, row) -> new LessonAsset(
+                            rs.getObject("id", UUID.class),
+                            rs.getString("name"),
+                            rs.getString("media_type")),
+                    lessonId);
+        }
+        catch (DataAccessResourceFailureException ex) {
+            throw new Unavailable(ex);
+        }
+    }
+
+    @Override
+    public Optional<LessonFile> asset(UUID lessonId, UUID assetId) {
+        schema.ensure();
+        try {
+            List<LessonFile> rows = jdbc.query(
+                    "SELECT media, media_type FROM lesson_asset WHERE lesson_id = ? AND id = ?",
+                    (rs, row) -> new LessonFile(
+                            LessonKind.PDF,
+                            rs.getBytes("media"),
+                            rs.getString("media_type")),
+                    lessonId,
+                    assetId);
+            return rows.stream().findFirst();
+        }
+        catch (DataAccessResourceFailureException ex) {
+            throw new Unavailable(ex);
+        }
+    }
+
+    @Override
+    public void removeAsset(UUID lessonId, UUID assetId) {
+        schema.ensure();
+        try {
+            int removed = jdbc.update(
+                    "DELETE FROM lesson_asset WHERE lesson_id = ? AND id = ?",
+                    lessonId,
+                    assetId);
+            if (removed == 0) {
+                throw new Rejection(Failure.NOT_FOUND);
+            }
         }
         catch (DataAccessResourceFailureException ex) {
             throw new Unavailable(ex);
