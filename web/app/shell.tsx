@@ -6,41 +6,67 @@ import type { Session } from "../lib/access";
 export function Shell({ session, children }: { session: Session | null; children: ReactNode }) {
   return (
     <div className="shell">
-      <header className="bar">
-        <div className="bar-inner">
-          <Link href="/" className="brand">
-            <svg className="mark" viewBox="0 0 32 32" aria-hidden="true">
-              <path d="M6 23.5 16 7l10 16.5" fill="none" stroke="currentColor" strokeWidth="2.2" />
-              <path d="M10.5 23.5h11" stroke="currentColor" strokeWidth="2.2" />
-              <circle cx="16" cy="16.5" r="1.7" fill="currentColor" />
-            </svg>
-            Skillforge
-          </Link>
-          <nav aria-label="Principal">
-            {session ? (
-              <>
-                <Link href="/catalogo">Cursos</Link>
-                <Link href="/aulas">Aulas</Link>
-                <Link href="/turmas">Turmas</Link>
-                <Link href="/boletim">Boletim</Link>
-                {session.role === "docente" || session.role === "administracao" ? (
-                  <Link href="/docente">Docente</Link>
-                ) : null}
-                <span className="session">
-                  <span className="who">{session.name}</span>
-                  {session.name.localeCompare(session.label, "pt-BR", { sensitivity: "accent" }) === 0 ? null : (
-                    <span className="role">{session.label}</span>
-                  )}
-                </span>
-                <Link href="/logout">Sair</Link>
-              </>
-            ) : (
-              <Link href="/login">Entrar</Link>
-            )}
-          </nav>
-        </div>
-      </header>
-      <main className="workspace">{children}</main>
+      <aside className="rail">
+        <Link href="/" className="brand">
+          <Mark />
+          <span className="wordmark">
+            <strong>Skillforge</strong>
+            <small>oficina</small>
+          </span>
+        </Link>
+        <nav aria-label="Principal">
+          {session ? (
+            <>
+              <Link href="/catalogo">Cursos</Link>
+              <Link href="/aulas">Aulas</Link>
+              <Link href="/turmas">Turmas</Link>
+              <Link href="/boletim">Boletim</Link>
+              {session.role === "docente" || session.role === "administracao" ? (
+                <Link href="/docente">Docente</Link>
+              ) : null}
+            </>
+          ) : (
+            <Link href="/login" className="enter">
+              Entrar
+            </Link>
+          )}
+        </nav>
+        {session ? (
+          <div className="rail-foot">
+            <p className="who">
+              {session.name}
+              {session.name.localeCompare(session.label, "pt-BR", { sensitivity: "accent" }) === 0 ? null : (
+                <span className="role">{session.label}</span>
+              )}
+            </p>
+            <form action="/logout" method="post">
+              <button type="submit" className="leave">
+                Sair
+              </button>
+            </form>
+          </div>
+        ) : null}
+      </aside>
+      <div className="stage">
+        <main className="workspace">{children}</main>
+      </div>
     </div>
+  );
+}
+
+function Mark() {
+  return (
+    <svg className="mark" viewBox="0 0 48 48" aria-hidden="true">
+      <rect width="48" height="48" rx="14" fill="#14352c" />
+      <path
+        d="M13 31.5h22M15.5 31.5 19 22h10l3.5 9.5M21.5 22v-6h5v6"
+        fill="none"
+        stroke="#f6ead7"
+        strokeWidth="2.3"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+      <circle cx="34" cy="14" r="2.4" fill="#e37b3a" />
+    </svg>
   );
 }

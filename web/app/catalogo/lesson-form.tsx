@@ -5,15 +5,18 @@ import { useState } from "react";
 export function LessonForm({
   moduleId,
   action,
+  returnTo = "/catalogo",
 }: {
   moduleId: string;
   action: (formData: FormData) => void;
+  returnTo?: string;
 }) {
   const [kind, setKind] = useState("markdown");
 
   return (
     <form className="compose" action={action} aria-label="Nova aula">
       <input type="hidden" name="moduleId" value={moduleId} />
+      <input type="hidden" name="returnTo" value={returnTo} />
       <label>
         Título
         <input name="title" required />
@@ -42,7 +45,7 @@ export function LessonForm({
           />
         </label>
       )}
-      <button type="submit">Criar aula</button>
+      <button type="submit">Publicar aula</button>
     </form>
   );
 }
