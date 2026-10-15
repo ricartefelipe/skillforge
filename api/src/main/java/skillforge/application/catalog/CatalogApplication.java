@@ -12,6 +12,8 @@ import skillforge.domain.catalog.Lesson;
 import skillforge.domain.catalog.LessonAsset;
 import skillforge.domain.catalog.LessonBounds;
 import skillforge.domain.catalog.LessonKind;
+import skillforge.domain.catalog.ModuleOrder;
+import skillforge.domain.catalog.SignedLaunch;
 import skillforge.domain.catalog.LessonContent;
 import skillforge.domain.catalog.LessonFile;
 import skillforge.domain.catalog.LessonText;
@@ -79,18 +81,93 @@ public class CatalogApplication {
             String rawTitle,
             String kind,
             String markdown,
-            byte[] media) {
+            byte[] media,
+            String launchUrl,
+            String secret) {
         UUID courseId = courses.courseOfModule(moduleId).orElseThrow(() -> new Rejection(Failure.NOT_FOUND));
         requireWriter(actor, courseId);
         String title = Names.require(rawTitle, Failure.BLANK_TITLE);
         LessonContent.Decision decision = LessonContent.decide(kind, markdown, media, bounds.current());
         return switch (decision) {
             case LessonContent.Rejected rejected -> throw new Rejection(rejected.failure());
+            case LessonContent.Accepted accepted when accepted.kind() == LessonKind.SCORM -> new Lesson(
+                    courses.addScorm(moduleId, title, accepted.media()),
+                    title,
+                    LessonKind.SCORM);
+            case LessonContent.Accepted accepted when accepted.kind() == LessonKind.LTI -> openTool(
+                    moduleId, title, accepted, launchUrl, secret);
             case LessonContent.Accepted accepted -> new Lesson(
                     courses.addLesson(moduleId, title, accepted),
                     title,
                     accepted.kind());
         };
+    }
+
+    public String scormLaunch(Actor actor, UUID lessonId) {
+        Objects.requireNonNull(actor, "actor");
+        courses.lesson(lessonId).orElseThrow(() -> new Rejection(Failure.NOT_FOUND));
+        return courses.scormLaunch(lessonId).orElseThrow(() -> new Rejection(Failure.NOT_FOUND));
+    }
+
+    public LessonFile scormFile(Actor actor, UUID lessonId, String path) {
+        Objects.requireNonNull(actor, "actor");
+        return courses.scormFile(lessonId, path).orElseThrow(() -> new Rejection(Failure.NOT_FOUND));
+    }
+
+    public void trackScorm(Actor actor, UUID lessonId, String status, Integer score) {
+        courses.lesson(lessonId).orElseThrow(() -> new Rejection(Failure.NOT_FOUND));
+        if (status == null || !java.util.Set.of("completed", "passed", "failed", "incomplete").contains(status)) {
+            throw new Rejection(Failure.NOT_PACKAGE);
+        }
+        if (score != null && (score < 0 || score > 100)) {
+            throw new Rejection(Failure.INVALID_GRADE);
+        }
+        courses.trackScorm(lessonId, actor.username(), status, score);
+    }
+
+    public SignedLaunch launch(Actor actor, UUID lessonId) {
+        courses.lesson(lessonId).orElseThrow(() -> new Rejection(Failure.NOT_FOUND));
+        String url = courses.toolUrl(lessonId).orElseThrow(() -> new Rejection(Failure.NOT_FOUND));
+        String secret = courses.toolSecret(lessonId).orElseThrow(() -> new Rejection(Failure.NOT_FOUND));
+        String role = switch (actor.role()) {
+            case ALUNO -> "Learner";
+            case DOCENTE -> "Instructor";
+            case ADMINISTRACAO -> "Administrator";
+        };
+        return new SignedLaunch(url, skillforge.domain.catalog.LtiLaunch.sign(
+                url,
+                secret,
+                actor.username(),
+                role,
+                lessonId.toString(),
+                java.util.UUID.randomUUID().toString(),
+                java.time.Instant.now().getEpochSecond()));
+    }
+
+    public void reorder(Actor actor, UUID courseId, java.util.List<ModuleOrder> modules) {
+        requireWriter(actor, courseId);
+        if (modules == null || modules.isEmpty()) {
+            throw new Rejection(Failure.NOT_FOUND);
+        }
+        courses.reorder(courseId, modules);
+    }
+
+    private Lesson openTool(
+            UUID moduleId,
+            String title,
+            LessonContent.Accepted accepted,
+            String launchUrl,
+            String secret) {
+        if (launchUrl == null
+                || !(launchUrl.startsWith("http://") || launchUrl.startsWith("https://"))
+                || secret == null
+                || secret.length() < 8
+                || secret.length() > Names.MAX) {
+            throw new Rejection(Failure.LAUNCH);
+        }
+        UUID id = courses.addLesson(moduleId, title, accepted);
+        courses.saveTool(id, launchUrl.trim(), secret);
+        return new Lesson(id, title, LessonKind.LTI);
     }
 
     public void removeLesson(Actor actor, UUID lessonId) {

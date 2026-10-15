@@ -18,6 +18,11 @@ skillforge:
     markdown-max: 100000
     pdf-max: 100MB
     video-max: 512MB
+  mail-host: ${MAIL_HOST:}
+  mail-port: ${MAIL_PORT:587}
+  mail-username: ${MAIL_USERNAME:}
+  mail-password: ${MAIL_PASSWORD:}
+  mail-from: ${MAIL_FROM:skillforge@localhost}
 
 management:
   endpoints:

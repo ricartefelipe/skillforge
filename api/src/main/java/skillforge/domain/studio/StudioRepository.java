@@ -57,4 +57,10 @@ public interface StudioRepository {
 
     void read(Actor actor, UUID id);
 
+    java.util.List<Hit> search(Actor actor, String query);
+
+    void saveMail(String account, String email);
+
+    void reviseQuestions(UUID cohortId, Actor actor, UUID examId, java.util.List<QuestionText> questions);
+
 }

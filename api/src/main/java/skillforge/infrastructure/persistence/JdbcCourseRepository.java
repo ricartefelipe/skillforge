@@ -11,6 +11,7 @@ import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import skillforge.domain.catalog.Course;
 import skillforge.domain.catalog.CourseRepository;
@@ -19,6 +20,8 @@ import skillforge.domain.catalog.LessonAsset;
 import skillforge.domain.catalog.LessonContent;
 import skillforge.domain.catalog.LessonFile;
 import skillforge.domain.catalog.LessonKind;
+import skillforge.domain.catalog.ModuleOrder;
+import skillforge.domain.catalog.ScormZip;
 import skillforge.domain.catalog.LessonText;
 import skillforge.domain.catalog.Module;
 import skillforge.domain.shared.Failure;
@@ -101,6 +104,9 @@ class JdbcCourseRepository implements CourseRepository {
             jdbc.update("DELETE FROM doubt WHERE lesson_id = ?", lessonId);
             jdbc.update("DELETE FROM completion WHERE lesson_id = ?", lessonId);
             jdbc.update("DELETE FROM lesson_asset WHERE lesson_id = ?", lessonId);
+            jdbc.update("DELETE FROM scorm_track WHERE lesson_id = ?", lessonId);
+            jdbc.update("DELETE FROM scorm_file WHERE lesson_id = ?", lessonId);
+            jdbc.update("DELETE FROM lesson_tool WHERE lesson_id = ?", lessonId);
             int removed = jdbc.update("DELETE FROM lesson WHERE id = ?", lessonId);
             if (removed == 0) {
                 throw new Rejection(Failure.NOT_FOUND);
@@ -244,6 +250,140 @@ class JdbcCourseRepository implements CourseRepository {
         }
         catch (DataAccessResourceFailureException ex) {
             throw new Unavailable(ex);
+        }
+    }
+
+    @Override
+    @Transactional
+    public UUID addScorm(UUID moduleId, String title, byte[] zip) {
+        schema.ensure();
+        ScormZip.Unpacked unpacked = ScormZip.read(zip);
+        UUID id = addLesson(moduleId, title, new LessonContent.Accepted(
+                LessonKind.SCORM, null, zip, "application/zip"));
+        for (ScormZip.Entry file : unpacked.files()) {
+            jdbc.update(
+                    "INSERT INTO scorm_file (lesson_id, path, media, media_type) VALUES (?, ?, ?, ?)",
+                    id,
+                    file.path(),
+                    file.bytes(),
+                    file.mediaType());
+        }
+        jdbc.update(
+                "INSERT INTO scorm_file (lesson_id, path, media, media_type) VALUES (?, ?, ?, ?)",
+                id,
+                "__launch__",
+                unpacked.launchPath().getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                "text/plain");
+        return id;
+    }
+
+    @Override
+    public void saveTool(UUID lessonId, String url, String secret) {
+        schema.ensure();
+        try {
+            jdbc.update(
+                    "INSERT INTO lesson_tool (lesson_id, launch_url, shared_secret) VALUES (?, ?, ?)",
+                    lessonId,
+                    url,
+                    secret);
+        }
+        catch (DataAccessResourceFailureException ex) {
+            throw new Unavailable(ex);
+        }
+    }
+
+    @Override
+    public Optional<String> scormLaunch(UUID lessonId) {
+        schema.ensure();
+        List<String> rows = jdbc.query(
+                "SELECT media FROM scorm_file WHERE lesson_id = ? AND path = '__launch__'",
+                (rs, row) -> new String(rs.getBytes("media"), java.nio.charset.StandardCharsets.UTF_8),
+                lessonId);
+        return rows.stream().findFirst();
+    }
+
+    @Override
+    public Optional<LessonFile> scormFile(UUID lessonId, String path) {
+        schema.ensure();
+        String safe = ScormZip.normalize(path);
+        if ("__launch__".equals(safe)) {
+            return Optional.empty();
+        }
+        List<LessonFile> rows = jdbc.query(
+                "SELECT media, media_type FROM scorm_file WHERE lesson_id = ? AND path = ?",
+                (rs, row) -> new LessonFile(LessonKind.SCORM, rs.getBytes("media"), rs.getString("media_type")),
+                lessonId,
+                safe);
+        return rows.stream().findFirst();
+    }
+
+    @Override
+    public void trackScorm(UUID lessonId, String student, String status, Integer score) {
+        schema.ensure();
+        jdbc.update("""
+                INSERT INTO scorm_track (lesson_id, student, status, score) VALUES (?, ?, ?, ?)
+                ON CONFLICT (lesson_id, student) DO UPDATE SET status = EXCLUDED.status, score = EXCLUDED.score
+                """, lessonId, student, status, score);
+        if ("completed".equals(status) || "passed".equals(status)) {
+            jdbc.update("""
+                    INSERT INTO completion (cohort_id, lesson_id, student)
+                    SELECT cohort.id, lesson.id, enrollment.student
+                    FROM lesson
+                    JOIN module ON module.id = lesson.module_id
+                    JOIN cohort ON cohort.course_id = module.course_id
+                    JOIN enrollment ON enrollment.cohort_id = cohort.id AND enrollment.student = ?
+                    WHERE lesson.id = ?
+                    ON CONFLICT DO NOTHING
+                    """, student, lessonId);
+        }
+    }
+
+    @Override
+    public Optional<String> toolUrl(UUID lessonId) {
+        schema.ensure();
+        List<String> rows = jdbc.query(
+                "SELECT launch_url FROM lesson_tool WHERE lesson_id = ?",
+                (rs, row) -> rs.getString("launch_url"),
+                lessonId);
+        return rows.stream().findFirst();
+    }
+
+    @Override
+    public Optional<String> toolSecret(UUID lessonId) {
+        schema.ensure();
+        List<String> rows = jdbc.query(
+                "SELECT shared_secret FROM lesson_tool WHERE lesson_id = ?",
+                (rs, row) -> rs.getString("shared_secret"),
+                lessonId);
+        return rows.stream().findFirst();
+    }
+
+    @Override
+    @Transactional
+    public void reorder(UUID courseId, List<ModuleOrder> modules) {
+        schema.ensure();
+        int position = 1;
+        for (ModuleOrder module : modules) {
+            int moved = jdbc.update(
+                    "UPDATE module SET position = ? WHERE id = ? AND course_id = ?",
+                    position,
+                    module.id(),
+                    courseId);
+            if (moved == 0) {
+                throw new Rejection(Failure.NOT_FOUND);
+            }
+            position++;
+            int lessonPosition = 1;
+            for (UUID lessonId : module.lessons()) {
+                int lesson = jdbc.update("""
+                        UPDATE lesson SET position = ?, module_id = ?
+                        WHERE id = ? AND module_id IN (SELECT id FROM module WHERE course_id = ?)
+                        """, lessonPosition, module.id(), lessonId, courseId);
+                if (lesson == 0) {
+                    throw new Rejection(Failure.NOT_FOUND);
+                }
+                lessonPosition++;
+            }
         }
     }
 

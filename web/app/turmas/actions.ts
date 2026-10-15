@@ -244,6 +244,52 @@ export async function saveQuestion(formData: FormData) {
   redirect(page);
 }
 
+export async function saveMail(formData: FormData) {
+  await put("/me/email", { email: field(formData, "email") }, "/recados");
+  redirect("/recados");
+}
+
+export async function reorderGrade(formData: FormData) {
+  const page = field(formData, "returnTo") || "/turmas";
+  const courseId = field(formData, "courseId");
+  let order: unknown = { modules: [] };
+  try {
+    order = JSON.parse(field(formData, "order"));
+  } catch {
+    redirect(`${page}?erro=not-found`);
+  }
+  await put(`/courses/${courseId}/order`, order, page);
+  redirect(page);
+}
+
+export async function reviseQuestions(formData: FormData) {
+  const cohortId = field(formData, "cohortId");
+  const examId = field(formData, "examId");
+  const page = `/turmas/${cohortId}`;
+  const questions = new Map<string, { id: string; prompt: string; choices: { id: string; label: string }[] }>();
+  for (const [key, value] of formData.entries()) {
+    if (typeof value !== "string") {
+      continue;
+    }
+    if (key.startsWith("prompt:")) {
+      const id = key.slice("prompt:".length);
+      questions.set(id, { id, prompt: value, choices: questions.get(id)?.choices ?? [] });
+    }
+  }
+  for (const [key, value] of formData.entries()) {
+    if (typeof value !== "string" || !key.startsWith("choice:")) {
+      continue;
+    }
+    const [questionId, choiceId] = key.slice("choice:".length).split("/");
+    const question = questions.get(questionId ?? "");
+    if (question && choiceId) {
+      question.choices.push({ id: choiceId, label: value });
+    }
+  }
+  await put(`/cohorts/${cohortId}/exams/${examId}/questions`, { questions: [...questions.values()] }, page);
+  redirect(page);
+}
+
 export async function markRead(formData: FormData) {
   await post(`/inbox/${field(formData, "id")}/read`, {}, "/recados");
   redirect("/recados");

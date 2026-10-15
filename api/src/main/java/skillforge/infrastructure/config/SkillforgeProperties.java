@@ -14,6 +14,16 @@ public class SkillforgeProperties {
 
     private Catalog catalog = new Catalog();
 
+    private String mailHost = "";
+
+    private int mailPort = 587;
+
+    private String mailUsername = "";
+
+    private String mailPassword = "";
+
+    private String mailFrom = "skillforge@localhost";
+
     public String getIssuer() {
         return issuer;
     }
@@ -36,6 +46,46 @@ public class SkillforgeProperties {
 
     public void setCatalog(Catalog catalog) {
         this.catalog = catalog;
+    }
+
+    public String getMailHost() {
+        return mailHost;
+    }
+
+    public void setMailHost(String mailHost) {
+        this.mailHost = mailHost;
+    }
+
+    public int getMailPort() {
+        return mailPort;
+    }
+
+    public void setMailPort(int mailPort) {
+        this.mailPort = mailPort;
+    }
+
+    public String getMailUsername() {
+        return mailUsername;
+    }
+
+    public void setMailUsername(String mailUsername) {
+        this.mailUsername = mailUsername;
+    }
+
+    public String getMailPassword() {
+        return mailPassword;
+    }
+
+    public void setMailPassword(String mailPassword) {
+        this.mailPassword = mailPassword;
+    }
+
+    public String getMailFrom() {
+        return mailFrom;
+    }
+
+    public void setMailFrom(String mailFrom) {
+        this.mailFrom = mailFrom;
     }
 
     public static class Catalog {

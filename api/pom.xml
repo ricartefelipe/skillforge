@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>skillforge</groupId>
 	<artifactId>skillforge</artifactId>
-	<version>0.11.0</version>
+	<version>0.12.0</version>
 	<name>skillforge</name>
 	<description>Construção de competências pela prática</description>
 	<properties>
@@ -28,6 +28,10 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-webmvc</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.eclipse.angus</groupId>
+			<artifactId>angus-mail</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.postgresql</groupId>
