@@ -7,12 +7,12 @@ import { ACCESS_COOKIE } from "../../lib/cookies";
 import { apiUrl } from "../../lib/openid";
 
 export async function createCourse(formData: FormData) {
-  await sendJson("/courses", { name: field(formData, "name") });
+  await sendJson("/courses", { name: field(formData, "name") }, back(formData));
 }
 
 export async function createModule(formData: FormData) {
   const courseId = field(formData, "courseId");
-  await sendJson(`/courses/${courseId}/modules`, { name: field(formData, "name") });
+  await sendJson(`/courses/${courseId}/modules`, { name: field(formData, "name") }, back(formData));
 }
 
 export async function createLesson(formData: FormData) {
@@ -28,7 +28,7 @@ export async function createLesson(formData: FormData) {
   if (file instanceof File && file.size > 0) {
     body.set("file", file);
   }
-  await send(`/modules/${moduleId}/lessons`, body);
+  await send(`/modules/${moduleId}/lessons`, body, {}, back(formData));
 }
 
 function field(formData: FormData, name: string): string {
@@ -36,11 +36,19 @@ function field(formData: FormData, name: string): string {
   return typeof value === "string" ? value : "";
 }
 
-async function sendJson(path: string, payload: { name: string }) {
-  await send(path, JSON.stringify(payload), { "content-type": "application/json" });
+function back(formData: FormData): string {
+  const value = field(formData, "returnTo");
+  if (value === "/aulas" || value === "/docente" || value === "/catalogo") {
+    return value;
+  }
+  return "/catalogo";
 }
 
-async function send(path: string, body: BodyInit, headers: Record<string, string> = {}) {
+async function sendJson(path: string, payload: { name: string }, page: string) {
+  await send(path, JSON.stringify(payload), { "content-type": "application/json" }, page);
+}
+
+async function send(path: string, body: BodyInit, headers: Record<string, string> = {}, page = "/catalogo") {
   const token = (await cookies()).get(ACCESS_COOKIE)?.value;
   if (!token) {
     redirect("/login");
@@ -54,12 +62,12 @@ async function send(path: string, body: BodyInit, headers: Record<string, string
       cache: "no-store",
     });
   } catch {
-    redirect("/catalogo?erro=unavailable");
+    redirect(`${page}?erro=unavailable`);
   }
   if (!response.ok) {
-    redirect(`/catalogo?erro=${encodeURIComponent(await errorCode(response))}`);
+    redirect(`${page}?erro=${encodeURIComponent(await errorCode(response))}`);
   }
-  redirect("/catalogo");
+  redirect(page);
 }
 
 async function errorCode(response: Response): Promise<string> {

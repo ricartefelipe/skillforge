@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { Familjen_Grotesk, Fraunces, Literata } from "next/font/google";
+import { Literata, Newsreader, Sora } from "next/font/google";
 import type { ReactNode } from "react";
 
 import "./globals.css";
 
-const display = Fraunces({
+const display = Newsreader({
   subsets: ["latin"],
   variable: "--font-display",
   weight: ["500", "600", "700"],
@@ -16,10 +16,10 @@ const literata = Literata({
   weight: ["400", "600", "700"],
 });
 
-const grotesk = Familjen_Grotesk({
+const grotesk = Sora({
   subsets: ["latin"],
   variable: "--font-grotesk",
-  weight: ["500", "700"],
+  weight: ["400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
