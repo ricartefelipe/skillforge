@@ -1,7 +1,6 @@
 import { cookies } from "next/headers";
 
 import { loadSession } from "../lib/access";
-import { coursesFromBody } from "../lib/catalog";
 import { ACCESS_COOKIE } from "../lib/cookies";
 import { readJson } from "../lib/api-read";
 import { apiUrl } from "../lib/openid";
@@ -11,18 +10,17 @@ export default async function Page() {
   const jar = await cookies();
   const access = jar.get(ACCESS_COOKIE)?.value;
   const session = access ? await loadSession(access, apiUrl()) : null;
-  return <SkillforgeHome session={session} resume={access && session ? await firstLesson(access) : null} />;
+  return <SkillforgeHome session={session} resume={access && session ? await nextLesson(access) : null} />;
 }
 
-async function firstLesson(token: string) {
-  const read = await readJson(token, "/courses/curriculum");
-  if (read === null) {
+async function nextLesson(token: string) {
+  const read = await readJson(token, "/resume");
+  if (read === null || !read.ok || read.body === null || typeof read.body !== "object") {
     return null;
   }
-  const courses = coursesFromBody(read.ok, read.body);
-  const lesson = courses?.flatMap((course) => course.modules.flatMap((module) => module.lessons))[0];
-  if (!lesson) {
+  const record = read.body as Record<string, unknown>;
+  if (typeof record.lessonId !== "string" || typeof record.title !== "string") {
     return null;
   }
-  return { href: `/catalogo/aulas/${lesson.id}`, title: lesson.title };
+  return { href: `/catalogo/aulas/${record.lessonId}`, title: record.title };
 }

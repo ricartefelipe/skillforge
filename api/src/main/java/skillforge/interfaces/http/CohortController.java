@@ -247,7 +247,9 @@ class CohortController {
             Authentication authentication,
             @PathVariable UUID id,
             @RequestBody ExamRequest body) {
-        ExamRequest request = body == null ? new ExamRequest(null, null, null) : body;
+        ExamRequest request = body == null
+                ? new ExamRequest(null, null, null, null, null, null)
+                : body;
         java.time.Instant dueAt = request.dueAt() == null || request.dueAt().isBlank()
                 ? null
                 : java.time.Instant.parse(request.dueAt());
@@ -256,6 +258,9 @@ class CohortController {
                 id,
                 request.title(),
                 dueAt,
+                request.minutes(),
+                request.attemptsAllowed(),
+                request.bank(),
                 request.questions());
         return ResponseEntity.status(HttpStatus.CREATED).body(new IdName(opened.id(), opened.name()));
     }
@@ -266,6 +271,15 @@ class CohortController {
             @PathVariable UUID id,
             @PathVariable UUID examId) {
         exams.remove(RequestActor.from(authentication), id, examId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/cohorts/{id}/exams/{examId}/start")
+    ResponseEntity<Void> startExam(
+            Authentication authentication,
+            @PathVariable UUID id,
+            @PathVariable UUID examId) {
+        exams.start(RequestActor.from(authentication), id, examId);
         return ResponseEntity.noContent().build();
     }
 
@@ -433,6 +447,8 @@ class CohortController {
             UUID cohortId,
             String cohortName,
             String courseName,
+            int practiceWeight,
+            int examWeight,
             List<PracticeBody> practices,
             List<ExamBody> exams) {
 
@@ -441,6 +457,8 @@ class CohortController {
                     report.cohortId(),
                     report.cohortName(),
                     report.courseName(),
+                    report.practiceWeight(),
+                    report.examWeight(),
                     report.practices().stream().map(PracticeBody::from).toList(),
                     report.exams().stream().map(exam -> ExamBody.from(exam, true)).toList());
         }
@@ -450,6 +468,9 @@ class CohortController {
     record ExamRequest(
             String title,
             String dueAt,
+            Integer minutes,
+            Integer attemptsAllowed,
+            List<UUID> bank,
             List<skillforge.domain.cohort.ExamDraft.QuestionDraft> questions) {
     }
 
@@ -470,6 +491,9 @@ class CohortController {
             UUID id,
             String title,
             java.time.Instant dueAt,
+            Integer minutes,
+            int attemptsAllowed,
+            int taken,
             List<QuestionBody> questions,
             List<ScoreBody> scores) {
 
@@ -478,6 +502,9 @@ class CohortController {
                     exam.id(),
                     exam.title(),
                     exam.dueAt(),
+                    exam.minutes(),
+                    exam.attemptsAllowed(),
+                    exam.taken(),
                     exam.questions().stream().map(question -> QuestionBody.from(question, revealKey)).toList(),
                     exam.scores().stream().map(ScoreBody::from).toList());
         }

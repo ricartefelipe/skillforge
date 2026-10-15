@@ -15,11 +15,11 @@ O acesso é pelo Keycloak, em `http://localhost:8180`. Há três contas: `aluno`
 - Zero papéis, ou mais de um entre aluno, docente e administração, responde `403`.
 - Vida e prontidão continuam sem sessão. A prontidão também recusa tráfego se o acesso não responde.
 
-A interface mostra Entrar, ou o nome e o papel com Sair. Com sessão, o menu tem Cursos, Aulas, Turmas e Boletim. Docente e administração também têm a bancada Docente.
+A interface mostra Entrar, ou o nome e o papel com Sair. Com sessão, o menu tem Cursos, Aulas, Turmas, Boletim, Agenda e Recados. Docente e administração também têm a bancada Docente.
 
 | Papel | O que faz |
 | --- | --- |
-| Aluno | Vê a grade das turmas em que está, conclui aula, entrega prática, faz a prova uma vez, abre dúvida e lê o próprio boletim e o certificado. |
+| Aluno | Vê a grade das turmas em que está, conclui aula, entrega prática, faz a prova nas tentativas publicadas, avalia o colega do grupo, abre dúvida e lê o boletim, os recados e o certificado. |
 | Docente | Ministra as próprias turmas. Publica módulo, material, videoaula, prática, prova, aviso e chamada. Devolve a nota. |
 | Administração | Cria curso, abre turma, indica o docente e matricula. Vê o catálogo e as turmas inteiros. Publica o mesmo que o docente. |
 
@@ -27,11 +27,11 @@ A interface mostra Entrar, ou o nome e o papel com Sair. Com sessão, o menu tem
 
 A grade é o curso dividido em unidades. Cada unidade reúne os materiais, nesta ordem em que forem publicados: página, ebook e vídeo. O ebook é PDF ou EPUB, até 100 MB. O vídeo é MP4, MOV ou WebM, até 512 MB. A administração cria o curso. Quem ministra abre a unidade e publica o material no curso da própria turma.
 
-A administração abre a turma, indica a conta do docente e matricula pela conta. O aluno vê só as turmas em que está. O docente vê só as que ministra. A administração vê todas. Dentro da turma a classe fica em quatro partes: grade, atividades, avisos e pessoas. O material se publica na unidade da grade. A prova e a prática ficam em atividades. A aula abre com a grade ao lado. A busca fica em Cursos e Aulas. A agenda lista os prazos. O boletim marca aprovado a partir da média 7. Quem ministra pode retirar aula, prática, prova e aviso.
+A administração abre a turma, indica a conta do docente e matricula pela conta. O aluno vê só as turmas em que está. O docente vê só as que ministra. A administração vê todas. Dentro da turma a classe fica em grade, atividades, avisos, pessoas e grupos. O material se publica na unidade da grade e pode receber outros arquivos. A prova e a prática ficam em atividades. A aula abre com a grade ao lado. A home continua na primeira aula ainda não concluída. A busca fica em Cursos e Aulas. A agenda lista os prazos. Os recados avisam prova, aviso e devolutiva. O boletim marca aprovado a partir da média 7. Com pesos diferentes de 1, a média separa práticas e provas. Quem ministra pode editar o que ainda não teve entrega e retirar aula, prática, prova e aviso.
 
 - O aluno marca a aula como concluída. A marca permanece. Marcar de novo não muda a conta.
 - A prática tem enunciado, prazo opcional e rubrica opcional. O aluno entrega um texto. O docente devolve um comentário e a nota de 0 a 10. Com rubrica, a nota é a soma dos critérios. Depois da devolutiva, a entrega não muda.
-- A prova tem prazo opcional. Cada questão tem ao menos duas alternativas e uma só correta. O gabarito não sai para o aluno. A tentativa é única. A nota é 0 a 10, na proporção das questões certas.
+- A prova tem prazo opcional, tempo opcional e de 1 a 5 tentativas. O padrão continua uma tentativa. Cada questão tem ao menos duas alternativas e uma só correta. O gabarito não sai para o aluno. A nota é 0 a 10, na proporção das questões certas, e o boletim fica com a melhor. O tempo esgotado grava 0. As questões podem vir do banco do curso.
 - Depois do prazo, a entrega da prática ou da prova é recusada.
 - Na aula, quem está no curso abre uma dúvida e os outros respondem. Quem está fora recebe `404`.
 - O docente publica o aviso da turma e registra a chamada do dia. O mesmo dia não se repete.
@@ -43,7 +43,10 @@ O aluno vê só a própria entrega, a própria nota de prova e a própria presen
 | --- | --- |
 | Cursos | `GET /courses`, `GET /courses/curriculum`, `GET /courses/teaching` |
 | Curso, módulo, aula | `POST /courses`, `POST /courses/{id}/modules`, `POST /modules/{id}/lessons` |
-| Aula e arquivo | `GET /lessons/{id}`, `GET /lessons/{id}/media` |
+| Aula e arquivo | `GET /lessons/{id}`, `GET /lessons/{id}/media`, `GET /lessons/{id}/assets` |
+| Continuar | `GET /resume` |
+| Recados | `GET /inbox` |
+| Banco, grupos e revisão | `GET /courses/{id}/bank`, `GET /cohorts/{id}/groups`, `POST /cohorts/{id}/practices/{practiceId}/reviews` |
 | Turmas e matrícula | `GET /cohorts`, `GET /cohorts/{id}`, `POST /cohorts`, `POST /cohorts/{id}/enrollments` |
 | Conclusão da aula | `POST /cohorts/{id}/lessons/{lessonId}/completion` |
 | Prática | `POST /cohorts/{id}/practices`, `POST .../submission`, `POST .../feedback` |
@@ -153,6 +156,19 @@ Prazo, rubrica, chamada, aviso e certificado seguem a regra de uma turma a dist�
 - O docente registra a chamada do dia. Com chamada aberta, o certificado exige 75% de presença.
 - O aviso da turma aparece para quem está nela. A bancada do docente também publica o aviso. A chamada fica na página da turma, onde está a lista de alunos.
 - O certificado sai com média igual ou maior que 7. Sem nenhuma chamada, a presença não bloqueia o certificado.
+
+## Incremento 9
+
+A sala de estudo fecha o que ainda faltava para a rotina da turma.
+
+- A home continua na primeira aula da grade que o aluno ainda não concluiu.
+- Quem ministra edita aula, prática sem entrega, aviso, prazo, tempo e número de tentativas da prova. Depois da primeira entrega ou prova, o conteúdo fica travado.
+- O banco guarda questões do curso e a prova pode nascer delas.
+- A prova pode ter tempo e mais de uma tentativa. Sem tempo, a entrega segue direta. Com tempo, o aluno começa e o relógio corre no servidor.
+- A turma tem grupos. Quem está no mesmo grupo avalia a entrega do colega uma vez, com comentário e nota. A nota oficial continua a do docente.
+- A aula aceita arquivos além do material principal.
+- Recados entram quando sai aviso, prova ou devolutiva.
+- Os pesos da média vão de 1 a 5. Iguais a 1, a média histórica permanece. Diferentes, práticas e provas pesam em separado.
 
 ## Arranque
 

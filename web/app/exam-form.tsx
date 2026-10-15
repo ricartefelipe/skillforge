@@ -17,10 +17,12 @@ export function ExamForm({
   cohortId,
   action,
   returnTo,
+  bank = [],
 }: {
   cohortId: string;
   action: (formData: FormData) => void;
   returnTo?: string;
+  bank?: { id: string; prompt: string }[];
 }) {
   const [title, setTitle] = useState("");
   const [questions, setQuestions] = useState<Question[]>([blank()]);
@@ -39,6 +41,19 @@ export function ExamForm({
         Prazo
         <input name="dueAt" type="datetime-local" />
       </label>
+      <label>
+        Minutos
+        <input name="minutes" type="number" min={5} max={180} />
+      </label>
+      <label>
+        Tentativas
+        <input name="attempts" type="number" min={1} max={5} defaultValue={1} />
+      </label>
+      {bank.map((item) => (
+        <label key={item.id}>
+          <input type="checkbox" name="bank" value={item.id} /> {item.prompt}
+        </label>
+      ))}
       {questions.map((question, questionIndex) => (
         <fieldset key={questionIndex}>
           <legend>Questão {questionIndex + 1}</legend>

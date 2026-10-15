@@ -7,6 +7,28 @@ import { apiUrl } from "../../lib/openid";
 import { loadReports } from "../../lib/report";
 import { Shell } from "../shell";
 
+function classAverage(practices: number[], exams: number[], practiceWeight: number, examWeight: number) {
+  const practiceMean = mean(practices);
+  const examMean = mean(exams);
+  if (practiceWeight === 1 && examWeight === 1) {
+    return mean([...practices, ...exams]);
+  }
+  if (practiceMean === null) {
+    return examMean;
+  }
+  if (examMean === null) {
+    return practiceMean;
+  }
+  return (practiceMean * practiceWeight + examMean * examWeight) / (practiceWeight + examWeight);
+}
+
+function mean(values: number[]) {
+  if (values.length === 0) {
+    return null;
+  }
+  return values.reduce((sum, grade) => sum + grade, 0) / values.length;
+}
+
 export default async function Page() {
   const jar = await cookies();
   const access = jar.get(ACCESS_COOKIE)?.value;
@@ -36,15 +58,13 @@ export default async function Page() {
         {reports === null ? <p className="empty">O boletim não responde.</p> : null}
         {reports !== null && reports.length === 0 ? <p className="empty">Nenhuma turma no boletim.</p> : null}
         {reports?.map((report) => {
-          const grades = [
-            ...report.practices.flatMap((practice) =>
-              practice.deliveries
-                .filter((delivery) => delivery.grade !== null)
-                .map((delivery) => delivery.grade as number),
-            ),
-            ...report.exams.flatMap((exam) => exam.scores.map((score) => score.grade)),
-          ];
-          const average = grades.length === 0 ? null : grades.reduce((sum, grade) => sum + grade, 0) / grades.length;
+          const practiceGrades = report.practices.flatMap((practice) =>
+            practice.deliveries
+              .filter((delivery) => delivery.grade !== null)
+              .map((delivery) => delivery.grade as number),
+          );
+          const examGrades = report.exams.flatMap((exam) => exam.scores.map((score) => score.grade));
+          const average = classAverage(practiceGrades, examGrades, report.practiceWeight, report.examWeight);
           return (
             <section className="tree" key={report.cohortId} aria-label={report.cohortName}>
               <h2>

@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import skillforge.application.studio.StudioApplication;
 import skillforge.domain.cohort.Announcement;
 import skillforge.domain.cohort.Certificate;
 import skillforge.domain.cohort.ClassroomRepository;
@@ -24,9 +25,12 @@ public class ClassroomApplication {
 
     private final ClassroomRepository classroom;
 
-    public ClassroomApplication(CohortRepository cohorts, ClassroomRepository classroom) {
+    private final StudioApplication studio;
+
+    public ClassroomApplication(CohortRepository cohorts, ClassroomRepository classroom, StudioApplication studio) {
         this.cohorts = cohorts;
         this.classroom = classroom;
+        this.studio = studio;
     }
 
     public void withdraw(Actor actor, UUID cohortId, UUID announcementId) {
@@ -40,11 +44,13 @@ public class ClassroomApplication {
         if (actor.role() == Role.ALUNO) {
             throw new Rejection(Failure.FORBIDDEN);
         }
-        return classroom.announce(
+        UUID id = classroom.announce(
                 cohortId,
                 actor,
                 Names.require(rawTitle, Failure.BLANK_TITLE),
                 Texts.require(rawBody, Failure.BLANK_PROMPT));
+        studio.tellCohort(cohortId, "Novo aviso da turma.");
+        return id;
     }
 
     public UUID call(Actor actor, UUID cohortId, LocalDate heldOn, List<Presence> marks) {
