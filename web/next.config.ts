@@ -6,7 +6,7 @@ const nextConfig: NextConfig = {
   agentRules: false,
   experimental: {
     serverActions: {
-      bodySizeLimit: "220mb",
+      bodySizeLimit: "540mb",
     },
   },
   async rewrites() {

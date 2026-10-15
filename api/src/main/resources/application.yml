@@ -10,19 +10,14 @@ spring:
       initialization-fail-timeout: -1
       connection-timeout: 3000
       validation-timeout: 2000
-  servlet:
-    multipart:
-      # The ceiling matches the largest lesson. A bigger body is refused before it is stored.
-      max-file-size: 8MB
-      max-request-size: 8MB
 
 skillforge:
   issuer: ${KEYCLOAK_ISSUER:http://localhost:8180/realms/skillforge}
   identity-timeout: 2s
   catalog:
     markdown-max: 100000
-    pdf-max: 8MB
-    video-max: 8MB
+    pdf-max: 100MB
+    video-max: 512MB
 
 management:
   endpoints:
