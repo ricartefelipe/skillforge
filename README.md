@@ -226,6 +226,15 @@ A aula fica legível para quem estuda.
 - O e-mail gravado volta para Recados.
 - A média do boletim é a mesma conta do certificado.
 
+## Incremento 16
+
+As regras da aula passam a ter teste unitário, sem subir o banco.
+
+- Nome, texto e nota recusam vazio e excesso.
+- A prova arredonda a fração de acertos. O prazo vencido fecha a prova.
+- Quem vê e quem ministra a turma fica explícito.
+- O pacote recusa caminho que sai do zip. O lançamento assinado não leva o segredo.
+
 ## Arranque
 
 É preciso Java 21, Node.js 22, Docker e curl.
