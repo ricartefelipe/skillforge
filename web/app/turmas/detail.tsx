@@ -91,7 +91,11 @@ export function CohortDetailView({
       <header className="intro">
         <p className="kicker">Turma</p>
         <h1>{cohort.name}</h1>
-        <p className="lede">As aulas são o material do curso. Entrega, prova e chamada ficam nesta página.</p>
+        <p className="lede">
+          {role === "aluno"
+            ? "Conclua cada aula, entregue a prova nesta página e pegue o certificado no boletim. Ele sai com média 7 e, se houver chamada, 75% de presença."
+            : "As aulas são o material do curso. Entrega, prova e chamada ficam nesta página."}
+        </p>
       </header>
       {notice ? <p role="alert">{notice}</p> : null}
       <p className="meta">
@@ -99,11 +103,13 @@ export function CohortDetailView({
       </p>
       <nav className="class-nav" aria-label="Seções da turma">
         <a href="#aulas">Aulas</a>
-        <a href="#atividades">Atividades</a>
+        <a href="#provas">Provas</a>
+        <a href="#praticas">Práticas</a>
         <a href="#avisos">Avisos</a>
         <a href="#pessoas">Pessoas</a>
         <a href="#grupos">Grupos</a>
         <a href="#chamada">Chamada</a>
+        {role === "aluno" ? <Link href="/boletim">Certificado</Link> : null}
       </nav>
       <section className="tree" id="aulas" aria-label="Aulas">
         <h2>Aulas</h2>
@@ -172,7 +178,7 @@ export function CohortDetailView({
       </section>
       <section className="tree" id="atividades" aria-label="Atividades">
         <h2>Atividades</h2>
-        <h3>Provas</h3>
+        <h3 id="provas">Provas</h3>
         {cohort.exams.length === 0 ? <p className="empty">Nenhuma prova ainda.</p> : null}
         {cohort.exams.map((exam) => {
           const own = role === "aluno" ? (exam.scores[0] ?? null) : null;
@@ -277,7 +283,7 @@ export function CohortDetailView({
             <button type="submit">Guardar no banco</button>
           </form>
         ) : null}
-        <h3>Práticas</h3>
+        <h3 id="praticas">Práticas</h3>
         {cohort.practices.length === 0 ? <p className="empty">Nenhuma prática ainda.</p> : null}
         {cohort.practices.map((practice) => (
           <PracticeCard
