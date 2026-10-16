@@ -74,6 +74,14 @@ export function kindLabel(kind: LessonSummary["kind"]): string {
   }
 }
 
+export function courseOfLesson(courses: Course[], lessonId: string): Course | null {
+  return (
+    courses.find((course) =>
+      course.modules.some((module) => module.lessons.some((lesson) => lesson.id === lessonId)),
+    ) ?? null
+  );
+}
+
 export function nextInTrail(course: Course, lessonId: string): LessonSummary | null {
   const lessons = course.modules.flatMap((module) => module.lessons);
   const index = lessons.findIndex((lesson) => lesson.id === lessonId);
