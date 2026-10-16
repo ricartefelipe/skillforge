@@ -90,13 +90,17 @@ export function CatalogView({
             {study.cohortName.startsWith("Turma") ? study.cohortName : `Turma ${study.cohortName}`}
           </p>
           {study.progress ? <p className="tally">{study.progress}</p> : null}
-          <p>
-            <Link href={study.cohortHref}>Abrir a turma</Link>
+          <p className="actions">
+            <Link className="file-link" href={study.cohortHref}>
+              Abrir a turma
+            </Link>
+            <Link className="file-link" href={`${study.cohortHref}#provas`}>
+              Fazer a prova
+            </Link>
             {study.continueHref && study.continueTitle ? (
-              <>
-                {" · "}
-                <Link href={study.continueHref}>Continuar: {study.continueTitle}</Link>
-              </>
+              <Link className="file-link" href={study.continueHref}>
+                Continuar: {study.continueTitle}
+              </Link>
             ) : null}
           </p>
         </section>
