@@ -75,9 +75,17 @@ function studyOf(cohort: CohortSummary, currentCourseId: string | null, resume: 
     progress:
       cohort.completed !== null && cohort.total !== null ? progressLabel(cohort.completed, cohort.total) : null,
     current,
+    examReady: examReady(cohort.completed, cohort.total),
     continueHref: current && resume ? `/catalogo/aulas/${resume.lessonId}` : null,
     continueTitle: current && resume ? resume.title : null,
   };
+}
+
+function examReady(completed: number | null, total: number | null): boolean {
+  if (total == null || total === 0) {
+    return true;
+  }
+  return (completed ?? 0) >= total;
 }
 
 function studentLede(studies: Study[]): string {
