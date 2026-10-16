@@ -63,9 +63,19 @@ export function SkillforgeHome({
           <h1 aria-live="polite">{headline(liveness, readiness)}</h1>
           <p className="lede">Construção de competências pela prática.</p>
         </header>
+        {session ? (
+          <p className="lede">Comece pela turma. O curso só guarda o material.</p>
+        ) : null}
         {resume ? (
           <p>
             <Link href={resume.href}>Continuar: {resume.title}</Link>
+          </p>
+        ) : null}
+        {session ? (
+          <p>
+            <Link href="/turmas">Abrir turmas</Link>
+            {" · "}
+            <Link href="/catalogo">Ver cursos</Link>
           </p>
         ) : null}
         <section className="panel access" aria-label="Acesso">

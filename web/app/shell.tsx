@@ -19,9 +19,8 @@ export function Shell({ session, children }: { session: Session | null; children
         <nav aria-label="Principal">
           {session ? (
             <>
-              <Link href="/catalogo">Cursos</Link>
-              <Link href="/aulas">Aulas</Link>
               <Link href="/turmas">Turmas</Link>
+              <Link href="/catalogo">Cursos</Link>
               <Link href="/boletim">Boletim</Link>
               <Link href="/agenda">Agenda</Link>
               <Link href="/recados">Recados</Link>

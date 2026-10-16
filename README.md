@@ -15,7 +15,7 @@ O acesso é pelo Keycloak, em `http://localhost:8180`. Há três contas: `aluno`
 - Zero papéis, ou mais de um entre aluno, docente e administração, responde `403`.
 - Vida e prontidão continuam sem sessão. A prontidão também recusa tráfego se o acesso não responde.
 
-A interface mostra Entrar, ou o nome e o papel com Sair. Com sessão, o menu tem Cursos, Aulas, Turmas, Boletim, Agenda e Recados. Docente e administração também têm a bancada Docente.
+A interface mostra Entrar, ou o nome e o papel com Sair. Com sessão, o menu tem Turmas, Cursos, Boletim, Agenda e Recados. Docente e administração também têm a bancada Docente.
 
 | Papel | O que faz |
 | --- | --- |
@@ -250,6 +250,14 @@ O estúdio deixa de ser um único ponto por onde passa o resto do sistema.
 - Catálogo e fórum só perguntam se a pessoa está no curso.
 - Recado, correio, busca, banco, grupo e continuação têm porta própria.
 - Prova, prática, aviso e peso ficam com quem já guarda esses dados.
+
+## Incremento 19
+
+O curso deixa de se confundir com a turma.
+
+- O menu começa pela turma. Cursos mostra só o material.
+- A página Aulas deixa de repetir o catálogo.
+- O aluno vê os cursos das próprias turmas. Quem publica vê onde a aula entra e onde a nota fica.
 
 ## Arranque
 
