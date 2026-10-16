@@ -298,6 +298,14 @@ A oficina fica mais calma de olhar.
 - O botão deixa de ser verde neon.
 - A visão noturna segue o mesmo tom, sem o azul frio.
 
+## Incremento 25
+
+A aplicação passa a se parecer com uma escola.
+
+- O menu fica numa coluna, como nas plataformas de curso.
+- A home convida a continuar a aula.
+- Os cursos viram cartões com progresso. A turma abre com o nome do curso.
+
 ## Arranque
 
 É preciso Java 21, Node.js 22, Docker e curl.

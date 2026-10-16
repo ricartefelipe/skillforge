@@ -64,7 +64,7 @@ a {
   place-items: center;
   width: 2.6rem;
   height: 2.6rem;
-  margin-left: auto;
+  margin-left: 0;
   border: 0;
   border-radius: 999px;
   background: var(--card);
@@ -79,10 +79,10 @@ a {
 }
 
 .shell {
+  display: grid;
+  grid-template-columns: 15.5rem minmax(0, 1fr);
   min-height: 100vh;
-  background:
-    radial-gradient(880px 260px at 100% -10%, rgba(140, 79, 56, 0.08), transparent 60%),
-    var(--paper);
+  background: var(--paper);
 }
 
 .rail {
@@ -90,12 +90,13 @@ a {
   top: 0;
   z-index: 5;
   display: flex;
-  align-items: center;
-  gap: 1.5rem;
-  padding: 0.85rem 1.4rem;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 1.25rem;
+  height: 100vh;
+  padding: 1.25rem 0.9rem 1rem;
   background: var(--ink);
   color: #f6f0e8;
-  box-shadow: 0 8px 24px rgba(22, 19, 15, 0.18);
 }
 
 .brand {
@@ -135,16 +136,16 @@ a {
 
 .rail nav {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem;
-  margin-right: auto;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin-right: 0;
 }
 
 .rail nav a {
   color: #f6f0e8;
   font-weight: 600;
   text-decoration: none;
-  padding: 0.65rem 0.75rem;
+  padding: 0.7rem 0.75rem;
   border-radius: 10px;
 }
 
@@ -164,9 +165,9 @@ a {
 }
 
 .rail-foot {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
+  display: grid;
+  gap: 0.65rem;
+  margin-top: auto;
 }
 
 .rail .who {
@@ -200,9 +201,61 @@ a {
 }
 
 .workspace {
-  width: min(72rem, calc(100% - 3rem));
+  width: min(76rem, calc(100% - 3rem));
   margin: 0 auto;
-  padding: 2.2rem 0 4rem;
+  padding: 1.8rem 0 4rem;
+}
+
+.course-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(17.5rem, 1fr));
+  gap: 1rem;
+}
+
+.continue-card {
+  display: grid;
+  gap: 0.45rem;
+  padding: 1.4rem 1.5rem;
+  background: var(--ink);
+  color: #f6f0e8;
+  border-radius: 16px;
+}
+
+.continue-card .kicker,
+.continue-card .meta {
+  color: #e4b89a;
+}
+
+.continue-card h1,
+.continue-card h2,
+.continue-card .lede {
+  color: #f6f0e8;
+}
+
+.school-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+@media (max-width: 860px) {
+  .shell {
+    grid-template-columns: 1fr;
+  }
+
+  .rail {
+    height: auto;
+    position: sticky;
+  }
+
+  .rail nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .rail-foot {
+    margin-top: 0;
+  }
 }
 
 .page {
@@ -476,10 +529,11 @@ h1 {
 .playlist {
   display: grid;
   gap: 0.35rem;
-  padding: 1rem;
+  padding: 0.85rem;
   border-radius: 16px;
-  background: var(--ink);
-  color: #f6f0e8;
+  background: var(--card);
+  color: var(--soot);
+  border: 1px solid var(--line);
 }
 
 .playlist section {
@@ -490,14 +544,14 @@ h1 {
 .playlist a {
   display: grid;
   gap: 0.1rem;
-  color: #f6f0e8;
+  color: var(--soot);
   text-decoration: none;
-  padding: 0.45rem 0;
-  border-top: 1px solid rgba(244, 248, 252, 0.12);
+  padding: 0.55rem 0.35rem;
+  border-top: 1px solid var(--line);
 }
 
 .playlist .kind {
-  color: #d9cfc3;
+  color: var(--muted);
   font-size: 0.78rem;
 }
 

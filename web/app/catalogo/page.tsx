@@ -74,6 +74,8 @@ function studyOf(cohort: CohortSummary, currentCourseId: string | null, resume: 
     cohortHref: `/turmas/${cohort.id}`,
     progress:
       cohort.completed !== null && cohort.total !== null ? progressLabel(cohort.completed, cohort.total) : null,
+    completed: cohort.completed,
+    total: cohort.total,
     current,
     examReady: examReady(cohort.completed, cohort.total),
     continueHref: current && resume ? `/catalogo/aulas/${resume.lessonId}` : null,
