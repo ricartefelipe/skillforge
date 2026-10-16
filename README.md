@@ -259,6 +259,14 @@ O curso deixa de se confundir com a turma.
 - A página Aulas deixa de repetir o catálogo.
 - O aluno vê os cursos das próprias turmas. Quem publica vê onde a aula entra e onde a nota fica.
 
+## Incremento 20
+
+Quem tem mais de um curso vê qual está em andamento.
+
+- A página de cursos lista cada matrícula com a turma e o avanço.
+- O curso da próxima aula fica marcado como em andamento.
+- Continuar diz o nome desse curso.
+
 ## Arranque
 
 É preciso Java 21, Node.js 22, Docker e curl.

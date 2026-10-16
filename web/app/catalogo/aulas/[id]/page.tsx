@@ -64,7 +64,8 @@ export default async function Page({
     <Shell session={session}>
       <div className="page">
         <header className="intro">
-          <p className="kicker">{course?.name ?? "Aula"}</p>
+          <p className="kicker">Curso</p>
+          {course ? <p className="course-name">{course.name}</p> : null}
           <h1>{lesson.title}</h1>
         </header>
         {notice ? <p role="alert">{notice}</p> : null}

@@ -22,7 +22,7 @@ export function SkillforgeHome({
   resume = null,
 }: {
   session: Session | null;
-  resume?: { href: string; title: string } | null;
+  resume?: { href: string; title: string; courseName: string | null } | null;
 }) {
   const [liveness, setLiveness] = useState<ProbeReading>("pending");
   const [readiness, setReadiness] = useState<ProbeReading>("pending");
@@ -68,7 +68,9 @@ export function SkillforgeHome({
         ) : null}
         {resume ? (
           <p>
-            <Link href={resume.href}>Continuar: {resume.title}</Link>
+            <Link href={resume.href}>
+              {resume.courseName ? `Continuar em ${resume.courseName}: ${resume.title}` : `Continuar: ${resume.title}`}
+            </Link>
           </p>
         ) : null}
         {session ? (

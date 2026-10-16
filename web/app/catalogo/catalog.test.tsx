@@ -42,6 +42,45 @@ describe("CatalogView", () => {
     expect(within(tree).getByText("Unidade 1")).toBeInTheDocument();
   });
 
+  it("names the course in progress when the student has more than one", () => {
+    render(
+      <CatalogView
+        courses={[]}
+        canCompose={false}
+        writableCourseIds={[]}
+        notice={null}
+        createCourse={noop}
+        createModule={noop}
+        createLesson={noop}
+        studies={[
+          {
+            courseName: "Forja",
+            cohortName: "Manhã",
+            cohortHref: "/turmas/a",
+            progress: "1 de 2 aulas",
+            current: false,
+            continueHref: null,
+            continueTitle: null,
+          },
+          {
+            courseName: "Oficina de competências",
+            cohortName: "Turma Manhã 2026",
+            cohortHref: "/turmas/b",
+            progress: "3 de 13 aulas",
+            current: true,
+            continueHref: "/catalogo/aulas/v1",
+            continueTitle: "O que é uma competência",
+          },
+        ]}
+      />,
+    );
+
+    const current = screen.getByRole("region", { name: "Oficina de competências" });
+    expect(within(current).getByText("Em andamento")).toBeInTheDocument();
+    expect(within(current).getByText("Turma Manhã 2026")).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Forja" })).getByText("Matriculado")).toBeInTheDocument();
+  });
+
   it("hides compose forms from a student and does not call an empty catalog missing", () => {
     render(
       <CatalogView courses={[]} canCompose={false} writableCourseIds={[]} notice={null} createCourse={noop} createModule={noop} createLesson={noop} />,

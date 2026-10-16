@@ -1,13 +1,14 @@
 import { cookies } from "next/headers";
 
 import { loadSession } from "../../lib/access";
-import { canCompose, catalogNotice, coursesFromBody, narrowCourses } from "../../lib/catalog";
+import { canCompose, catalogNotice, courseOfLesson, coursesFromBody, narrowCourses, type Course } from "../../lib/catalog";
+import { cohortsFromBody, progressLabel, type CohortSummary } from "../../lib/cohort";
 import { ACCESS_COOKIE } from "../../lib/cookies";
 import { readIds, readJson } from "../../lib/api-read";
 import { apiUrl } from "../../lib/openid";
 import { Shell } from "../shell";
 import { createCourse, createLesson, createModule } from "./actions";
-import { CatalogView } from "./catalog";
+import { CatalogView, type Study } from "./catalog";
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ erro?: string; q?: string }> }) {
   const jar = await cookies();
@@ -30,10 +31,12 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
   const params = await searchParams;
   const token = access ?? "";
   const studying = session.role !== "administracao";
+  const courses = narrowCourses(await loadCourses(token, studying), params.q ?? "");
+  const studies = session.role === "aluno" ? await studiesOf(token, courses) : undefined;
   return (
     <Shell session={session}>
       <CatalogView
-        courses={narrowCourses(await loadCourses(token, studying), params.q ?? "")}
+        courses={courses}
         query={params.q ?? ""}
         canCompose={canCompose(session.role)}
         writableCourseIds={canCompose(session.role) ? [] : await readIds(token, "/courses/teaching")}
@@ -41,11 +44,76 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
         createCourse={createCourse}
         createModule={createModule}
         createLesson={createLesson}
-        lede={courseLede(session.role)}
+        heading={session.role === "aluno" ? "Seus cursos" : "Cursos"}
+        lede={session.role === "aluno" && studies ? studentLede(studies) : courseLede(session.role)}
         emptyMessage={session.role === "aluno" ? "Você ainda não está em um curso." : "Nenhum curso ainda."}
+        studies={studies}
       />
     </Shell>
   );
+}
+
+async function studiesOf(token: string, courses: Course[] | null): Promise<Study[] | undefined> {
+  if (courses === null) {
+    return undefined;
+  }
+  const cohorts = await loadCohorts(token);
+  if (cohorts === null) {
+    return undefined;
+  }
+  const resume = await loadResume(token);
+  const current = resume ? courseOfLesson(courses, resume.lessonId) : null;
+  return cohorts.map((cohort) => studyOf(cohort, current?.id ?? null, resume));
+}
+
+function studyOf(cohort: CohortSummary, currentCourseId: string | null, resume: Resume | null): Study {
+  const current = cohort.courseId === currentCourseId;
+  return {
+    courseName: cohort.courseName,
+    cohortName: cohort.name,
+    cohortHref: `/turmas/${cohort.id}`,
+    progress:
+      cohort.completed !== null && cohort.total !== null ? progressLabel(cohort.completed, cohort.total) : null,
+    current,
+    continueHref: current && resume ? `/catalogo/aulas/${resume.lessonId}` : null,
+    continueTitle: current && resume ? resume.title : null,
+  };
+}
+
+function studentLede(studies: Study[]): string {
+  const current = studies.find((study) => study.current);
+  if (studies.length === 0) {
+    return "Você ainda não está em um curso.";
+  }
+  if (studies.length === 1) {
+    return `Você está cursando ${studies[0]?.courseName}.`;
+  }
+  if (current) {
+    return `Você está em ${studies.length} cursos. O em andamento é ${current.courseName}.`;
+  }
+  return `Você está em ${studies.length} cursos.`;
+}
+
+type Resume = { lessonId: string; title: string };
+
+async function loadResume(token: string): Promise<Resume | null> {
+  const read = await readJson(token, "/resume");
+  if (read === null || !read.ok || read.body === null || typeof read.body !== "object") {
+    return null;
+  }
+  const record = read.body as Record<string, unknown>;
+  if (typeof record.lessonId !== "string" || typeof record.title !== "string") {
+    return null;
+  }
+  return { lessonId: record.lessonId, title: record.title };
+}
+
+async function loadCohorts(token: string) {
+  const read = await readJson(token, "/cohorts");
+  if (read === null) {
+    return null;
+  }
+  return cohortsFromBody(read.ok, read.body);
 }
 
 function courseLede(role: string): string {
