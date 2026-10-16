@@ -31,7 +31,7 @@ A administração abre a turma, indica a conta do docente e matricula pela conta
 
 - O aluno marca a aula como concluída. A marca permanece. Marcar de novo não muda a conta.
 - A prática tem enunciado, prazo opcional e rubrica opcional. O aluno entrega um texto. O docente devolve um comentário e a nota de 0 a 10. Com rubrica, a nota é a soma dos critérios. Depois da devolutiva, a entrega não muda.
-- A prova tem prazo opcional, tempo opcional e de 1 a 5 tentativas. O padrão continua uma tentativa. Cada questão tem ao menos duas alternativas e uma só correta. O gabarito não sai para o aluno. A nota é 0 a 10, na proporção das questões certas, e o boletim fica com a melhor. O tempo esgotado grava 0. As questões podem vir do banco do curso.
+- A prova tem prazo opcional, tempo opcional e de 1 a 5 tentativas. O padrão continua uma tentativa. O aluno só faz a prova depois de concluir as aulas do curso. Cada questão tem ao menos duas alternativas e uma só correta. O gabarito não sai para o aluno. A nota é 0 a 10, na proporção das questões certas, e o boletim fica com a melhor. O tempo esgotado grava 0. As questões podem vir do banco do curso.
 - Depois do prazo, a entrega da prática ou da prova é recusada.
 - Na aula, quem está no curso abre uma dúvida e os outros respondem. Quem está fora recebe `404`.
 - O docente publica o aviso da turma e registra a chamada do dia. O mesmo dia não se repete.
@@ -274,6 +274,14 @@ A turma ganha botões para ir até a prova e o certificado.
 - Aulas, provas, práticas e certificado ficam em botões no topo da turma.
 - No curso, cada matrícula tem Abrir a turma e Fazer a prova.
 - O boletim mostra o certificado quando a média e a presença autorizam.
+
+## Incremento 22
+
+A prova só abre depois das aulas.
+
+- O aluno conclui as aulas do curso antes de entregar a prova.
+- Enquanto falta aula, a prova explica a condição.
+- Sem aulas no curso, a prova continua aberta.
 
 ## Arranque
 

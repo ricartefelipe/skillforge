@@ -372,6 +372,39 @@ class CohortAccessTest {
     }
 
     @Test
+    void theStudentFinishesTheLessonsBeforeTheExam() throws Exception {
+        String courseId = createCourse("Oficina");
+        String moduleId = createModule(courseId, "Fundamentos");
+        String lessonId = createMarkdown(moduleId, "O ofício");
+        String cohortId = openCohort("Tarde", courseId, "docente");
+        enroll(cohortId, "aluno");
+        String examId = openExam(cohortId);
+
+        mvc.perform(post("/cohorts/" + cohortId + "/exams/" + examId + "/attempt")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"answers\":[]}")
+                        .with(as("aluno", "aluno")))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("lessons"));
+
+        mvc.perform(post("/cohorts/" + cohortId + "/lessons/" + lessonId + "/completion")
+                        .with(as("aluno", "aluno")))
+                .andExpect(status().isNoContent());
+
+        String page = mvc.perform(get("/cohorts/" + cohortId).with(as("docente", "docente")))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        String questionId = JsonPath.read(page, "$.exams[0].questions[0].id");
+        String choiceId = first(JsonPath.read(page, "$.exams[0].questions[0].choices[0].id"));
+        mvc.perform(post("/cohorts/" + cohortId + "/exams/" + examId + "/attempt")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(attemptJson(questionId, choiceId))
+                        .with(as("aluno", "aluno")))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
     void theTeacherPublishesAnExamAndTheGradeLandsOnTheReport() throws Exception {
         String courseId = createCourse("Forja");
         String morning = openCohort("Manhã", courseId, "docente");
@@ -716,6 +749,18 @@ class CohortAccessTest {
                 .andExpect(jsonPath("$.email").value("aluno@example.com"));
 
         String examId = openExam(cohortId);
+        mvc.perform(post("/cohorts/" + cohortId + "/lessons/" + lessonId + "/completion").with(as("aluno", "aluno")))
+                .andExpect(status().isNoContent());
+        mvc.perform(post("/cohorts/" + cohortId + "/lessons/" + toolId + "/completion").with(as("aluno", "aluno")))
+                .andExpect(status().isNoContent());
+        String packId = first(JsonPath.read(
+                mvc.perform(get("/courses/curriculum").with(as("administracao", "administracao")))
+                        .andReturn()
+                        .getResponse()
+                        .getContentAsString(),
+                "$[0].modules[0].lessons[?(@.title == 'Pacote')].id"));
+        mvc.perform(post("/cohorts/" + cohortId + "/lessons/" + packId + "/completion").with(as("aluno", "aluno")))
+                .andExpect(status().isNoContent());
         String page = mvc.perform(get("/cohorts/" + cohortId).with(as("docente", "docente")))
                 .andReturn()
                 .getResponse()
