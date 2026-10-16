@@ -45,9 +45,13 @@ export default async function Page() {
               <p className="course-name">{report.courseName}</p>
               {report.certified ? (
                 <p>
-                  <Link href={`/turmas/${report.cohortId}/certificado`}>Certificado</Link>
+                  <Link className="file-link" href={`/turmas/${report.cohortId}/certificado`}>
+                    Ver certificado
+                  </Link>
                 </p>
-              ) : null}
+              ) : (
+                <p className="meta">O certificado aparece aqui com média 7 e 75% de presença.</p>
+              )}
               {average === null || Number.isNaN(average) ? (
                 <p className="empty">Em curso</p>
               ) : (

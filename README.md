@@ -267,6 +267,14 @@ Quem tem mais de um curso vê qual está em andamento.
 - O curso da próxima aula fica marcado como em andamento.
 - Continuar diz o nome desse curso.
 
+## Incremento 21
+
+A turma ganha botões para ir até a prova e o certificado.
+
+- Aulas, provas, práticas e certificado ficam em botões no topo da turma.
+- No curso, cada matrícula tem Abrir a turma e Fazer a prova.
+- O boletim mostra o certificado quando a média e a presença autorizam.
+
 ## Arranque
 
 É preciso Java 21, Node.js 22, Docker e curl.
