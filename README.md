@@ -290,6 +290,14 @@ O botão da prova some enquanto falta aula.
 - Em Cursos, Fazer a prova só aparece quando as aulas da turma estão concluídas.
 - Com aula pendente, o cartão fica em Abrir a turma e Continuar.
 
+## Incremento 24
+
+A oficina fica mais calma de olhar.
+
+- O papel é quente e o texto respira.
+- O botão deixa de ser verde neon.
+- A visão noturna segue o mesmo tom, sem o azul frio.
+
 ## Arranque
 
 É preciso Java 21, Node.js 22, Docker e curl.
