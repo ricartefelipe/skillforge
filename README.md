@@ -283,6 +283,13 @@ A prova só abre depois das aulas.
 - Enquanto falta aula, a prova explica a condição.
 - Sem aulas no curso, a prova continua aberta.
 
+## Incremento 23
+
+O botão da prova some enquanto falta aula.
+
+- Em Cursos, Fazer a prova só aparece quando as aulas da turma estão concluídas.
+- Com aula pendente, o cartão fica em Abrir a turma e Continuar.
+
 ## Arranque
 
 É preciso Java 21, Node.js 22, Docker e curl.

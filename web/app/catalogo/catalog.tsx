@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { kindLabel, type Course } from "../../lib/catalog";
+import { LessonForm } from "./lesson-form";
 
 export type Study = {
   courseName: string;
@@ -8,10 +9,10 @@ export type Study = {
   cohortHref: string;
   progress: string | null;
   current: boolean;
+  examReady: boolean;
   continueHref: string | null;
   continueTitle: string | null;
 };
-import { LessonForm } from "./lesson-form";
 
 export function CatalogView({
   courses,
@@ -94,9 +95,11 @@ export function CatalogView({
             <Link className="file-link" href={study.cohortHref}>
               Abrir a turma
             </Link>
-            <Link className="file-link" href={`${study.cohortHref}#provas`}>
-              Fazer a prova
-            </Link>
+            {study.examReady ? (
+              <Link className="file-link" href={`${study.cohortHref}#provas`}>
+                Fazer a prova
+              </Link>
+            ) : null}
             {study.continueHref && study.continueTitle ? (
               <Link className="file-link" href={study.continueHref}>
                 Continuar: {study.continueTitle}

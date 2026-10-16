@@ -58,6 +58,7 @@ describe("CatalogView", () => {
             cohortName: "Manhã",
             cohortHref: "/turmas/a",
             progress: "1 de 2 aulas",
+            examReady: false,
             current: false,
             continueHref: null,
             continueTitle: null,
@@ -67,9 +68,20 @@ describe("CatalogView", () => {
             cohortName: "Turma Manhã 2026",
             cohortHref: "/turmas/b",
             progress: "3 de 13 aulas",
+            examReady: false,
             current: true,
             continueHref: "/catalogo/aulas/v1",
             continueTitle: "O que é uma competência",
+          },
+          {
+            courseName: "Cerâmica",
+            cohortName: "Noite",
+            cohortHref: "/turmas/c",
+            progress: "21 de 21 aulas",
+            examReady: true,
+            current: false,
+            continueHref: null,
+            continueTitle: null,
           },
         ]}
       />,
@@ -79,6 +91,10 @@ describe("CatalogView", () => {
     expect(within(current).getByText("Em andamento")).toBeInTheDocument();
     expect(within(current).getByText("Turma Manhã 2026")).toBeInTheDocument();
     expect(within(screen.getByRole("region", { name: "Forja" })).getByText("Matriculado")).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Cerâmica" })).getByRole("link", { name: "Fazer a prova" }))
+      .toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Forja" })).queryByRole("link", { name: "Fazer a prova" }))
+      .not.toBeInTheDocument();
   });
 
   it("hides compose forms from a student and does not call an empty catalog missing", () => {
