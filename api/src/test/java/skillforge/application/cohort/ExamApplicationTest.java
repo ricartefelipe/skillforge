@@ -13,6 +13,7 @@ import skillforge.application.notice.MemoryNotices;
 import skillforge.domain.bank.BankRepository;
 import skillforge.domain.cohort.ExamDraft;
 import skillforge.domain.cohort.ExamRepository;
+import skillforge.domain.cohort.LessonProgress;
 import skillforge.domain.identity.Actor;
 import skillforge.domain.identity.Role;
 import skillforge.domain.shared.Rejection;
@@ -23,7 +24,9 @@ class ExamApplicationTest {
 
     private final UUID opened = UUID.randomUUID();
 
-    private final ExamApplication exams = new ExamApplication(new MemoryExams(), new EmptyBank(), store);
+    private final FinishedLessons lessons = new FinishedLessons();
+
+    private final ExamApplication exams = new ExamApplication(new MemoryExams(), new EmptyBank(), store, lessons);
 
     private final Actor teacher = new Actor(Role.DOCENTE, "docente");
 
@@ -56,6 +59,21 @@ class ExamApplicationTest {
         assertEquals("Fundamentos", created.name());
         assertEquals(cohort, store.cohortNotice);
         assertEquals("Nova prova: Fundamentos", store.notice);
+    }
+
+    @Test
+    void aStudentFinishesTheLessonsBeforeTheExam() {
+        lessons.ready = false;
+        assertEquals(
+                "lessons",
+                assertThrows(Rejection.class, () -> exams.take(
+                        new Actor(Role.ALUNO, "aluno"),
+                        cohort,
+                        opened,
+                        Map.of()))
+                        .failure()
+                        .wire());
+        lessons.ready = true;
     }
 
     @Test
@@ -140,6 +158,17 @@ class ExamApplicationTest {
                 UUID examId,
                 java.util.List<skillforge.domain.studio.QuestionText> questions) {
             throw new UnsupportedOperationException();
+        }
+
+    }
+
+    private static final class FinishedLessons implements LessonProgress {
+
+        private boolean ready = true;
+
+        @Override
+        public boolean finished(UUID cohortId, String student) {
+            return ready;
         }
 
     }

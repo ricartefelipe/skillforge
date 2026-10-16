@@ -123,6 +123,7 @@ const laterNotices: Record<string, string> = {
   "not-certified": "Ainda não há certificado: é preciso média 7 e, se houver chamada, 75% de presença.",
   locked: "Já houve entrega ou prova. Retire e publique de novo se precisar mudar o conteúdo.",
   "not-started": "Comece a prova para o tempo correr.",
+  lessons: "Conclua as aulas do curso para fazer esta prova.",
   "duplicate-group": "Já existe um grupo com esse nome.",
   grouped: "Esse aluno já está em um grupo desta turma.",
   "already-reviewed": "Você já avaliou esta entrega.",
