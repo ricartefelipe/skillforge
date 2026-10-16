@@ -190,7 +190,10 @@ export function CohortDetailView({
                 {exam.minutes ? `${exam.minutes} min · ` : null}
                 {exam.attemptsAllowed === 1 ? "1 tentativa" : `${exam.attemptsAllowed} tentativas`}
               </p>
-              {role === "aluno" && exam.taken < exam.attemptsAllowed ? (
+              {role === "aluno" && !lessonsReady(cohort) ? (
+                <p className="meta">Conclua as aulas do curso para fazer esta prova.</p>
+              ) : null}
+              {role === "aluno" && lessonsReady(cohort) && exam.taken < exam.attemptsAllowed ? (
                 <form className="compose" action={takeExam} aria-label={`Fazer ${exam.title}`}>
                   <input type="hidden" name="cohortId" value={cohort.id} />
                   <input type="hidden" name="examId" value={exam.id} />
@@ -477,6 +480,13 @@ export function CohortDetailView({
       </section>
     </div>
   );
+}
+
+function lessonsReady(cohort: CohortDetail): boolean {
+  if (cohort.total == null || cohort.total === 0) {
+    return true;
+  }
+  return (cohort.completed ?? 0) >= cohort.total;
 }
 
 function PracticeCard({

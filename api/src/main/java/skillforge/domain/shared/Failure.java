@@ -40,6 +40,7 @@ public enum Failure {
     NOT_CERTIFIED("not-certified", Kind.FORBIDDEN),
     LOCKED("locked", Kind.CONFLICT),
     NOT_STARTED("not-started", Kind.BAD_REQUEST),
+    LESSONS("lessons", Kind.CONFLICT),
     DUPLICATE_GROUP("duplicate-group", Kind.CONFLICT),
     GROUPED("grouped", Kind.CONFLICT),
     ALREADY_REVIEWED("already-reviewed", Kind.CONFLICT),

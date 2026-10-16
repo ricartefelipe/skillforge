@@ -8,6 +8,7 @@ import java.util.UUID;
 
 import skillforge.domain.bank.BankRepository;
 import skillforge.domain.cohort.ExamDraft;
+import skillforge.domain.cohort.LessonProgress;
 import skillforge.domain.cohort.ExamRepository;
 import skillforge.domain.identity.Actor;
 import skillforge.domain.notice.NoticeRepository;
@@ -26,10 +27,17 @@ public class ExamApplication {
 
     private final NoticeRepository notices;
 
-    public ExamApplication(ExamRepository exams, BankRepository bank, NoticeRepository notices) {
+    private final LessonProgress lessons;
+
+    public ExamApplication(
+            ExamRepository exams,
+            BankRepository bank,
+            NoticeRepository notices,
+            LessonProgress lessons) {
         this.exams = exams;
         this.bank = bank;
         this.notices = notices;
+        this.lessons = lessons;
     }
 
     public Opened open(
@@ -63,6 +71,7 @@ public class ExamApplication {
 
     public void start(Actor actor, UUID cohortId, UUID examId) {
         actor.requireStudent();
+        requireLessons(actor, cohortId);
         exams.startExam(cohortId, examId, actor);
     }
 
@@ -147,7 +156,14 @@ public class ExamApplication {
         if (answers == null) {
             throw new Rejection(Failure.INVALID_EXAM);
         }
+        requireLessons(actor, cohortId);
         exams.takeExam(cohortId, examId, actor, answers);
+    }
+
+    private void requireLessons(Actor actor, UUID cohortId) {
+        if (!lessons.finished(cohortId, actor.username())) {
+            throw new Rejection(Failure.LESSONS);
+        }
     }
 
     private List<ExamDraft.QuestionDraft> drafts(Actor actor, UUID cohortId, List<UUID> ids) {

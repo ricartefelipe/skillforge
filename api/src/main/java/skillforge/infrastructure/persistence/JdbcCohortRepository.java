@@ -17,6 +17,7 @@ import org.springframework.stereotype.Component;
 import skillforge.domain.catalog.Course;
 import skillforge.domain.cohort.CohortDetail;
 import skillforge.domain.cohort.CourseAccess;
+import skillforge.domain.cohort.LessonProgress;
 import skillforge.domain.cohort.CohortListing;
 import skillforge.domain.cohort.CohortRepository;
 import skillforge.domain.cohort.CohortSummary;
@@ -31,7 +32,7 @@ import skillforge.domain.shared.Failure;
 import skillforge.domain.shared.Rejection;
 
 @Component
-class JdbcCohortRepository implements CohortRepository, CourseAccess {
+class JdbcCohortRepository implements CohortRepository, CourseAccess, LessonProgress {
 
     private final CohortGate gate;
 
@@ -229,6 +230,36 @@ class JdbcCohortRepository implements CohortRepository, CourseAccess {
                                 && GradeAverage.earnsCertificate(tenths.getAsInt(), days, present)));
             }
             return List.copyOf(reports);
+        }
+        catch (DataAccessResourceFailureException ex) {
+            throw new Unavailable(ex);
+        }
+    }
+
+    @Override
+    public boolean finished(UUID cohortId, String student) {
+        gate.ensure();
+        try {
+            Integer total = gate.jdbc.queryForObject("""
+                    SELECT COUNT(*)
+                    FROM lesson
+                    JOIN module ON module.id = lesson.module_id
+                    JOIN cohort ON cohort.course_id = module.course_id
+                    WHERE cohort.id = ?
+                    """, Integer.class, cohortId);
+            if (total == null || total == 0) {
+                return true;
+            }
+            Integer done = gate.jdbc.queryForObject("""
+                    SELECT COUNT(*)
+                    FROM completion
+                    JOIN lesson ON lesson.id = completion.lesson_id
+                    JOIN module ON module.id = lesson.module_id
+                    JOIN cohort ON cohort.course_id = module.course_id
+                        AND cohort.id = completion.cohort_id
+                    WHERE completion.cohort_id = ? AND completion.student = ?
+                    """, Integer.class, cohortId, student);
+            return done != null && done >= total;
         }
         catch (DataAccessResourceFailureException ex) {
             throw new Unavailable(ex);

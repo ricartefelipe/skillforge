@@ -22,6 +22,7 @@ import skillforge.domain.cohort.ClassroomRepository;
 import skillforge.domain.cohort.CohortRepository;
 import skillforge.domain.cohort.CourseAccess;
 import skillforge.domain.cohort.ExamRepository;
+import skillforge.domain.cohort.LessonProgress;
 import skillforge.domain.cohort.PracticeRepository;
 import skillforge.domain.forum.ForumRepository;
 import skillforge.domain.group.GroupRepository;
@@ -54,8 +55,12 @@ class ApplicationWiring {
     }
 
     @Bean
-    ExamApplication examApplication(ExamRepository exams, BankRepository bank, NoticeRepository notices) {
-        return new ExamApplication(exams, bank, notices);
+    ExamApplication examApplication(
+            ExamRepository exams,
+            BankRepository bank,
+            NoticeRepository notices,
+            LessonProgress lessons) {
+        return new ExamApplication(exams, bank, notices, lessons);
     }
 
     @Bean
