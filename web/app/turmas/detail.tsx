@@ -91,21 +91,22 @@ export function CohortDetailView({
       <header className="intro">
         <p className="kicker">Turma</p>
         <h1>{cohort.name}</h1>
+        <p className="lede">As aulas são o material do curso. Entrega, prova e chamada ficam nesta página.</p>
       </header>
       {notice ? <p role="alert">{notice}</p> : null}
       <p className="meta">
         {cohort.course.name} · ministrada por {cohort.teacher}
       </p>
       <nav className="class-nav" aria-label="Seções da turma">
-        <a href="#grade">Grade</a>
+        <a href="#aulas">Aulas</a>
         <a href="#atividades">Atividades</a>
         <a href="#avisos">Avisos</a>
         <a href="#pessoas">Pessoas</a>
         <a href="#grupos">Grupos</a>
         <a href="#chamada">Chamada</a>
       </nav>
-      <section className="tree" id="grade" aria-label="Grade">
-        <h2>Grade</h2>
+      <section className="tree" id="aulas" aria-label="Aulas">
+        <h2>Aulas</h2>
         {cohort.completed !== null && cohort.total !== null ? (
           <>
             <p className="tally">{progressLabel(cohort.completed, cohort.total)}</p>

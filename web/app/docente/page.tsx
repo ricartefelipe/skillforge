@@ -58,7 +58,7 @@ export default async function Page() {
         <header className="intro">
           <p className="kicker">Bancada</p>
           <h1>Docente</h1>
-          <p className="lede">Abra a turma. A grade, o material, a prova e o aviso ficam nela.</p>
+          <p className="lede">Abra a turma para ver entrega, prova e chamada. O material se publica em Cursos.</p>
         </header>
         {cohorts === null ? <p className="empty">As turmas não respondem.</p> : null}
         {cohorts !== null && cohorts.length === 0 ? <p className="empty">Você ainda não ministra uma turma.</p> : null}
