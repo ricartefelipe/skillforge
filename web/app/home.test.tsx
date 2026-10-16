@@ -109,9 +109,9 @@ describe("SkillforgeHome", () => {
     expect(within(access).getByText("Conta")).toBeInTheDocument();
     expect(within(access).getByText(label)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Sair" })).toBeInTheDocument();
-    expect(within(nav).getByRole("link", { name: "Cursos" })).toBeInTheDocument();
-    expect(within(nav).getByRole("link", { name: "Aulas" })).toBeInTheDocument();
     expect(within(nav).getByRole("link", { name: "Turmas" })).toBeInTheDocument();
+    expect(within(nav).getByRole("link", { name: "Cursos" })).toBeInTheDocument();
+    expect(within(nav).queryByRole("link", { name: "Aulas" })).not.toBeInTheDocument();
     expect(within(nav).getByRole("link", { name: "Boletim" })).toBeInTheDocument();
     expect(within(nav).getByRole("link", { name: "Agenda" })).toBeInTheDocument();
     expect(within(nav).getByRole("link", { name: "Recados" })).toBeInTheDocument();

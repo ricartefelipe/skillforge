@@ -12,7 +12,9 @@ export function CatalogView({
   createModule,
   createLesson,
   heading = "Cursos",
-  kicker = "Disponíveis",
+  kicker = "Material",
+  lede = "O curso é o material. A entrega, a prova e a chamada ficam na turma.",
+  emptyMessage = "Nenhum curso ainda.",
   returnTo = "/catalogo",
   titleAs = "h1",
   query = "",
@@ -26,6 +28,8 @@ export function CatalogView({
   createLesson: (formData: FormData) => void;
   heading?: string;
   kicker?: string;
+  lede?: string;
+  emptyMessage?: string;
   returnTo?: string;
   titleAs?: "h1" | "h2";
   query?: string;
@@ -37,12 +41,13 @@ export function CatalogView({
       <header className="intro">
         <p className="kicker">{kicker}</p>
         <Title>{heading}</Title>
+        <p className="lede">{lede}</p>
       </header>
       {notice ? <p role="alert">{notice}</p> : null}
       <form className="compose" action="/busca" method="get" aria-label="Buscar">
         <label>
-          Buscar
-          <input name="q" defaultValue={query} placeholder="Curso, unidade ou aula" />
+          Achar uma aula
+          <input name="q" defaultValue={query} placeholder="Nome da aula" />
         </label>
         <button type="submit">Buscar</button>
       </form>
@@ -57,11 +62,13 @@ export function CatalogView({
         </form>
       ) : null}
       {courses === null ? <p className="empty">O catálogo não responde.</p> : null}
-      {courses !== null && courses.length === 0 ? <p className="empty">Nenhum curso ainda.</p> : null}
+      {courses !== null && courses.length === 0 ? <p className="empty">{emptyMessage}</p> : null}
       {courses?.map((course) => (
         <section className="tree" key={course.id} aria-label={course.name}>
           <h2>{course.name}</h2>
-          <p className="course-name">Grade em unidades. Cada unidade reúne página, ebook e vídeo.</p>
+          <p className="course-name">
+            {course.modules.length === 1 ? "1 unidade" : `${course.modules.length} unidades`}
+          </p>
           {writes(course.id) ? (
             <form className="compose" action={createModule} aria-label={`Nova unidade em ${course.name}`}>
               <input type="hidden" name="courseId" value={course.id} />

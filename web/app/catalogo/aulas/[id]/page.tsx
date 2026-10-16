@@ -69,7 +69,7 @@ export default async function Page({
         </header>
         {notice ? <p role="alert">{notice}</p> : null}
         <div className="player">
-          <aside className="playlist" aria-label="Grade da aula">
+          <aside className="playlist" aria-label="Aulas do curso">
             {course?.modules.map((module) => (
               <section key={module.id} aria-label={module.name}>
                 <p className="meta">{module.name}</p>

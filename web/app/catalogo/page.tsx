@@ -28,24 +28,41 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
   }
 
   const params = await searchParams;
+  const token = access ?? "";
+  const studying = session.role !== "administracao";
   return (
     <Shell session={session}>
       <CatalogView
-        courses={narrowCourses(await loadCourses(access ?? ""), params.q ?? "")}
+        courses={narrowCourses(await loadCourses(token, studying), params.q ?? "")}
         query={params.q ?? ""}
         canCompose={canCompose(session.role)}
-        writableCourseIds={canCompose(session.role) ? [] : await readIds(access ?? "", "/courses/teaching")}
+        writableCourseIds={canCompose(session.role) ? [] : await readIds(token, "/courses/teaching")}
         notice={catalogNotice(params.erro ?? null)}
         createCourse={createCourse}
         createModule={createModule}
         createLesson={createLesson}
+        lede={courseLede(session.role)}
+        emptyMessage={session.role === "aluno" ? "Você ainda não está em um curso." : "Nenhum curso ainda."}
       />
     </Shell>
   );
 }
 
-async function loadCourses(token: string) {
-  const read = await readJson(token, "/courses");
+function courseLede(role: string): string {
+  switch (role) {
+    case "aluno":
+      return "Aqui está o material das suas turmas. Para entregar, fazer prova ou ver a chamada, abra a turma.";
+    case "docente":
+      return "Aqui você publica as aulas. A entrega e a nota acontecem na turma.";
+    case "administracao":
+      return "Aqui você cria o curso e publica as aulas. A matrícula e o docente ficam em Turmas.";
+    default:
+      return "O curso é o material. A entrega, a prova e a chamada ficam na turma.";
+  }
+}
+
+async function loadCourses(token: string, studying: boolean) {
+  const read = await readJson(token, studying ? "/courses/curriculum" : "/courses");
   if (read === null) {
     return null;
   }

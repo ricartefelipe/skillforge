@@ -231,7 +231,7 @@ h1 {
 
 .lede {
   margin: 0.35rem 0 0;
-  max-width: 36ch;
+  max-width: 42rem;
   color: var(--muted);
   font-family: var(--font-literata), serif;
   font-size: 1.15rem;
