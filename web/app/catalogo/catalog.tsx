@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { kindLabel, type Course } from "../../lib/catalog";
+import { ProgressMeter } from "../meter";
 import { LessonForm } from "./lesson-form";
 
 export type Study = {
@@ -8,6 +9,8 @@ export type Study = {
   cohortName: string;
   cohortHref: string;
   progress: string | null;
+  completed?: number | null;
+  total?: number | null;
   current: boolean;
   examReady: boolean;
   continueHref: string | null;
@@ -79,6 +82,7 @@ export function CatalogView({
         <p className="empty">{emptyMessage}</p>
       ) : null}
       {studies !== undefined && studies.length === 0 ? <p className="empty">{emptyMessage}</p> : null}
+      <div className="course-grid">
       {studies?.map((study) => (
         <section
           className={study.current ? "study current" : "study"}
@@ -91,6 +95,9 @@ export function CatalogView({
             {study.cohortName.startsWith("Turma") ? study.cohortName : `Turma ${study.cohortName}`}
           </p>
           {study.progress ? <p className="tally">{study.progress}</p> : null}
+          {study.completed != null && study.total != null ? (
+            <ProgressMeter completed={study.completed} total={study.total} />
+          ) : null}
           <p className="actions">
             <Link className="file-link" href={study.cohortHref}>
               Abrir a turma
@@ -108,6 +115,7 @@ export function CatalogView({
           </p>
         </section>
       ))}
+      </div>
       {studies === undefined
         ? courses?.map((course) => (
         <section className="tree" key={course.id} aria-label={course.name}>

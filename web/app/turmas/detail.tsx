@@ -87,9 +87,9 @@ export function CohortDetailView({
   const leads = canLeadPractices(role);
   const here = `/turmas/${cohort.id}`;
   return (
-    <div className="page">
-      <header className="intro">
-        <p className="kicker">Turma</p>
+    <div className="page classroom">
+      <header className="intro continue-card">
+        <p className="kicker">{cohort.course.name}</p>
         <h1>{cohort.name}</h1>
         <p className="lede">
           {role === "aluno"
@@ -98,9 +98,10 @@ export function CohortDetailView({
         </p>
       </header>
       {notice ? <p role="alert">{notice}</p> : null}
-      <p className="meta">
-        {cohort.course.name} · ministrada por {cohort.teacher}
-      </p>
+      <p className="meta">Ministrada por {cohort.teacher}</p>
+      {cohort.completed !== null && cohort.total !== null ? (
+        <ProgressMeter completed={cohort.completed} total={cohort.total} />
+      ) : null}
       <nav className="class-nav" aria-label="Seções da turma">
         <a href="#aulas">Aulas</a>
         <a href="#provas">Provas</a>

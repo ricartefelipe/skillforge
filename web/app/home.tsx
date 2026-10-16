@@ -58,27 +58,41 @@ export function SkillforgeHome({
   return (
     <Shell session={session}>
       <div className={`page reading-${liveness} readiness-${readiness}`}>
-        <header className="intro">
-          <p className="kicker">Ambiente</p>
-          <h1 aria-live="polite">{headline(liveness, readiness)}</h1>
-          <p className="lede">Construção de competências pela prática.</p>
-        </header>
         {session ? (
-          <p className="lede">Comece pela turma. O curso só guarda o material.</p>
-        ) : null}
-        {resume ? (
-          <p>
-            <Link href={resume.href}>
+          <header className="intro">
+            <p className="kicker">Escola</p>
+            <h1>Continuar aprendendo</h1>
+            <p className="lede">A aula, a turma e o boletim ficam separados. Comece de onde parou.</p>
+          </header>
+        ) : (
+          <header className="intro">
+            <p className="kicker">Ambiente</p>
+            <h1 aria-live="polite">{headline(liveness, readiness)}</h1>
+            <p className="lede">Construção de competências pela prática.</p>
+          </header>
+        )}
+        {session && resume ? (
+          <section className="continue-card" aria-label="Continuar">
+            <p className="kicker">{resume.courseName ?? "Próxima aula"}</p>
+            <h2>{resume.title}</h2>
+            <p className="meta">Siga no ponto em que a aula ficou.</p>
+            <Link className="file-link" href={resume.href}>
               {resume.courseName ? `Continuar em ${resume.courseName}: ${resume.title}` : `Continuar: ${resume.title}`}
             </Link>
-          </p>
+          </section>
         ) : null}
         {session ? (
-          <p>
-            <Link href="/turmas">Abrir turmas</Link>
-            {" · "}
-            <Link href="/catalogo">Ver cursos</Link>
-          </p>
+          <nav className="school-links" aria-label="Atalhos da escola">
+            <Link className="file-link" href="/turmas">
+              Minhas turmas
+            </Link>
+            <Link className="file-link" href="/catalogo">
+              Meus cursos
+            </Link>
+            <Link className="file-link" href="/boletim">
+              Boletim
+            </Link>
+          </nav>
         ) : null}
         <section className="panel access" aria-label="Acesso">
           {session ? (
