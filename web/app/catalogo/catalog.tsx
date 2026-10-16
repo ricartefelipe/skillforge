@@ -1,6 +1,16 @@
 import Link from "next/link";
 
 import { kindLabel, type Course } from "../../lib/catalog";
+
+export type Study = {
+  courseName: string;
+  cohortName: string;
+  cohortHref: string;
+  progress: string | null;
+  current: boolean;
+  continueHref: string | null;
+  continueTitle: string | null;
+};
 import { LessonForm } from "./lesson-form";
 
 export function CatalogView({
@@ -15,6 +25,7 @@ export function CatalogView({
   kicker = "Material",
   lede = "O curso é o material. A entrega, a prova e a chamada ficam na turma.",
   emptyMessage = "Nenhum curso ainda.",
+  studies,
   returnTo = "/catalogo",
   titleAs = "h1",
   query = "",
@@ -30,6 +41,7 @@ export function CatalogView({
   kicker?: string;
   lede?: string;
   emptyMessage?: string;
+  studies?: Study[];
   returnTo?: string;
   titleAs?: "h1" | "h2";
   query?: string;
@@ -62,8 +74,35 @@ export function CatalogView({
         </form>
       ) : null}
       {courses === null ? <p className="empty">O catálogo não responde.</p> : null}
-      {courses !== null && courses.length === 0 ? <p className="empty">{emptyMessage}</p> : null}
-      {courses?.map((course) => (
+      {studies === undefined && courses !== null && courses.length === 0 ? (
+        <p className="empty">{emptyMessage}</p>
+      ) : null}
+      {studies !== undefined && studies.length === 0 ? <p className="empty">{emptyMessage}</p> : null}
+      {studies?.map((study) => (
+        <section
+          className={study.current ? "study current" : "study"}
+          key={study.cohortHref}
+          aria-label={study.courseName}
+        >
+          {study.current ? <p className="now">Em andamento</p> : <p className="now quiet">Matriculado</p>}
+          <h2>{study.courseName}</h2>
+          <p className="meta">
+            {study.cohortName.startsWith("Turma") ? study.cohortName : `Turma ${study.cohortName}`}
+          </p>
+          {study.progress ? <p className="tally">{study.progress}</p> : null}
+          <p>
+            <Link href={study.cohortHref}>Abrir a turma</Link>
+            {study.continueHref && study.continueTitle ? (
+              <>
+                {" · "}
+                <Link href={study.continueHref}>Continuar: {study.continueTitle}</Link>
+              </>
+            ) : null}
+          </p>
+        </section>
+      ))}
+      {studies === undefined
+        ? courses?.map((course) => (
         <section className="tree" key={course.id} aria-label={course.name}>
           <h2>{course.name}</h2>
           <p className="course-name">
@@ -102,7 +141,8 @@ export function CatalogView({
             </section>
           ))}
         </section>
-      ))}
+      ))
+        : null}
     </div>
   );
 }
