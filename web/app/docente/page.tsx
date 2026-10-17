@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
+import type { ReactNode } from "react";
 
-import { loadSession } from "../../lib/access";
+import { loadSession, type Session } from "../../lib/access";
 import { cohortsFromBody } from "../../lib/cohort";
 import { ACCESS_COOKIE } from "../../lib/cookies";
 import { apiUrl } from "../../lib/openid";
@@ -14,31 +15,11 @@ export default async function Page() {
   const access = jar.get(ACCESS_COOKIE)?.value;
   const session = access ? await loadSession(access, apiUrl()) : null;
   if (!session || !access) {
-    return (
-      <Shell session={null}>
-        <div className="page">
-          <header className="intro">
-            <p className="kicker">Docente</p>
-            <h1>Correções</h1>
-          </header>
-          <p className="empty">Entre com a sua conta.</p>
-        </div>
-      </Shell>
-    );
+    return <Frame session={null} message="Entre com a sua conta." />;
   }
 
   if (session.role === "aluno") {
-    return (
-      <Shell session={session}>
-        <div className="page">
-          <header className="intro">
-            <p className="kicker">Docente</p>
-            <h1>Correções</h1>
-          </header>
-          <p className="empty">Esta área é de quem ministra.</p>
-        </div>
-      </Shell>
-    );
+    return <Frame session={session} message="Esta área é de quem ministra." />;
   }
 
   const cohorts = await loadCohorts(access);
@@ -53,27 +34,45 @@ export default async function Page() {
   }
 
   return (
+    <Frame session={session} lede="Abra a turma para ver entrega, prova e chamada. O material se publica em Cursos.">
+      {cohorts === null ? <p className="empty">As turmas não respondem.</p> : null}
+      {cohorts !== null && cohorts.length === 0 ? <p className="empty">Você ainda não ministra uma turma.</p> : null}
+      {cohorts?.map((cohort) => (
+        <section className="tree" key={cohort.id} aria-label={cohort.name}>
+          <h2>
+            <Link href={`/turmas/${cohort.id}`}>{cohort.name}</Link>
+          </h2>
+          <p className="course-name">{cohort.courseName}</p>
+          <p className="tally">{waiting.get(cohort.id) ?? 0} entregas sem devolutiva</p>
+          <p>
+            <Link href={`/turmas/${cohort.id}`}>Abrir a grade</Link>
+          </p>
+        </section>
+      ))}
+    </Frame>
+  );
+}
+
+function Frame({
+  session,
+  lede,
+  message,
+  children,
+}: {
+  session: Session | null;
+  lede?: string;
+  message?: string;
+  children?: ReactNode;
+}) {
+  return (
     <Shell session={session}>
       <div className="page">
         <header className="intro">
           <p className="kicker">Docente</p>
           <h1>Correções</h1>
-          <p className="lede">Abra a turma para ver entrega, prova e chamada. O material se publica em Cursos.</p>
+          {lede ? <p className="lede">{lede}</p> : null}
         </header>
-        {cohorts === null ? <p className="empty">As turmas não respondem.</p> : null}
-        {cohorts !== null && cohorts.length === 0 ? <p className="empty">Você ainda não ministra uma turma.</p> : null}
-        {cohorts?.map((cohort) => (
-          <section className="tree" key={cohort.id} aria-label={cohort.name}>
-            <h2>
-              <Link href={`/turmas/${cohort.id}`}>{cohort.name}</Link>
-            </h2>
-            <p className="course-name">{cohort.courseName}</p>
-            <p className="tally">{waiting.get(cohort.id) ?? 0} entregas sem devolutiva</p>
-            <p>
-              <Link href={`/turmas/${cohort.id}`}>Abrir a grade</Link>
-            </p>
-          </section>
-        ))}
+        {message ? <p className="empty">{message}</p> : children}
       </div>
     </Shell>
   );

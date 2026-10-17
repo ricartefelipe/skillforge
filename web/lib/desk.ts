@@ -11,62 +11,50 @@ export type Desk = {
   shortcuts: DeskLink[];
 };
 
+const agenda: DeskLink = { href: "/agenda", label: "Agenda" };
+const notices: DeskLink = { href: "/recados", label: "Recados" };
+const courses: DeskLink = { href: "/catalogo", label: "Meus cursos" };
+const classes: DeskLink = { href: "/turmas", label: "Minhas turmas" };
+const marking: DeskLink = { href: "/docente", label: "Correções" };
+
+function withCommon(nav: DeskLink[], rest: Omit<Desk, "nav">): Desk {
+  return { ...rest, nav: [...nav, agenda, notices] };
+}
+
 export function deskOf(role: string): Desk {
   switch (role) {
     case "aluno":
-      return {
+      return withCommon([courses, classes, { href: "/boletim", label: "Boletim" }], {
         kicker: "Aluno",
         title: "Continuar aprendendo",
         lede: "A aula em que você parou, as turmas e o boletim.",
-        nav: [
-          { href: "/catalogo", label: "Meus cursos" },
-          { href: "/turmas", label: "Minhas turmas" },
-          { href: "/boletim", label: "Boletim" },
-          { href: "/agenda", label: "Agenda" },
-          { href: "/recados", label: "Recados" },
-        ],
-        shortcuts: [
-          { href: "/catalogo", label: "Meus cursos" },
-          { href: "/turmas", label: "Minhas turmas" },
-          { href: "/boletim", label: "Boletim" },
-        ],
-      };
+        shortcuts: [courses, classes, { href: "/boletim", label: "Boletim" }],
+      });
     case "docente":
-      return {
+      return withCommon([marking, classes, courses], {
         kicker: "Docente",
         title: "Suas turmas",
         lede: "Corrija as entregas, publique as aulas e faça a chamada.",
-        nav: [
-          { href: "/docente", label: "Correções" },
-          { href: "/turmas", label: "Minhas turmas" },
-          { href: "/catalogo", label: "Meus cursos" },
-          { href: "/agenda", label: "Agenda" },
-          { href: "/recados", label: "Recados" },
-        ],
-        shortcuts: [
-          { href: "/docente", label: "Correções" },
-          { href: "/turmas", label: "Minhas turmas" },
-          { href: "/catalogo", label: "Publicar aulas" },
-        ],
-      };
+        shortcuts: [marking, classes, { href: "/catalogo", label: "Publicar aulas" }],
+      });
     case "administracao":
-      return {
-        kicker: "Administração",
-        title: "Administrar a escola",
-        lede: "Abra a turma, indique o docente e matricule o aluno. O material fica em Cursos.",
-        nav: [
+      return withCommon(
+        [
           { href: "/turmas", label: "Turmas" },
           { href: "/catalogo", label: "Cursos" },
-          { href: "/docente", label: "Correções" },
-          { href: "/agenda", label: "Agenda" },
-          { href: "/recados", label: "Recados" },
+          marking,
         ],
-        shortcuts: [
-          { href: "/turmas", label: "Abrir turma" },
-          { href: "/catalogo", label: "Criar curso" },
-          { href: "/docente", label: "Correções" },
-        ],
-      };
+        {
+          kicker: "Administração",
+          title: "Administrar a escola",
+          lede: "Abra a turma, indique o docente e matricule o aluno. O material fica em Cursos.",
+          shortcuts: [
+            { href: "/turmas", label: "Abrir turma" },
+            { href: "/catalogo", label: "Criar curso" },
+            marking,
+          ],
+        },
+      );
     default:
       return {
         kicker: "Escola",
