@@ -18,8 +18,8 @@ export default async function Page() {
       <Shell session={null}>
         <div className="page">
           <header className="intro">
-            <p className="kicker">Bancada</p>
-            <h1>Docente</h1>
+            <p className="kicker">Docente</p>
+            <h1>Correções</h1>
           </header>
           <p className="empty">Entre com a sua conta.</p>
         </div>
@@ -32,8 +32,8 @@ export default async function Page() {
       <Shell session={session}>
         <div className="page">
           <header className="intro">
-            <p className="kicker">Bancada</p>
-            <h1>Docente</h1>
+            <p className="kicker">Docente</p>
+            <h1>Correções</h1>
           </header>
           <p className="empty">Esta área é de quem ministra.</p>
         </div>
@@ -56,8 +56,8 @@ export default async function Page() {
     <Shell session={session}>
       <div className="page">
         <header className="intro">
-          <p className="kicker">Bancada</p>
-          <h1>Docente</h1>
+          <p className="kicker">Docente</p>
+          <h1>Correções</h1>
           <p className="lede">Abra a turma para ver entrega, prova e chamada. O material se publica em Cursos.</p>
         </header>
         {cohorts === null ? <p className="empty">As turmas não respondem.</p> : null}

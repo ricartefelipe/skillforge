@@ -109,17 +109,33 @@ describe("SkillforgeHome", () => {
     expect(within(access).getByText("Conta")).toBeInTheDocument();
     expect(within(access).getByText(label)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Sair" })).toBeInTheDocument();
-    expect(within(nav).getByRole("link", { name: "Turmas" })).toBeInTheDocument();
-    expect(within(nav).getByRole("link", { name: "Cursos" })).toBeInTheDocument();
     expect(within(nav).queryByRole("link", { name: "Aulas" })).not.toBeInTheDocument();
-    expect(within(nav).getByRole("link", { name: "Boletim" })).toBeInTheDocument();
     expect(within(nav).getByRole("link", { name: "Agenda" })).toBeInTheDocument();
     expect(within(nav).getByRole("link", { name: "Recados" })).toBeInTheDocument();
-    if (role === "aluno") {
-      expect(within(nav).queryByRole("link", { name: "Docente" })).not.toBeInTheDocument();
-    } else {
-      expect(within(nav).getByRole("link", { name: "Docente" })).toBeInTheDocument();
-    }
     expect(screen.queryByRole("link", { name: "Entrar" })).not.toBeInTheDocument();
+    if (role === "aluno") {
+      expect(screen.getByRole("heading", { level: 1, name: "Continuar aprendendo" })).toBeInTheDocument();
+      expect(within(nav).getByRole("link", { name: "Meus cursos" })).toBeInTheDocument();
+      expect(within(nav).getByRole("link", { name: "Boletim" })).toBeInTheDocument();
+      expect(within(nav).queryByRole("link", { name: "Correções" })).not.toBeInTheDocument();
+    } else if (role === "docente") {
+      expect(screen.getByRole("heading", { level: 1, name: "Suas turmas" })).toBeInTheDocument();
+      expect(within(nav).getByRole("link", { name: "Correções" })).toBeInTheDocument();
+      expect(within(nav).queryByRole("link", { name: "Boletim" })).not.toBeInTheDocument();
+    } else {
+      expect(screen.getByRole("heading", { level: 1, name: "Administrar a escola" })).toBeInTheDocument();
+      expect(within(nav).getByRole("link", { name: "Turmas" })).toBeInTheDocument();
+      expect(within(nav).getByRole("link", { name: "Cursos" })).toBeInTheDocument();
+      expect(within(nav).queryByRole("link", { name: "Boletim" })).not.toBeInTheDocument();
+    }
+  });
+
+  it("shows the role even when the account uses the same word", () => {
+    vi.stubGlobal("fetch", vi.fn(async () => probe("UP")));
+
+    render(<SkillforgeHome session={{ name: "Aluno", role: "aluno", label: "Aluno" }} />);
+
+    expect(screen.getAllByText("Aluno").length).toBeGreaterThan(1);
+    expect(screen.getByRole("heading", { level: 1, name: "Continuar aprendendo" })).toBeInTheDocument();
   });
 });
