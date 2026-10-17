@@ -2,12 +2,13 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import type { Session } from "../lib/access";
+import { deskOf } from "../lib/desk";
 import { ThemeToggle } from "./theme";
 
 export function Shell({ session, children }: { session: Session | null; children: ReactNode }) {
   return (
     <div className="shell">
-      <aside className="rail">
+      <aside className="rail" data-role={session?.role}>
         <Link href="/" className="brand">
           <Mark />
           <span className="wordmark">
@@ -18,16 +19,11 @@ export function Shell({ session, children }: { session: Session | null; children
         <ThemeToggle />
         <nav aria-label="Principal">
           {session ? (
-            <>
-              <Link href="/turmas">Turmas</Link>
-              <Link href="/catalogo">Cursos</Link>
-              <Link href="/boletim">Boletim</Link>
-              <Link href="/agenda">Agenda</Link>
-              <Link href="/recados">Recados</Link>
-              {session.role === "docente" || session.role === "administracao" ? (
-                <Link href="/docente">Docente</Link>
-              ) : null}
-            </>
+            deskOf(session.role).nav.map((link) => (
+              <Link key={link.href} href={link.href}>
+                {link.label}
+              </Link>
+            ))
           ) : (
             <Link href="/login" className="enter">
               Entrar
@@ -38,9 +34,7 @@ export function Shell({ session, children }: { session: Session | null; children
           <div className="rail-foot">
             <p className="who">
               {session.name}
-              {session.name.localeCompare(session.label, "pt-BR", { sensitivity: "accent" }) === 0 ? null : (
-                <span className="role">{session.label}</span>
-              )}
+              <span className="role">{session.label}</span>
             </p>
             <form action="/logout" method="post">
               <button type="submit" className="leave">

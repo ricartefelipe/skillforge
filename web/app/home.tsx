@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { Session } from "../lib/access";
+import { deskOf } from "../lib/desk";
 import { gaugeLabel, headline, readingFromProbe, type ProbeReading } from "../lib/probes";
 import { Shell } from "./shell";
 
@@ -55,14 +56,16 @@ export function SkillforgeHome({
     load(current);
   }, [load]);
 
+  const desk = session ? deskOf(session.role) : null;
+
   return (
     <Shell session={session}>
       <div className={`page reading-${liveness} readiness-${readiness}`}>
-        {session ? (
+        {desk ? (
           <header className="intro">
-            <p className="kicker">Escola</p>
-            <h1>Continuar aprendendo</h1>
-            <p className="lede">A aula, a turma e o boletim ficam separados. Comece de onde parou.</p>
+            <p className="kicker">{desk.kicker}</p>
+            <h1>{desk.title}</h1>
+            <p className="lede">{desk.lede}</p>
           </header>
         ) : (
           <header className="intro">
@@ -71,7 +74,7 @@ export function SkillforgeHome({
             <p className="lede">Construção de competências pela prática.</p>
           </header>
         )}
-        {session && resume ? (
+        {session?.role === "aluno" && resume ? (
           <section className="continue-card" aria-label="Continuar">
             <p className="kicker">{resume.courseName ?? "Próxima aula"}</p>
             <h2>{resume.title}</h2>
@@ -81,17 +84,13 @@ export function SkillforgeHome({
             </Link>
           </section>
         ) : null}
-        {session ? (
+        {desk ? (
           <nav className="school-links" aria-label="Atalhos da escola">
-            <Link className="file-link" href="/turmas">
-              Minhas turmas
-            </Link>
-            <Link className="file-link" href="/catalogo">
-              Meus cursos
-            </Link>
-            <Link className="file-link" href="/boletim">
-              Boletim
-            </Link>
+            {desk.shortcuts.map((link) => (
+              <Link key={link.href + link.label} className="file-link" href={link.href}>
+                {link.label}
+              </Link>
+            ))}
           </nav>
         ) : null}
         <section className="panel access" aria-label="Acesso">
@@ -99,9 +98,7 @@ export function SkillforgeHome({
             <article>
               <h2>Acesso</h2>
               <p className="who">{session.name}</p>
-              {session.name.localeCompare(session.label, "pt-BR", { sensitivity: "accent" }) === 0 ? null : (
-                <p className="role">{session.label}</p>
-              )}
+              <p className="role">{session.label}</p>
             </article>
           ) : (
             <article>

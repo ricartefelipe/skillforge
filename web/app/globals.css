@@ -197,10 +197,28 @@ a {
 }
 
 .rail .role {
-  color: var(--rail-dim);
+  justify-self: start;
+  width: fit-content;
+  margin-top: 0.15rem;
+  padding: 0.18rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(142, 183, 255, 0.18);
+  color: var(--rail-soft);
   font-family: var(--font-grotesk), sans-serif;
-  font-size: 0.78rem;
-  font-weight: 600;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.rail[data-role="docente"] .role {
+  background: rgba(126, 224, 192, 0.16);
+  color: #7ee0c0;
+}
+
+.rail[data-role="administracao"] .role {
+  background: rgba(196, 181, 253, 0.16);
+  color: #c4b5fd;
 }
 
 .rail button.leave {
