@@ -68,7 +68,10 @@ class CohortController {
 
     @GetMapping("/grades")
     List<ReportBody> grades(Authentication authentication) {
-        return cohorts.report(RequestActor.from(authentication)).stream().map(ReportBody::from).toList();
+        Actor actor = RequestActor.from(authentication);
+        // The answer key never travels to a student, on the report just as on the class page.
+        boolean revealKey = actor.role() != Role.ALUNO;
+        return cohorts.report(actor).stream().map(report -> ReportBody.from(report, revealKey)).toList();
     }
 
     @GetMapping("/cohorts")
@@ -454,7 +457,7 @@ class CohortController {
             String average,
             boolean certified) {
 
-        static ReportBody from(Report report) {
+        static ReportBody from(Report report, boolean revealKey) {
             return new ReportBody(
                     report.cohortId(),
                     report.cohortName(),
@@ -462,7 +465,7 @@ class CohortController {
                     report.practiceWeight(),
                     report.examWeight(),
                     report.practices().stream().map(PracticeBody::from).toList(),
-                    report.exams().stream().map(exam -> ExamBody.from(exam, true)).toList(),
+                    report.exams().stream().map(exam -> ExamBody.from(exam, revealKey)).toList(),
                     report.average(),
                     report.certified());
         }

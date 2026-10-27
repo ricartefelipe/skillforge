@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -206,6 +207,25 @@ class CatalogAccessTest {
                         .with(as("administracao")))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("too-large"));
+    }
+
+    @Test
+    void mediaAnswersARangeRequestWithTheAskedBytes() throws Exception {
+        String courseId = createCourse("Forja");
+        String moduleId = createModule(courseId, "Fundamentos");
+        byte[] mp4 = new byte[] {0, 0, 0, 24, 'f', 't', 'y', 'p'};
+        String videoId = createFile(moduleId, "Demonstração", "video", "demo.mp4", "video/mp4", mp4);
+
+        mvc.perform(get("/lessons/" + videoId + "/media").header("Range", "bytes=2-5").with(as("aluno")))
+                .andExpect(status().isPartialContent())
+                .andExpect(header().string("Content-Range", "bytes 2-5/8"))
+                .andExpect(header().string("Accept-Ranges", "bytes"))
+                .andExpect(content().bytes(new byte[] {0, 24, 'f', 't'}));
+
+        mvc.perform(get("/lessons/" + videoId + "/media").with(as("aluno")))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Accept-Ranges", "bytes"))
+                .andExpect(content().bytes(mp4));
     }
 
     private String createCourse(String name) throws Exception {

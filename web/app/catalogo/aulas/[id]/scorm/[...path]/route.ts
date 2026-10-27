@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { ACCESS_COOKIE } from "../../../../../../lib/cookies";
 import { apiUrl, webUrl } from "../../../../../../lib/openid";
+import { injectScormBridge, isHtml } from "../../../../../../lib/scorm";
 
 export async function GET(_request: Request, context: { params: Promise<{ id: string; path: string[] }> }) {
   const { id, path } = await context.params;
@@ -17,8 +18,16 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
   if (!response.ok) {
     return new NextResponse(null, { status: response.status });
   }
-  const bytes = await response.arrayBuffer();
   const type = response.headers.get("content-type") ?? "application/octet-stream";
+  // The page runs inside a sandboxed frame, so its own LMS runtime is handed to it here.
+  if (isHtml(type)) {
+    const html = injectScormBridge(await response.text());
+    return new NextResponse(html, {
+      status: 200,
+      headers: { "content-type": type, "cache-control": "private, no-store" },
+    });
+  }
+  const bytes = await response.arrayBuffer();
   return new NextResponse(bytes, {
     status: 200,
     headers: { "content-type": type, "cache-control": "private, no-store" },

@@ -170,6 +170,12 @@ public class CatalogApplication {
     public String authorize(java.util.UUID hint, String target, String iss) {
         String raw = courses.takeHint(hint).orElseThrow(() -> new Rejection(Failure.NOT_FOUND));
         String[] parts = raw.split("\\|", 3);
+        // Bind the signed assertion to the tool registered for this lesson; never post it to a target of choice.
+        UUID lessonId = UUID.fromString(parts[1]);
+        String registered = courses.toolUrl(lessonId).orElseThrow(() -> new Rejection(Failure.NOT_FOUND));
+        if (target == null || !target.equals(registered)) {
+            throw new Rejection(Failure.LAUNCH);
+        }
         long now = java.time.Instant.now().getEpochSecond();
         String payload = "{\"iss\":\"" + iss + "\",\"aud\":\"skillforge\",\"sub\":\"" + parts[0]
                 + "\",\"nonce\":\"" + parts[2] + "\",\"iat\":" + now + ",\"exp\":" + (now + 600)
