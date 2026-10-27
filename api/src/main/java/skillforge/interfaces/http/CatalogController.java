@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpRange;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -14,6 +16,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
@@ -133,9 +136,9 @@ class CatalogController {
     ResponseEntity<byte[]> asset(
             Authentication authentication,
             @PathVariable UUID id,
-            @PathVariable UUID assetId) {
-        LessonFile file = catalog.asset(RequestActor.from(authentication), id, assetId);
-        return ResponseEntity.ok().contentType(MediaType.parseMediaType(file.mediaType())).body(file.content());
+            @PathVariable UUID assetId,
+            @RequestHeader HttpHeaders headers) {
+        return serve(catalog.asset(RequestActor.from(authentication), id, assetId), headers);
     }
 
     @DeleteMapping("/lessons/{id}/assets/{assetId}")
@@ -234,9 +237,42 @@ class CatalogController {
     }
 
     @GetMapping("/lessons/{id}/media")
-    ResponseEntity<byte[]> media(Authentication authentication, @PathVariable UUID id) {
-        LessonFile file = catalog.media(RequestActor.from(authentication), id);
-        return ResponseEntity.ok().contentType(MediaType.parseMediaType(file.mediaType())).body(file.content());
+    ResponseEntity<byte[]> media(
+            Authentication authentication,
+            @PathVariable UUID id,
+            @RequestHeader HttpHeaders headers) {
+        return serve(catalog.media(RequestActor.from(authentication), id), headers);
+    }
+
+    // Serves a file whole, or just the asked byte range, so a player can seek without downloading it all.
+    private static ResponseEntity<byte[]> serve(LessonFile file, HttpHeaders headers) {
+        byte[] bytes = file.content();
+        MediaType type = MediaType.parseMediaType(file.mediaType());
+        List<HttpRange> ranges = headers.getRange();
+        if (ranges.isEmpty()) {
+            return ResponseEntity.ok()
+                    .contentType(type)
+                    .header(HttpHeaders.ACCEPT_RANGES, "bytes")
+                    .contentLength(bytes.length)
+                    .body(bytes);
+        }
+        long length = bytes.length;
+        HttpRange range = ranges.get(0);
+        long start = range.getRangeStart(length);
+        long end = range.getRangeEnd(length);
+        if (start >= length || start > end) {
+            return ResponseEntity.status(HttpStatus.REQUESTED_RANGE_NOT_SATISFIABLE)
+                    .header(HttpHeaders.CONTENT_RANGE, "bytes */" + length)
+                    .build();
+        }
+        int from = (int) start;
+        int to = (int) Math.min(end, length - 1);
+        return ResponseEntity.status(HttpStatus.PARTIAL_CONTENT)
+                .contentType(type)
+                .header(HttpHeaders.ACCEPT_RANGES, "bytes")
+                .header(HttpHeaders.CONTENT_RANGE, "bytes " + from + "-" + to + "/" + length)
+                .contentLength(to - from + 1)
+                .body(java.util.Arrays.copyOfRange(bytes, from, to + 1));
     }
 
     record LessonEdit(String title, String markdown) {
