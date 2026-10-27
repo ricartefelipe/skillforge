@@ -783,6 +783,71 @@ class CohortAccessTest {
                 .andExpect(jsonPath("$.exams[0].scores[0].grade").exists());
     }
 
+    @Test
+    void theReportNeverRevealsTheAnswerKeyToTheStudent() throws Exception {
+        String courseId = createCourse("Forja");
+        String morning = openCohort("Manhã", courseId, "docente");
+        enroll(morning, "aluno");
+        openExam(morning);
+
+        mvc.perform(get("/grades").with(as("aluno", "aluno")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].exams[0].questions[0].choices[0].label").value("Certa"))
+                .andExpect(jsonPath("$[0].exams[0].questions[0].choices[0].correct").doesNotExist())
+                .andExpect(jsonPath("$[0].exams[0].questions[0].choices[1].correct").doesNotExist());
+
+        mvc.perform(get("/grades").with(as("docente", "docente")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].exams[0].questions[0].choices[0].label").value("Certa"))
+                .andExpect(jsonPath("$[0].exams[0].questions[0].choices[0].correct").value(true));
+    }
+
+    @Test
+    void aModernLtiLaunchOnlyPostsToTheRegisteredTool() throws Exception {
+        String courseId = createCourse("Forja");
+        String moduleId = createModule(courseId, "Bancada");
+        mvc.perform(multipart("/modules/" + moduleId + "/lessons")
+                        .param("title", "Ferramenta")
+                        .param("kind", "lti")
+                        .param("launchUrl", "https://tool.example/launch")
+                        .param("secret", "segredo-longo")
+                        .param("authLogin", "https://tool.example/login")
+                        .with(as("administracao", "administracao")))
+                .andExpect(status().isCreated());
+        String toolId = first(JsonPath.read(
+                mvc.perform(get("/courses/curriculum").with(as("administracao", "administracao")))
+                        .andReturn()
+                        .getResponse()
+                        .getContentAsString(),
+                "$[0].modules[0].lessons[?(@.title == 'Ferramenta')].id"));
+
+        String target = "https://tool.example/launch";
+        String body = mvc.perform(get("/lti/auth")
+                        .param("lti_message_hint", launchHint(toolId))
+                        .param("target_link_uri", target))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        org.junit.jupiter.api.Assertions.assertTrue(body.contains("id_token"));
+        org.junit.jupiter.api.Assertions.assertTrue(body.contains(target));
+
+        mvc.perform(get("/lti/auth")
+                        .param("lti_message_hint", launchHint(toolId))
+                        .param("target_link_uri", "https://evil.example/collect"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("launch"));
+    }
+
+    private String launchHint(String toolId) throws Exception {
+        String launch = mvc.perform(get("/lessons/" + toolId + "/launch").with(as("aluno", "aluno")))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        return JsonPath.read(launch, "$.fields.lti_message_hint");
+    }
+
     private static byte[] scormZip() throws Exception {
         java.io.ByteArrayOutputStream buffer = new java.io.ByteArrayOutputStream();
         java.util.zip.ZipOutputStream zip = new java.util.zip.ZipOutputStream(buffer);
