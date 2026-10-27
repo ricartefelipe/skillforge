@@ -1,7 +1,9 @@
 package skillforge.domain.catalog;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -29,11 +31,21 @@ public final class ScormZip {
     public record Unpacked(String launchPath, List<Item> items, List<Entry> files) {
     }
 
+    private static final int MAX_ENTRIES = 500;
+
+    // A hostile package can compress to little yet expand to gigabytes, so the inflated size is bounded too.
+    static final long MAX_TOTAL_BYTES = 256L * 1024 * 1024;
+
     private ScormZip() {
     }
 
     public static Unpacked read(byte[] zip) {
+        return read(zip, MAX_TOTAL_BYTES);
+    }
+
+    static Unpacked read(byte[] zip, long maxTotalBytes) {
         Map<String, byte[]> files = new LinkedHashMap<>();
+        long budget = maxTotalBytes;
         try (ZipInputStream stream = new ZipInputStream(new ByteArrayInputStream(zip))) {
             ZipEntry entry;
             while ((entry = stream.getNextEntry()) != null) {
@@ -41,10 +53,12 @@ public final class ScormZip {
                     continue;
                 }
                 String path = normalize(entry.getName());
-                if (files.size() > 500) {
+                if (files.size() >= MAX_ENTRIES) {
                     throw new Rejection(Failure.TOO_LARGE);
                 }
-                files.put(path, stream.readAllBytes());
+                byte[] bytes = readCapped(stream, budget);
+                budget -= bytes.length;
+                files.put(path, bytes);
             }
         }
         catch (IOException ex) {
@@ -115,6 +129,25 @@ public final class ScormZip {
         }
         catch (Exception ex) {
             throw new Rejection(Failure.NOT_PACKAGE);
+        }
+    }
+
+    // Reads one entry without trusting its declared size, refusing the package once the budget is spent.
+    private static byte[] readCapped(InputStream stream, long budget) throws IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        byte[] chunk = new byte[8192];
+        long left = budget;
+        while (true) {
+            int want = (int) Math.min(chunk.length, left + 1);
+            int read = stream.read(chunk, 0, want);
+            if (read == -1) {
+                return out.toByteArray();
+            }
+            if (read > left) {
+                throw new Rejection(Failure.TOO_LARGE);
+            }
+            out.write(chunk, 0, read);
+            left -= read;
         }
     }
 

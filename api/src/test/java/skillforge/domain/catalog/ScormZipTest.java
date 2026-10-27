@@ -31,6 +31,23 @@ class ScormZipTest {
         assertEquals("not-package", rejection.failure().wire());
     }
 
+    @Test
+    void refusesAPackageThatInflatesBeyondTheBudget() throws Exception {
+        Rejection rejection = assertThrows(Rejection.class, () -> ScormZip.read(bomb(), 1024));
+
+        assertEquals("too-large", rejection.failure().wire());
+    }
+
+    private static byte[] bomb() throws Exception {
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        ZipOutputStream zip = new ZipOutputStream(buffer);
+        zip.putNextEntry(new ZipEntry("big.bin"));
+        zip.write(new byte[4096]);
+        zip.closeEntry();
+        zip.close();
+        return buffer.toByteArray();
+    }
+
     private static byte[] zip(boolean escape) throws Exception {
         ByteArrayOutputStream buffer = new ByteArrayOutputStream();
         ZipOutputStream zip = new ZipOutputStream(buffer);
