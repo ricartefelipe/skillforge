@@ -3,8 +3,9 @@ import { NextResponse } from "next/server";
 
 import { ACCESS_COOKIE } from "../../../../../lib/cookies";
 import { apiUrl, webUrl } from "../../../../../lib/openid";
+import { passThrough, rangeHeaders } from "../../../../../lib/media";
 
-export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
+export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params;
   const token = (await cookies()).get(ACCESS_COOKIE)?.value;
   if (!token) {
@@ -14,23 +15,11 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
   let response: Response;
   try {
     response = await fetch(`${apiUrl()}/lessons/${id}/media`, {
-      headers: { authorization: `Bearer ${token}` },
+      headers: rangeHeaders(request, token),
       cache: "no-store",
     });
   } catch {
     return new NextResponse(null, { status: 503 });
   }
-  if (!response.ok) {
-    return new NextResponse(null, { status: response.status });
-  }
-
-  const bytes = await response.arrayBuffer();
-  const type = response.headers.get("content-type") ?? "application/octet-stream";
-  return new NextResponse(bytes, {
-    status: 200,
-    headers: {
-      "content-type": type,
-      "cache-control": "private, no-store",
-    },
-  });
+  return passThrough(response);
 }
