@@ -38,8 +38,13 @@ export function isHtml(contentType: string | null): boolean {
 
 // Inserts the bridge as the first script the package sees, so API discovery finds it without walking out of
 // the sandbox. The script lands right after <head> (or <html>, or at the front) to run before package code.
-export function injectScormBridge(html: string): string {
-  const tag = `<script>${BRIDGE}</script>`;
+//
+// A <base> acompanha o shim quando informada: os endereços relativos do pacote passam a sair pelo
+// caminho que leva o bilhete de leitura, já que o cookie de sessão não acompanha um sub-recurso
+// pedido de dentro do sandbox.
+export function injectScormBridge(html: string, base?: string): string {
+  const tag = (base === undefined ? "" : `<meta name="referrer" content="no-referrer"><base href="${base}">`)
+    + `<script>${BRIDGE}</script>`;
   const head = /<head[^>]*>/i.exec(html);
   if (head) {
     const at = head.index + head[0].length;
