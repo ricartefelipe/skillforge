@@ -10,15 +10,21 @@ public interface CourseRepository {
 
     UUID addModule(UUID courseId, String name);
 
-    UUID addLesson(UUID moduleId, String title, LessonContent.Accepted content);
+    UUID addLesson(UUID moduleId, String title, LessonContent.Accepted content, MediaUpload media);
 
-    UUID addScorm(UUID moduleId, String title, byte[] zip);
+    UUID addScorm(UUID moduleId, String title, MediaUpload zip);
 
     void saveTool(UUID lessonId, String url, String secret);
 
     ScormOutline scormOutline(UUID lessonId, String student);
 
-    Optional<LessonFile> scormFile(UUID lessonId, String path);
+    Optional<MediaStream> scormFile(UUID lessonId, String path);
+
+    /** Emite um bilhete de leitura dos arquivos da lição para quem já abriu a aula. */
+    UUID issueScormTicket(UUID lessonId, String username);
+
+    /** Quem o bilhete autoriza a ler os arquivos desta lição, se ele existir e ainda valer. */
+    Optional<String> scormTicketHolder(UUID ticket, UUID lessonId);
 
     void trackScorm(UUID lessonId, String student, String status, Integer score, int position);
 
@@ -46,11 +52,11 @@ public interface CourseRepository {
 
     void reviseLesson(UUID lessonId, String title, String markdown);
 
-    UUID addAsset(UUID lessonId, String name, byte[] media, String mediaType);
+    UUID addAsset(UUID lessonId, String name, MediaUpload media, String mediaType);
 
     List<LessonAsset> assets(UUID lessonId);
 
-    Optional<LessonFile> asset(UUID lessonId, UUID assetId);
+    Optional<MediaStream> asset(UUID lessonId, UUID assetId);
 
     void removeAsset(UUID lessonId, UUID assetId);
 
@@ -62,7 +68,7 @@ public interface CourseRepository {
 
     Optional<LessonText> lesson(UUID id);
 
-    Optional<LessonFile> media(UUID id);
+    Optional<MediaStream> media(UUID id);
 
     Optional<UUID> courseOfModule(UUID moduleId);
 

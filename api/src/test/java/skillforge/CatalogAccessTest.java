@@ -1,5 +1,6 @@
 package skillforge;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
@@ -10,8 +11,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -64,7 +72,7 @@ class CatalogAccessTest {
         mvc.perform(get("/courses").with(as("administracao"))).andExpect(status().isOk());
         jdbc.update("""
                 TRUNCATE certificate, criterion_mark, criterion, presence, class_day, announcement, inbox,
-                mail_outbox, account_mail, scorm_item_track, scorm_item, scorm_track, scorm_file,
+                mail_outbox, account_mail, scorm_item_track, scorm_item, scorm_track, scorm_ticket, scorm_file,
                 lesson_tool, lti_hint, lti_key,
                 peer_review, study_member, study_group, exam_clock, sitting, attempt_answer, attempt,
                 choice, question, exam, bank_choice, bank_question, lesson_asset, reply, doubt, submission,
@@ -226,6 +234,106 @@ class CatalogAccessTest {
                 .andExpect(status().isOk())
                 .andExpect(header().string("Accept-Ranges", "bytes"))
                 .andExpect(content().bytes(mp4));
+    }
+
+    @Test
+    void mediaAnswersAnOpenEndedRangeFromTheOffsetToTheEnd() throws Exception {
+        String videoId = createVideo();
+
+        mvc.perform(get("/lessons/" + videoId + "/media").header("Range", "bytes=28-").with(as("aluno")))
+                .andExpect(status().isPartialContent())
+                .andExpect(header().string("Content-Range", "bytes 28-31/32"))
+                .andExpect(content().bytes(Arrays.copyOfRange(video(), 28, 32)));
+    }
+
+    @Test
+    void mediaAnswersASuffixRangeWithTheLastBytes() throws Exception {
+        String videoId = createVideo();
+
+        mvc.perform(get("/lessons/" + videoId + "/media").header("Range", "bytes=-5").with(as("aluno")))
+                .andExpect(status().isPartialContent())
+                .andExpect(header().string("Content-Range", "bytes 27-31/32"))
+                .andExpect(content().bytes(Arrays.copyOfRange(video(), 27, 32)));
+    }
+
+    @Test
+    void mediaRefusesARangeThatStartsPastTheEnd() throws Exception {
+        String videoId = createVideo();
+
+        mvc.perform(get("/lessons/" + videoId + "/media").header("Range", "bytes=99-200").with(as("aluno")))
+                .andExpect(status().isRequestedRangeNotSatisfiable())
+                .andExpect(header().string("Content-Range", "bytes */32"));
+    }
+
+    @Test
+    void aMalformedRangeIsIgnoredAndTheWholeFileGoesOut() throws Exception {
+        String videoId = createVideo();
+
+        mvc.perform(get("/lessons/" + videoId + "/media").header("Range", "paginas=1-2").with(as("aluno")))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Accept-Ranges", "bytes"))
+                .andExpect(content().bytes(video()));
+    }
+
+    @Test
+    void mediaNeedsAnAuthenticatedActor() throws Exception {
+        String videoId = createVideo();
+
+        mvc.perform(get("/lessons/" + videoId + "/media"))
+                .andExpect(status().isUnauthorized());
+
+        mvc.perform(get("/lessons/" + videoId + "/media").with(as("docente")))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void concurrentRangeRequestsEachGetTheirOwnBytes() throws Exception {
+        String videoId = createVideo();
+        byte[] expected = video();
+        int readers = 8;
+        ExecutorService pool = Executors.newFixedThreadPool(readers);
+        try {
+            List<Callable<byte[]>> calls = new ArrayList<>();
+            for (int reader = 0; reader < readers; reader++) {
+                int from = reader * 4;
+                calls.add(() -> mvc.perform(get("/lessons/" + videoId + "/media")
+                                .header("Range", "bytes=" + from + "-" + (from + 3))
+                                .with(as("aluno")))
+                        .andExpect(status().isPartialContent())
+                        .andReturn()
+                        .getResponse()
+                        .getContentAsByteArray());
+            }
+            List<Future<byte[]>> answers = pool.invokeAll(calls);
+            for (int reader = 0; reader < readers; reader++) {
+                assertArrayEquals(
+                        Arrays.copyOfRange(expected, reader * 4, reader * 4 + 4),
+                        answers.get(reader).get(),
+                        "faixa do leitor " + reader);
+            }
+        }
+        finally {
+            pool.shutdownNow();
+        }
+    }
+
+    private static byte[] video() {
+        byte[] bytes = new byte[32];
+        bytes[3] = 24;
+        bytes[4] = 'f';
+        bytes[5] = 't';
+        bytes[6] = 'y';
+        bytes[7] = 'p';
+        for (int index = 8; index < bytes.length; index++) {
+            bytes[index] = (byte) index;
+        }
+        return bytes;
+    }
+
+    private String createVideo() throws Exception {
+        String courseId = createCourse("Forja " + UUID.randomUUID());
+        String moduleId = createModule(courseId, "Fundamentos");
+        return createFile(moduleId, "Demonstração", "video", "demo.mp4", "video/mp4", video());
     }
 
     private String createCourse(String name) throws Exception {

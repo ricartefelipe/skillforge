@@ -16,7 +16,8 @@ import skillforge.domain.catalog.ModuleOrder;
 import skillforge.domain.catalog.ScormOutline;
 import skillforge.domain.catalog.SignedLaunch;
 import skillforge.domain.catalog.LessonContent;
-import skillforge.domain.catalog.LessonFile;
+import skillforge.domain.catalog.MediaStream;
+import skillforge.domain.catalog.MediaUpload;
 import skillforge.domain.catalog.LessonText;
 import skillforge.domain.cohort.CourseAccess;
 import skillforge.domain.identity.Actor;
@@ -82,24 +83,25 @@ public class CatalogApplication {
             String rawTitle,
             String kind,
             String markdown,
-            byte[] media,
+            MediaUpload media,
             String launchUrl,
             String secret,
             String authLogin) {
         UUID courseId = courses.courseOfModule(moduleId).orElseThrow(() -> new Rejection(Failure.NOT_FOUND));
         requireWriter(actor, courseId);
         String title = Names.require(rawTitle, Failure.BLANK_TITLE);
-        LessonContent.Decision decision = LessonContent.decide(kind, markdown, media, bounds.current());
+        LessonContent.Decision decision = LessonContent.decide(
+                kind, markdown, media == null ? null : media.probe(), bounds.current());
         return switch (decision) {
             case LessonContent.Rejected rejected -> throw new Rejection(rejected.failure());
             case LessonContent.Accepted accepted when accepted.kind() == LessonKind.SCORM -> new Lesson(
-                    courses.addScorm(moduleId, title, accepted.media()),
+                    courses.addScorm(moduleId, title, media),
                     title,
                     LessonKind.SCORM);
             case LessonContent.Accepted accepted when accepted.kind() == LessonKind.LTI -> openTool(
                     moduleId, title, accepted, launchUrl, secret, authLogin);
             case LessonContent.Accepted accepted -> new Lesson(
-                    courses.addLesson(moduleId, title, accepted),
+                    courses.addLesson(moduleId, title, accepted, media),
                     title,
                     accepted.kind());
         };
@@ -115,8 +117,20 @@ public class CatalogApplication {
         return outline;
     }
 
-    public LessonFile scormFile(Actor actor, UUID lessonId, String path) {
+    public MediaStream scormFile(Actor actor, UUID lessonId, String path) {
         Objects.requireNonNull(actor, "actor");
+        return courses.scormFile(lessonId, path).orElseThrow(() -> new Rejection(Failure.NOT_FOUND));
+    }
+
+    /** Um bilhete só nasce de quem tem acesso ao pacote: a mesma regra de abrir a aula. */
+    public UUID scormTicket(Actor actor, UUID lessonId) {
+        scormLaunch(actor, lessonId);
+        return courses.issueScormTicket(lessonId, actor.username());
+    }
+
+    /** Arquivo do pacote lido com bilhete em vez de sessão; bilhete alheio, vencido ou de outra lição é 404. */
+    public MediaStream scormFileByTicket(UUID ticket, UUID lessonId, String path) {
+        courses.scormTicketHolder(ticket, lessonId).orElseThrow(() -> new Rejection(Failure.NOT_FOUND));
         return courses.scormFile(lessonId, path).orElseThrow(() -> new Rejection(Failure.NOT_FOUND));
     }
 
@@ -218,7 +232,7 @@ public class CatalogApplication {
                 || secret.length() > Names.MAX) {
             throw new Rejection(Failure.LAUNCH);
         }
-        UUID id = courses.addLesson(moduleId, title, accepted);
+        UUID id = courses.addLesson(moduleId, title, accepted, null);
         courses.saveTool(id, launchUrl.trim(), secret);
         if (authLogin != null && (authLogin.startsWith("http://") || authLogin.startsWith("https://"))) {
             courses.modernTool(id, authLogin.trim());
@@ -246,11 +260,13 @@ public class CatalogApplication {
         courses.reviseLesson(lessonId, title, text);
     }
 
-    public LessonAsset addAsset(Actor actor, UUID lessonId, String rawName, String kind, byte[] media) {
+    public LessonAsset addAsset(Actor actor, UUID lessonId, String rawName, String kind, MediaUpload media) {
         UUID courseId = courses.courseOfLesson(lessonId).orElseThrow(() -> new Rejection(Failure.NOT_FOUND));
         requireWriter(actor, courseId);
         String name = Names.require(rawName, Failure.BLANK_TITLE);
-        LessonContent.Accepted accepted = switch (LessonContent.decide(kind, null, media, bounds.current())) {
+        LessonContent.Decision decision = LessonContent.decide(
+                kind, null, media == null ? null : media.probe(), bounds.current());
+        LessonContent.Accepted accepted = switch (decision) {
             case LessonContent.Rejected rejected -> throw new Rejection(rejected.failure());
             case LessonContent.Accepted file -> file;
         };
@@ -258,7 +274,7 @@ public class CatalogApplication {
             throw new Rejection(Failure.FILE_ONLY);
         }
         return new LessonAsset(
-                courses.addAsset(lessonId, name, accepted.media(), accepted.mediaType()),
+                courses.addAsset(lessonId, name, media, accepted.mediaType()),
                 name,
                 accepted.mediaType());
     }
@@ -269,7 +285,7 @@ public class CatalogApplication {
         return courses.assets(lessonId);
     }
 
-    public LessonFile asset(Actor actor, UUID lessonId, UUID assetId) {
+    public MediaStream asset(Actor actor, UUID lessonId, UUID assetId) {
         Objects.requireNonNull(actor, "actor");
         return courses.asset(lessonId, assetId).orElseThrow(() -> new Rejection(Failure.NOT_FOUND));
     }
@@ -285,7 +301,7 @@ public class CatalogApplication {
         return courses.lesson(id).orElseThrow(() -> new Rejection(Failure.NOT_FOUND));
     }
 
-    public LessonFile media(Actor actor, UUID id) {
+    public MediaStream media(Actor actor, UUID id) {
         Objects.requireNonNull(actor, "actor");
         return courses.media(id).orElseThrow(() -> new Rejection(Failure.NOT_FOUND));
     }

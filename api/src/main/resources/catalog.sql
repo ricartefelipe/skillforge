@@ -404,3 +404,22 @@ CREATE TABLE IF NOT EXISTS inbox (
     CONSTRAINT inbox_account_not_blank CHECK (length(btrim(account)) > 0),
     CONSTRAINT inbox_body_not_blank CHECK (length(btrim(body)) > 0)
 );
+
+-- A ticket lets the sandboxed package page fetch its own files without the session: it is issued
+-- with the session already verified, bound to one lesson and one learner, and expires. Rows live in
+-- Postgres so any API instance can honour a ticket another one issued.
+CREATE TABLE IF NOT EXISTS scorm_ticket (
+    token uuid PRIMARY KEY,
+    lesson_id uuid NOT NULL REFERENCES lesson (id),
+    username text NOT NULL,
+    expires_at timestamptz NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS scorm_ticket_lesson ON scorm_ticket (lesson_id);
+
+-- Media columns are read by byte range. EXTERNAL keeps new values uncompressed in TOAST, so the
+-- server fetches only the asked slice instead of rebuilding the whole value to cut a piece out.
+-- Existing values stay readable and are left as they are; this changes layout for new writes only.
+ALTER TABLE lesson ALTER COLUMN media SET STORAGE EXTERNAL;
+ALTER TABLE lesson_asset ALTER COLUMN media SET STORAGE EXTERNAL;
+ALTER TABLE scorm_file ALTER COLUMN media SET STORAGE EXTERNAL;

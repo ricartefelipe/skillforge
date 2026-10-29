@@ -13,32 +13,17 @@ public final class LessonContent {
     public sealed interface Decision {
     }
 
-    public record Accepted(LessonKind kind, String markdown, byte[] media, String mediaType) implements Decision {
+    public record Accepted(LessonKind kind, String markdown, long mediaSize, String mediaType) implements Decision {
 
         public Accepted {
             Objects.requireNonNull(kind, "kind");
-            media = media == null ? null : media.clone();
-        }
-
-        @Override
-        public byte[] media() {
-            return media == null ? null : media.clone();
-        }
-
-        @Override
-        public boolean equals(Object other) {
-            if (!(other instanceof Accepted accepted)) {
-                return false;
+            if (mediaSize < 0) {
+                throw new IllegalArgumentException("mediaSize");
             }
-            return kind == accepted.kind
-                    && Objects.equals(markdown, accepted.markdown)
-                    && Arrays.equals(media, accepted.media())
-                    && Objects.equals(mediaType, accepted.mediaType);
         }
 
-        @Override
-        public int hashCode() {
-            return Objects.hash(kind, markdown, Arrays.hashCode(media), mediaType);
+        public boolean hasMedia() {
+            return mediaSize > 0;
         }
 
     }
@@ -58,7 +43,7 @@ public final class LessonContent {
     private LessonContent() {
     }
 
-    public static Decision decide(String kind, String markdown, byte[] media, Limits limits) {
+    public static Decision decide(String kind, String markdown, MediaProbe media, Limits limits) {
         Objects.requireNonNull(limits, "limits");
         LessonKind parsed = LessonKind.parse(kind).orElse(null);
         if (parsed == null) {
@@ -83,20 +68,19 @@ public final class LessonContent {
         };
     }
 
-    private static Decision markdown(String markdown, byte[] media, int max) {
-        boolean hasFile = media != null && media.length > 0;
-        if (hasFile || markdown == null || markdown.isBlank()) {
+    private static Decision markdown(String markdown, MediaProbe media, int max) {
+        if (hasFile(media) || markdown == null || markdown.isBlank()) {
             return new Rejected(Failure.MARKDOWN_ONLY);
         }
         if (markdown.length() > max) {
             return new Rejected(Failure.TOO_LARGE);
         }
-        return new Accepted(LessonKind.MARKDOWN, markdown, null, null);
+        return new Accepted(LessonKind.MARKDOWN, markdown, 0, null);
     }
 
     private static Decision file(
             String markdown,
-            byte[] media,
+            MediaProbe media,
             long max,
             String fixedType,
             Failure invalid,
@@ -105,79 +89,90 @@ public final class LessonContent {
         if (markdown != null && !markdown.isBlank()) {
             return new Rejected(Failure.FILE_ONLY);
         }
-        if (media == null || media.length == 0) {
+        if (!hasFile(media)) {
             return new Rejected(invalid);
         }
-        if (media.length > max) {
+        if (media.size() > max) {
             return new Rejected(Failure.TOO_LARGE);
         }
-        String detected = magic.detect(media);
+        String detected = magic.detect(media.head());
         if (detected == null) {
             return new Rejected(invalid);
         }
         String mediaType = fixedType == null ? detected : fixedType;
-        return new Accepted(kind, null, media, mediaType);
+        return new Accepted(kind, null, media.size(), mediaType);
     }
 
-    private static Decision ebook(String markdown, byte[] media, long max) {
+    private static Decision ebook(String markdown, MediaProbe media, long max) {
         if (markdown != null && !markdown.isBlank()) {
             return new Rejected(Failure.FILE_ONLY);
         }
-        if (media == null || media.length == 0 || pdf(media) == null && epub(media) == null) {
+        if (!hasFile(media)) {
             return new Rejected(Failure.NOT_EBOOK);
         }
-        if (pdf(media) != null) {
+        byte[] head = media.head();
+        if (pdf(head) == null && epub(head) == null) {
+            return new Rejected(Failure.NOT_EBOOK);
+        }
+        if (pdf(head) != null) {
             return file(null, media, max, "application/pdf", Failure.NOT_EBOOK, LessonContent::pdf, LessonKind.PDF);
         }
         return file(null, media, max, "application/epub+zip", Failure.NOT_EBOOK, LessonContent::epub, LessonKind.EBOOK);
     }
 
-    private static String pdf(byte[] media) {
-        byte[] header = "%PDF".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
-        if (media.length < header.length || !Arrays.equals(media, 0, header.length, header, 0, header.length)) {
+    private static boolean hasFile(MediaProbe media) {
+        return media != null && !media.isEmpty();
+    }
+
+    private static String pdf(byte[] head) {
+        byte[] magic = "%PDF".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+        if (head.length < magic.length || !Arrays.equals(head, 0, magic.length, magic, 0, magic.length)) {
             return null;
         }
         return "application/pdf";
     }
 
-    private static String epub(byte[] media) {
-        if (media.length < 4 || media[0] != 'P' || media[1] != 'K' || media[2] != 3 || media[3] != 4) {
+    private static String epub(byte[] head) {
+        if (!isZip(head)) {
             return null;
         }
-        int window = Math.min(media.length, 200);
-        String head = new String(media, 0, window, java.nio.charset.StandardCharsets.ISO_8859_1);
-        if (!head.contains("application/epub+zip")) {
+        int window = Math.min(head.length, 200);
+        String start = new String(head, 0, window, java.nio.charset.StandardCharsets.ISO_8859_1);
+        if (!start.contains("application/epub+zip")) {
             return null;
         }
         return "application/epub+zip";
     }
 
-    private static Decision external(String markdown, byte[] media) {
-        boolean hasFile = media != null && media.length > 0;
-        if (hasFile || markdown != null && !markdown.isBlank()) {
+    private static Decision external(String markdown, MediaProbe media) {
+        if (hasFile(media) || markdown != null && !markdown.isBlank()) {
             return new Rejected(Failure.FILE_ONLY);
         }
-        return new Accepted(LessonKind.LTI, null, null, null);
+        return new Accepted(LessonKind.LTI, null, 0, null);
     }
 
-    private static String zip(byte[] media) {
-        if (media.length < 4 || media[0] != 'P' || media[1] != 'K' || media[2] != 3 || media[3] != 4) {
+    private static String zip(byte[] head) {
+        if (!isZip(head)) {
             return null;
         }
         return "application/zip";
     }
 
-    private static String videoType(byte[] media) {
-        if (media.length >= 4
-                && (media[0] & 0xff) == 0x1a
-                && (media[1] & 0xff) == 0x45
-                && (media[2] & 0xff) == 0xdf
-                && (media[3] & 0xff) == 0xa3) {
+    private static boolean isZip(byte[] head) {
+        return head.length >= 4 && head[0] == 'P' && head[1] == 'K' && head[2] == 3 && head[3] == 4;
+    }
+
+    private static String videoType(byte[] head) {
+        if (head.length >= 4
+                && (head[0] & 0xff) == 0x1a
+                && (head[1] & 0xff) == 0x45
+                && (head[2] & 0xff) == 0xdf
+                && (head[3] & 0xff) == 0xa3) {
             return "video/webm";
         }
-        int last = Math.min(media.length - 4, 64);
+        int last = Math.min(head.length - 4, 64);
         for (int index = 0; index <= last; index++) {
-            if (media[index] == 'f' && media[index + 1] == 't' && media[index + 2] == 'y' && media[index + 3] == 'p') {
+            if (head[index] == 'f' && head[index + 1] == 't' && head[index + 2] == 'y' && head[index + 3] == 'p') {
                 return "video/mp4";
             }
         }
@@ -186,7 +181,7 @@ public final class LessonContent {
 
     @FunctionalInterface
     private interface Magic {
-        String detect(byte[] media);
+        String detect(byte[] head);
     }
 
 }
