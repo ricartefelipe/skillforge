@@ -1,6 +1,7 @@
 package skillforge.interfaces.http;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 import java.util.UUID;
 
@@ -21,14 +22,16 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import jakarta.servlet.http.HttpServletResponse;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 import skillforge.application.catalog.CatalogApplication;
 import skillforge.domain.catalog.Course;
 import skillforge.domain.catalog.Lesson;
 import skillforge.domain.catalog.LessonAsset;
-import skillforge.domain.catalog.LessonFile;
 import skillforge.domain.catalog.LessonText;
+import skillforge.domain.catalog.MediaStream;
 import skillforge.domain.catalog.ModuleOrder;
 import skillforge.domain.catalog.Module;
 
@@ -87,14 +90,13 @@ class CatalogController {
             @RequestParam(required = false) String launchUrl,
             @RequestParam(required = false) String secret,
             @RequestParam(required = false) String authLogin) throws IOException {
-        byte[] media = file == null || file.isEmpty() ? null : file.getBytes();
         Lesson lesson = catalog.createLesson(
                 RequestActor.from(authentication),
                 moduleId,
                 title,
                 kind,
                 markdown,
-                media,
+                MultipartMedia.of(file),
                 launchUrl,
                 secret,
                 authLogin);
@@ -123,7 +125,7 @@ class CatalogController {
                 id,
                 name,
                 kind,
-                file == null ? null : file.getBytes());
+                MultipartMedia.of(file));
         return ResponseEntity.status(HttpStatus.CREATED).body(asset);
     }
 
@@ -133,12 +135,13 @@ class CatalogController {
     }
 
     @GetMapping("/lessons/{id}/assets/{assetId}")
-    ResponseEntity<byte[]> asset(
+    void asset(
             Authentication authentication,
             @PathVariable UUID id,
             @PathVariable UUID assetId,
-            @RequestHeader HttpHeaders headers) {
-        return serve(catalog.asset(RequestActor.from(authentication), id, assetId), headers);
+            @RequestHeader HttpHeaders headers,
+            HttpServletResponse response) throws IOException {
+        serve(catalog.asset(RequestActor.from(authentication), id, assetId), headers, response);
     }
 
     @DeleteMapping("/lessons/{id}/assets/{assetId}")
@@ -167,12 +170,33 @@ class CatalogController {
     }
 
     @GetMapping("/lessons/{id}/scorm/file")
-    ResponseEntity<byte[]> scormFile(
+    void scormFile(
             Authentication authentication,
             @PathVariable UUID id,
-            @RequestParam String path) {
-        LessonFile file = catalog.scormFile(RequestActor.from(authentication), id, path);
-        return ResponseEntity.ok().contentType(MediaType.parseMediaType(file.mediaType())).body(file.content());
+            @RequestParam String path,
+            @RequestHeader HttpHeaders headers,
+            HttpServletResponse response) throws IOException {
+        serve(catalog.scormFile(RequestActor.from(authentication), id, path), headers, response);
+    }
+
+    @PostMapping("/lessons/{id}/scorm/ticket")
+    ResponseEntity<TicketBody> scormTicket(Authentication authentication, @PathVariable UUID id) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(new TicketBody(catalog.scormTicket(RequestActor.from(authentication), id)));
+    }
+
+    // The package page runs in a sandbox and cannot present the session, so it presents the ticket.
+    @GetMapping("/lessons/{id}/scorm/files/{ticket}")
+    void scormFileByTicket(
+            @PathVariable UUID id,
+            @PathVariable UUID ticket,
+            @RequestParam String path,
+            @RequestHeader HttpHeaders headers,
+            HttpServletResponse response) throws IOException {
+        // The ticket is a credential in the URL: no caching downstream, and no Referer carrying it out.
+        response.setHeader(HttpHeaders.CACHE_CONTROL, "private, no-store");
+        response.setHeader("Referrer-Policy", "no-referrer");
+        serve(catalog.scormFileByTicket(ticket, id, path), headers, response);
     }
 
     @PostMapping("/lessons/{id}/scorm/commit")
@@ -237,42 +261,63 @@ class CatalogController {
     }
 
     @GetMapping("/lessons/{id}/media")
-    ResponseEntity<byte[]> media(
+    void media(
             Authentication authentication,
             @PathVariable UUID id,
-            @RequestHeader HttpHeaders headers) {
-        return serve(catalog.media(RequestActor.from(authentication), id), headers);
+            @RequestHeader HttpHeaders headers,
+            HttpServletResponse response) throws IOException {
+        serve(catalog.media(RequestActor.from(authentication), id), headers, response);
     }
 
-    // Serves a file whole, or just the asked byte range, so a player can seek without downloading it all.
-    private static ResponseEntity<byte[]> serve(LessonFile file, HttpHeaders headers) {
-        byte[] bytes = file.content();
-        MediaType type = MediaType.parseMediaType(file.mediaType());
-        List<HttpRange> ranges = headers.getRange();
+    /**
+     * Serves a file whole, or just the asked byte range, so a player can seek without downloading it all.
+     *
+     * <p>A resposta é escrita aqui, e não devolvida como corpo, para que o recorte da faixa seja o
+     * desta classe: um corpo do tipo {@code Resource} faria o Spring reinterpretar o {@code Range}.
+     */
+    private static void serve(MediaStream media, HttpHeaders headers, HttpServletResponse response)
+            throws IOException {
+        long length = media.size();
+        response.setHeader(HttpHeaders.ACCEPT_RANGES, "bytes");
+        response.setContentType(media.mediaType());
+        List<HttpRange> ranges = asked(headers);
         if (ranges.isEmpty()) {
-            return ResponseEntity.ok()
-                    .contentType(type)
-                    .header(HttpHeaders.ACCEPT_RANGES, "bytes")
-                    .contentLength(bytes.length)
-                    .body(bytes);
+            response.setStatus(HttpStatus.OK.value());
+            response.setContentLengthLong(length);
+            write(media, 0, length, response);
+            return;
         }
-        long length = bytes.length;
         HttpRange range = ranges.get(0);
         long start = range.getRangeStart(length);
         long end = range.getRangeEnd(length);
         if (start >= length || start > end) {
-            return ResponseEntity.status(HttpStatus.REQUESTED_RANGE_NOT_SATISFIABLE)
-                    .header(HttpHeaders.CONTENT_RANGE, "bytes */" + length)
-                    .build();
+            response.setStatus(HttpStatus.REQUESTED_RANGE_NOT_SATISFIABLE.value());
+            response.setHeader(HttpHeaders.CONTENT_RANGE, "bytes */" + length);
+            return;
         }
-        int from = (int) start;
-        int to = (int) Math.min(end, length - 1);
-        return ResponseEntity.status(HttpStatus.PARTIAL_CONTENT)
-                .contentType(type)
-                .header(HttpHeaders.ACCEPT_RANGES, "bytes")
-                .header(HttpHeaders.CONTENT_RANGE, "bytes " + from + "-" + to + "/" + length)
-                .contentLength(to - from + 1)
-                .body(java.util.Arrays.copyOfRange(bytes, from, to + 1));
+        long last = Math.min(end, length - 1);
+        long count = last - start + 1;
+        response.setStatus(HttpStatus.PARTIAL_CONTENT.value());
+        response.setHeader(HttpHeaders.CONTENT_RANGE, "bytes " + start + "-" + last + "/" + length);
+        response.setContentLengthLong(count);
+        write(media, start, count, response);
+    }
+
+    private static void write(MediaStream media, long offset, long count, HttpServletResponse response)
+            throws IOException {
+        try (InputStream content = media.open(offset, count)) {
+            content.transferTo(response.getOutputStream());
+        }
+    }
+
+    // A malformed Range is ignored and the whole file goes out, as RFC 7233 requires.
+    private static List<HttpRange> asked(HttpHeaders headers) {
+        try {
+            return headers.getRange();
+        }
+        catch (IllegalArgumentException malformed) {
+            return List.of();
+        }
     }
 
     record LessonEdit(String title, String markdown) {
@@ -282,6 +327,9 @@ class CatalogController {
     }
 
     record TrackBody(String status, Integer score, Integer position) {
+    }
+
+    record TicketBody(UUID ticket) {
     }
 
     record OrderBody(java.util.List<ModuleOrderBody> modules) {

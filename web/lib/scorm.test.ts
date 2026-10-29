@@ -45,3 +45,20 @@ describe("readScormCommit", () => {
     expect(readScormCommit(null)).toBeNull();
   });
 });
+
+describe("injectScormBridge com base", () => {
+  it("coloca a base antes do conteúdo, para os endereços relativos do pacote saírem por ela", () => {
+    const html = injectScormBridge(
+      '<html><head><link rel="stylesheet" href="assets/estilo.css"></head><body></body></html>',
+      "/catalogo/aulas/aula-1/scorm-arquivo/bilhete-1/",
+    );
+
+    expect(html).toContain('<base href="/catalogo/aulas/aula-1/scorm-arquivo/bilhete-1/">');
+    expect(html).toContain('<meta name="referrer" content="no-referrer">');
+    expect(html.indexOf("<base")).toBeLessThan(html.indexOf("assets/estilo.css"));
+  });
+
+  it("não escreve base nenhuma quando ela não é informada", () => {
+    expect(injectScormBridge("<html><head></head><body></body></html>")).not.toContain("<base");
+  });
+});
