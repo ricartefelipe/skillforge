@@ -2,6 +2,7 @@ package skillforge.infrastructure.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -22,6 +23,8 @@ class AccessSecurity {
         http.formLogin(AbstractHttpConfigurer::disable);
         http.authorizeHttpRequests(auth -> auth
                 .requestMatchers("/actuator/health", "/actuator/health/**", "/lti/**").permitAll()
+                // The sandboxed package page cannot send the session; the ticket in the path authorizes it.
+                .requestMatchers(HttpMethod.GET, "/lessons/*/scorm/files/*").permitAll()
                 .requestMatchers("/me").authenticated()
                 .requestMatchers("/courses", "/courses/**", "/modules/**", "/lessons/**").authenticated()
                 .requestMatchers("/cohorts", "/cohorts/**").authenticated()

@@ -1,5 +1,9 @@
 package skillforge.infrastructure.persistence;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.sql.PreparedStatement;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -18,8 +22,9 @@ import skillforge.domain.catalog.CourseRepository;
 import skillforge.domain.catalog.Lesson;
 import skillforge.domain.catalog.LessonAsset;
 import skillforge.domain.catalog.LessonContent;
-import skillforge.domain.catalog.LessonFile;
 import skillforge.domain.catalog.LessonKind;
+import skillforge.domain.catalog.MediaStream;
+import skillforge.domain.catalog.MediaUpload;
 import skillforge.domain.catalog.ModuleOrder;
 import skillforge.domain.catalog.ScormOutline;
 import skillforge.domain.catalog.ScormZip;
@@ -75,24 +80,63 @@ class JdbcCourseRepository implements CourseRepository {
         return id;
     }
 
+    private static final String INSERT_LESSON = """
+            INSERT INTO lesson (id, module_id, title, position, kind, markdown, media, media_type)
+            SELECT ?, ?, ?, COALESCE(MAX(position), 0) + 1, ?, ?, ?, ? FROM lesson WHERE module_id = ?
+            """;
+
     @Override
-    public UUID addLesson(UUID moduleId, String title, LessonContent.Accepted content) {
+    public UUID addLesson(UUID moduleId, String title, LessonContent.Accepted content, MediaUpload media) {
         schema.ensure();
         if (!moduleExists(moduleId)) {
             throw new Rejection(Failure.NOT_FOUND);
         }
         UUID id = UUID.randomUUID();
         try {
-            jdbc.update("""
-                    INSERT INTO lesson (id, module_id, title, position, kind, markdown, media, media_type)
-                    SELECT ?, ?, ?, COALESCE(MAX(position), 0) + 1, ?, ?, ?, ? FROM lesson WHERE module_id = ?
-                    """, id, moduleId, title, content.kind().wire(), content.markdown(), content.media(),
-                    content.mediaType(), moduleId);
+            // O conteúdo vai do stream do upload direto para o banco: nenhuma cópia do arquivo em memória.
+            withMedia(content.hasMedia() ? media : null, content.mediaSize(), stream -> jdbc.update(connection -> {
+                PreparedStatement statement = connection.prepareStatement(INSERT_LESSON);
+                statement.setObject(1, id);
+                statement.setObject(2, moduleId);
+                statement.setString(3, title);
+                statement.setString(4, content.kind().wire());
+                statement.setString(5, content.markdown());
+                if (stream == null) {
+                    statement.setNull(6, Types.BINARY);
+                }
+                else {
+                    statement.setBinaryStream(6, stream, content.mediaSize());
+                }
+                statement.setString(7, content.mediaType());
+                statement.setObject(8, moduleId);
+                return statement;
+            }));
         }
         catch (DataAccessResourceFailureException ex) {
             throw new Unavailable(ex);
         }
         return id;
+    }
+
+    /** Abre o upload só durante a gravação, fechando o stream em seguida. */
+    private static void withMedia(MediaUpload media, long size, MediaWriter writer) {
+        if (media == null || size == 0) {
+            writer.write(null);
+            return;
+        }
+        try (InputStream stream = media.open()) {
+            writer.write(stream);
+        }
+        catch (IOException ex) {
+            throw new Rejection(Failure.NOT_FOUND);
+        }
+    }
+
+    @FunctionalInterface
+    private interface MediaWriter {
+
+        void write(InputStream stream);
+
     }
 
     @Override
@@ -108,6 +152,7 @@ class JdbcCourseRepository implements CourseRepository {
             jdbc.update("DELETE FROM scorm_item_track WHERE lesson_id = ?", lessonId);
             jdbc.update("DELETE FROM scorm_item WHERE lesson_id = ?", lessonId);
             jdbc.update("DELETE FROM scorm_track WHERE lesson_id = ?", lessonId);
+            jdbc.update("DELETE FROM scorm_ticket WHERE lesson_id = ?", lessonId);
             jdbc.update("DELETE FROM scorm_file WHERE lesson_id = ?", lessonId);
             jdbc.update("DELETE FROM lesson_tool WHERE lesson_id = ?", lessonId);
             int removed = jdbc.update("DELETE FROM lesson WHERE id = ?", lessonId);
@@ -235,42 +280,58 @@ class JdbcCourseRepository implements CourseRepository {
     }
 
     @Override
-    public Optional<LessonFile> media(UUID id) {
+    public Optional<MediaStream> media(UUID id) {
         schema.ensure();
         try {
-            List<StoredFile> rows = jdbc.query(
-                    "SELECT kind, media, media_type FROM lesson WHERE id = ?",
-                    (rs, row) -> new StoredFile(rs.getString("kind"), rs.getBytes("media"), rs.getString("media_type")),
+            List<StoredMedia> rows = jdbc.query(
+                    "SELECT kind, media_type, octet_length(media) AS size FROM lesson WHERE id = ?",
+                    (rs, row) -> new StoredMedia(
+                            rs.getString("kind"),
+                            rs.getString("media_type"),
+                            rs.getObject("size") == null ? -1 : rs.getLong("size")),
                     id);
             if (rows.isEmpty()) {
                 return Optional.empty();
             }
-            StoredFile stored = rows.get(0);
-            if (stored.kind().equals(LessonKind.MARKDOWN.wire()) || stored.bytes() == null) {
+            StoredMedia stored = rows.get(0);
+            if (stored.kind().equals(LessonKind.MARKDOWN.wire()) || stored.size() < 0) {
                 return Optional.empty();
             }
-            return Optional.of(new LessonFile(kind(stored.kind()), stored.bytes(), stored.mediaType()));
+            return Optional.of(new SlicedMedia(
+                    kind(stored.kind()),
+                    stored.mediaType(),
+                    stored.size(),
+                    (offset, length) -> slice("lesson", "id = ?", offset, length, id)));
         }
         catch (DataAccessResourceFailureException ex) {
             throw new Unavailable(ex);
         }
     }
 
+    /** Recorta a faixa no banco; {@code substring} conta a partir de um, a faixa a partir de zero. */
+    private byte[] slice(String table, String where, long offset, int length, Object... keys) {
+        Object[] args = new Object[keys.length + 2];
+        // substring sobre bytea só existe com argumentos integer, e um bytea não passa de 1 GB.
+        args[0] = Math.toIntExact(offset + 1);
+        args[1] = length;
+        System.arraycopy(keys, 0, args, 2, keys.length);
+        return jdbc.queryForObject(
+                "SELECT substring(media from ?::int for ?::int) FROM " + table + " WHERE " + where,
+                byte[].class,
+                args);
+    }
+
     @Override
     @Transactional
-    public UUID addScorm(UUID moduleId, String title, byte[] zip) {
+    public UUID addScorm(UUID moduleId, String title, MediaUpload zip) {
         schema.ensure();
-        ScormZip.Unpacked unpacked = ScormZip.read(zip);
         UUID id = addLesson(moduleId, title, new LessonContent.Accepted(
-                LessonKind.SCORM, null, zip, "application/zip"));
-        for (ScormZip.Entry file : unpacked.files()) {
-            jdbc.update(
-                    "INSERT INTO scorm_file (lesson_id, path, media, media_type) VALUES (?, ?, ?, ?)",
-                    id,
-                    file.path(),
-                    file.bytes(),
-                    file.mediaType());
-        }
+                LessonKind.SCORM, null, zip.probe().size(), "application/zip"), zip);
+        // Cada entrada é gravada assim que é lida, de modo que o pacote descompactado não se acumula.
+        ScormZip.Unpacked unpacked = ScormZip.read(zip, (path, mediaType, bytes) -> jdbc.update("""
+                INSERT INTO scorm_file (lesson_id, path, media, media_type) VALUES (?, ?, ?, ?)
+                ON CONFLICT (lesson_id, path) DO UPDATE SET media = EXCLUDED.media, media_type = EXCLUDED.media_type
+                """, id, path, bytes, mediaType));
         jdbc.update(
                 "INSERT INTO scorm_file (lesson_id, path, media, media_type) VALUES (?, ?, ?, ?)",
                 id,
@@ -360,18 +421,57 @@ class JdbcCourseRepository implements CourseRepository {
     }
 
     @Override
-    public Optional<LessonFile> scormFile(UUID lessonId, String path) {
+    public Optional<MediaStream> scormFile(UUID lessonId, String path) {
         schema.ensure();
         String safe = ScormZip.normalize(path);
         if ("__launch__".equals(safe)) {
             return Optional.empty();
         }
-        List<LessonFile> rows = jdbc.query(
-                "SELECT media, media_type FROM scorm_file WHERE lesson_id = ? AND path = ?",
-                (rs, row) -> new LessonFile(LessonKind.SCORM, rs.getBytes("media"), rs.getString("media_type")),
+        List<MediaStream> rows = jdbc.query(
+                "SELECT media_type, octet_length(media) AS size FROM scorm_file WHERE lesson_id = ? AND path = ?",
+                (rs, row) -> new SlicedMedia(
+                        LessonKind.SCORM,
+                        rs.getString("media_type"),
+                        rs.getLong("size"),
+                        (offset, length) -> slice(
+                                "scorm_file", "lesson_id = ? AND path = ?", offset, length, lessonId, safe)),
                 lessonId,
                 safe);
         return rows.stream().findFirst();
+    }
+
+    /** Validade de um bilhete: o tempo de uma aula. Depois dele o pacote precisa ser reaberto. */
+    private static final String TICKET_TTL = "1 hour";
+
+    @Override
+    public UUID issueScormTicket(UUID lessonId, String username) {
+        schema.ensure();
+        UUID token = UUID.randomUUID();
+        try {
+            // Bilhetes vencidos são varridos aqui, no caminho que cria novos, sem tarefa à parte.
+            jdbc.update("DELETE FROM scorm_ticket WHERE expires_at <= now()");
+            jdbc.update(
+                    "INSERT INTO scorm_ticket (token, lesson_id, username, expires_at) "
+                            + "VALUES (?, ?, ?, now() + interval '" + TICKET_TTL + "')",
+                    token, lessonId, username);
+        }
+        catch (DataAccessResourceFailureException ex) {
+            throw new Unavailable(ex);
+        }
+        return token;
+    }
+
+    @Override
+    public Optional<String> scormTicketHolder(UUID ticket, UUID lessonId) {
+        schema.ensure();
+        try {
+            return jdbc.query(
+                    "SELECT username FROM scorm_ticket WHERE token = ? AND lesson_id = ? AND expires_at > now()",
+                    (rs, row) -> rs.getString("username"), ticket, lessonId).stream().findFirst();
+        }
+        catch (DataAccessResourceFailureException ex) {
+            throw new Unavailable(ex);
+        }
     }
 
     @Override
@@ -574,20 +674,23 @@ class JdbcCourseRepository implements CourseRepository {
     }
 
     @Override
-    public UUID addAsset(UUID lessonId, String name, byte[] media, String mediaType) {
+    public UUID addAsset(UUID lessonId, String name, MediaUpload media, String mediaType) {
         schema.ensure();
         try {
             if (lesson(lessonId).isEmpty()) {
                 throw new Rejection(Failure.NOT_FOUND);
             }
             UUID id = UUID.randomUUID();
-            jdbc.update(
-                    "INSERT INTO lesson_asset (id, lesson_id, name, media, media_type) VALUES (?, ?, ?, ?, ?)",
-                    id,
-                    lessonId,
-                    name,
-                    media,
-                    mediaType);
+            long size = media.probe().size();
+            withMedia(media, size, stream -> jdbc.update(connection -> {
+                PreparedStatement statement = connection.prepareStatement(INSERT_ASSET);
+                statement.setObject(1, id);
+                statement.setObject(2, lessonId);
+                statement.setString(3, name);
+                statement.setBinaryStream(4, stream, size);
+                statement.setString(5, mediaType);
+                return statement;
+            }));
             return id;
         }
         catch (DataAccessResourceFailureException ex) {
@@ -613,15 +716,17 @@ class JdbcCourseRepository implements CourseRepository {
     }
 
     @Override
-    public Optional<LessonFile> asset(UUID lessonId, UUID assetId) {
+    public Optional<MediaStream> asset(UUID lessonId, UUID assetId) {
         schema.ensure();
         try {
-            List<LessonFile> rows = jdbc.query(
-                    "SELECT media, media_type FROM lesson_asset WHERE lesson_id = ? AND id = ?",
-                    (rs, row) -> new LessonFile(
+            List<MediaStream> rows = jdbc.query(
+                    "SELECT media_type, octet_length(media) AS size FROM lesson_asset WHERE lesson_id = ? AND id = ?",
+                    (rs, row) -> new SlicedMedia(
                             LessonKind.PDF,
-                            rs.getBytes("media"),
-                            rs.getString("media_type")),
+                            rs.getString("media_type"),
+                            rs.getLong("size"),
+                            (offset, length) -> slice(
+                                    "lesson_asset", "lesson_id = ? AND id = ?", offset, length, lessonId, assetId)),
                     lessonId,
                     assetId);
             return rows.stream().findFirst();
@@ -678,7 +783,10 @@ class JdbcCourseRepository implements CourseRepository {
     private record ModuleSeed(UUID id, UUID courseId, String name) {
     }
 
-    private record StoredFile(String kind, byte[] bytes, String mediaType) {
+    private static final String INSERT_ASSET =
+            "INSERT INTO lesson_asset (id, lesson_id, name, media, media_type) VALUES (?, ?, ?, ?, ?)";
+
+    private record StoredMedia(String kind, String mediaType, long size) {
     }
 
 }

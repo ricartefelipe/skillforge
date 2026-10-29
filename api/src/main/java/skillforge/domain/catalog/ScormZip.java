@@ -6,8 +6,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -22,13 +25,23 @@ import skillforge.domain.shared.Rejection;
 
 public final class ScormZip {
 
-    public record Entry(String path, byte[] bytes, String mediaType) {
-    }
-
     public record Item(String title, String path) {
     }
 
-    public record Unpacked(String launchPath, List<Item> items, List<Entry> files) {
+    public record Unpacked(String launchPath, List<Item> items) {
+    }
+
+    /**
+     * Destino de uma entrada do pacote.
+     *
+     * <p>Cada entrada é entregue assim que é lida, para que o pacote descompactado inteiro não
+     * precise ficar em memória à espera do fim da leitura.
+     */
+    @FunctionalInterface
+    public interface EntryWriter {
+
+        void write(String path, String mediaType, byte[] bytes);
+
     }
 
     private static final int MAX_ENTRIES = 500;
@@ -39,45 +52,48 @@ public final class ScormZip {
     private ScormZip() {
     }
 
-    public static Unpacked read(byte[] zip) {
-        return read(zip, MAX_TOTAL_BYTES);
+    public static Unpacked read(MediaUpload zip, EntryWriter writer) {
+        return read(zip, writer, MAX_TOTAL_BYTES);
     }
 
-    static Unpacked read(byte[] zip, long maxTotalBytes) {
-        Map<String, byte[]> files = new LinkedHashMap<>();
+    static Unpacked read(MediaUpload zip, EntryWriter writer, long maxTotalBytes) {
+        Objects.requireNonNull(zip, "zip");
+        Objects.requireNonNull(writer, "writer");
+        Set<String> paths = new LinkedHashSet<>();
+        Map<String, byte[]> manifests = new LinkedHashMap<>();
         long budget = maxTotalBytes;
-        try (ZipInputStream stream = new ZipInputStream(new ByteArrayInputStream(zip))) {
+        try (ZipInputStream stream = new ZipInputStream(zip.open())) {
             ZipEntry entry;
             while ((entry = stream.getNextEntry()) != null) {
                 if (entry.isDirectory()) {
                     continue;
                 }
                 String path = normalize(entry.getName());
-                if (files.size() >= MAX_ENTRIES) {
+                if (!paths.contains(path) && paths.size() >= MAX_ENTRIES) {
                     throw new Rejection(Failure.TOO_LARGE);
                 }
                 byte[] bytes = readCapped(stream, budget);
                 budget -= bytes.length;
-                files.put(path, bytes);
+                paths.add(path);
+                writer.write(path, type(path), bytes);
+                if (path.endsWith("imsmanifest.xml")) {
+                    manifests.put(path, bytes);
+                }
             }
         }
         catch (IOException ex) {
             throw new Rejection(Failure.NOT_PACKAGE);
         }
-        String manifestPath = files.keySet().stream().filter(path -> path.endsWith("imsmanifest.xml")).findFirst()
+        String manifestPath = manifests.keySet().stream().findFirst()
                 .orElseThrow(() -> new Rejection(Failure.NOT_PACKAGE));
-        Outline outline = outline(files.get(manifestPath), parent(manifestPath));
-        if (!files.containsKey(outline.launch())) {
+        Outline outline = outline(manifests.get(manifestPath), parent(manifestPath));
+        if (!paths.contains(outline.launch())) {
             throw new Rejection(Failure.NOT_PACKAGE);
-        }
-        List<Entry> stored = new ArrayList<>();
-        for (Map.Entry<String, byte[]> file : files.entrySet()) {
-            stored.add(new Entry(file.getKey(), file.getValue(), type(file.getKey())));
         }
         List<Item> items = outline.items().isEmpty()
                 ? List.of(new Item("Aula", outline.launch()))
                 : outline.items();
-        return new Unpacked(outline.launch(), items, List.copyOf(stored));
+        return new Unpacked(outline.launch(), items);
     }
 
     private record Outline(String launch, List<Item> items) {
