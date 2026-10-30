@@ -18,7 +18,8 @@ export function ScormPlayer({ lessonId }: { lessonId: string }) {
   useEffect(() => {
     // The package lives in a cross-origin sandbox and can only reach us through a message it posts up.
     function onMessage(event: MessageEvent) {
-      if (frame.current !== null && event.source !== frame.current.contentWindow) {
+      // Só o iframe do pacote (sandbox, origem opaca "null") pode falar com o player.
+      if (frame.current === null || event.source !== frame.current.contentWindow || event.origin !== "null") {
         return;
       }
       const commit = readScormCommit(event.data);

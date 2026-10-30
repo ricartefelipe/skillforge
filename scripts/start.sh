@@ -178,9 +178,9 @@ api_pid="$!"
 (
 	cd web
 	if [[ ! -d node_modules ]]; then
-		npm ci
+		npm ci --ignore-scripts
 	fi
-	API_URL="$API_URL" NEXT_TELEMETRY_DISABLED=1 npx next dev --port "$WEB_PORT"
+	API_URL="$API_URL" NEXT_TELEMETRY_DISABLED=1 npx --no-install next dev --port "$WEB_PORT"
 ) &
 web_pid="$!"
 

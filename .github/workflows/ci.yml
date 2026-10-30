@@ -51,7 +51,7 @@ jobs:
         working-directory: web
         run: |
           export NEXT_TELEMETRY_DISABLED=1
-          npm ci
+          npm ci --ignore-scripts
           npm run lint
           npm run typecheck
           npm test
