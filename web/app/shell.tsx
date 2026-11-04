@@ -25,9 +25,10 @@ export function Shell({ session, children }: { session: Session | null; children
               </Link>
             ))
           ) : (
-            <Link href="/login" className="enter">
+            // A plain link: the login route starts an OIDC request, and a router prefetch of it would open a second one.
+            <a href="/login" className="enter">
               Entrar
-            </Link>
+            </a>
           )}
         </nav>
         {session ? (
