@@ -1,10 +1,13 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
-import { ACCESS_COOKIE, ID_COOKIE, sessionCookie } from "../../lib/cookies";
+import { ACCESS_COOKIE, ID_COOKIE, isPrefetch, sessionCookie } from "../../lib/cookies";
 import { clientId, issuer, webUrl } from "../../lib/openid";
 
-export function GET() {
+export function GET(request: Request) {
+  if (isPrefetch(request)) {
+    return new NextResponse(null, { status: 204, headers: { "cache-control": "no-store" } });
+  }
   return endSession();
 }
 
